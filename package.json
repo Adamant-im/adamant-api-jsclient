@@ -1,0 +1,23 @@
+{
+  "name": "adamant-rest-api",
+  "version": "1.0.0",
+  "description": "\"Rest api ADAMANT Messenger\"",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "adamant",
+    "adamant api"
+  ],
+  "author": "RomanS",
+  "license": "ISC",
+  "dependencies": {
+    "bignumber.js": "^8.0.1",
+    "bitcore-mnemonic": "^1.5.0",
+    "bytebuffer": "^5.0.1",
+    "crypto": "^1.0.1",
+    "sodium-browserify-tweetnacl": "^0.2.3",
+    "sync-request": "^6.0.0"
+  }
+}
