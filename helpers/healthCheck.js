@@ -2,7 +2,7 @@ const request = require('request');
 
 module.exports = (nodes) => {
 	if (typeof nodes === 'string')
-	nodes = [nodes];
+	return ()=>nodes;
 	
 	checkNodes(nodes, this);
 	
@@ -12,7 +12,7 @@ module.exports = (nodes) => {
 	
 	return ()=>{
 		return this.hotNode;
-	}	
+	}
 }
 
 function checkNodes(nodes, context){
@@ -26,12 +26,3 @@ function checkNodes(nodes, context){
 		});
 	});
 }
-
-
-
-
-// let t=module.exports(['https://ya.ru', 'http://swbot.info']);
-
-// setInterval(()=>{
-// console.log(t());
-// },2000);
