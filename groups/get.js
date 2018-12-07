@@ -1,9 +1,12 @@
 const request = require('sync-request');
 const log = require('../helpers/log');
+const healthCheck = require('../helpers/healthCheck');
 
-module.exports = (node) => {
+module.exports = (nodes) => {
 	
-    return (type, input) => {
+	let hotNode=healthCheck(nodes);
+    
+	return (type, input) => {
         let endpoint = false,
 		explorer_url = false,
 		returned_field = false;
@@ -57,7 +60,7 @@ module.exports = (node) => {
 			return false;
 		}
         try {
-            const url = explorer_url || node + endpoint;
+            const url = explorer_url || hotNode() + endpoint;
             const res = JSON.parse(request('GET', url).getBody().toString());
             if (res.success) {
                 if (returned_field) return res[returned_field];

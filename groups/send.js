@@ -1,16 +1,19 @@
 const request = require('sync-request');
 const log = require('../helpers/log');
-const keys = require('../helpers/keys.js');
-const constants = require('../helpers/constants.js');
-const transactionFormer = require('../helpers/transactionFormer.js')
+const keys = require('../helpers/keys');
+const constants = require('../helpers/constants');
+const transactionFormer = require('../helpers/transactionFormer');
+const healthCheck = require('../helpers/healthCheck');
 
-module.exports = (node, passPhrase) => {
+module.exports = (nodes, passPhrase) => {
+	
+	let hotNode=healthCheck(nodes);
 	
 	return (passPhrase, address, payload, type='tokens') => {
 		const recipient_name = address
 		const keypair = keys.createKeypairFromPassPhrase(passPhrase);
 		
-		if (type === 'tokens') {
+		if (type === 'tokens') { 
 			try{
 				const amount = parseInt(parseFloat(String(payload)) * 100000000);
 				const data = {
@@ -19,9 +22,8 @@ module.exports = (node, passPhrase) => {
 					amount: amount
 				}
 				const transaction = transactionFormer.createTransaction(constants.transactionTypes.SEND, data)
-				const res = JSON.parse(request('POST', node + '/api/transactions/process', {json:{transaction}}).getBody().toString());
+				const res = JSON.parse(request('POST', hotNode() + '/api/transactions/process', {json:{transaction}}).getBody().toString());
 				
-				// console.log(res)
 				if(res.success) return res;
 				return false;
 				} catch(e){
