@@ -8,7 +8,7 @@ module.exports = (nodes) => {
 	
 	setInterval(()=>{
 		checkNodes(nodes, this)
-	},10000);
+	},60000);
 	
 	return ()=>{
 		return this.hotNode;
@@ -19,9 +19,8 @@ function checkNodes(nodes, context){
 	nodes.forEach(n=>{
 		let result= false;
 		request
-		.get(n)
+		.get(n+'/api/delegates/get')
 		.on('response', function(response) {
-			console.log(n, response.statusCode)
 			if (response.statusCode===200) context.hotNode=n;
 		});
 	});

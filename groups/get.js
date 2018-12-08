@@ -1,12 +1,10 @@
 const request = require('sync-request');
 const log = require('../helpers/log');
-const healthCheck = require('../helpers/healthCheck');
 
-module.exports = (nodes) => {
+
+module.exports = (hotNode) => {
 	
-	let hotNode=healthCheck(nodes);
-    
-	return (type, input) => {
+return (type, input) => {
         let endpoint = false,
 		explorer_url = false,
 		returned_field = false;

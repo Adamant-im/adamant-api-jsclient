@@ -3,11 +3,8 @@ const log = require('../helpers/log');
 const keys = require('../helpers/keys');
 const constants = require('../helpers/constants');
 const transactionFormer = require('../helpers/transactionFormer');
-const healthCheck = require('../helpers/healthCheck');
 
-module.exports = (nodes, passPhrase) => {
-	
-	let hotNode=healthCheck(nodes);
+module.exports = (hotNode, passPhrase) => {
 	
 	return (passPhrase, address, payload, type='tokens') => {
 		const recipient_name = address
