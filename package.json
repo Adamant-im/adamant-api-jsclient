@@ -1,6 +1,6 @@
 {
   "name": "adamant-api",
-  "version": "0.0.6", 
+  "version": "0.0.7", 
   "description": "\"Rest api ADAMANT Messenger\"",
   "main": "index.js",
   "scripts": {
