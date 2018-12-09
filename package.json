@@ -1,7 +1,7 @@
 {
   "name": "adamant-api",
-  "version": "0.0.7", 
-  "description": "\"Rest api ADAMANT Messenger\"",
+  "version": "0.1.0", 
+  "description": "\"REST API for ADAMANT Blockchain\"",
   "main": "index.js",
   "scripts": {
 	  "test": "echo \"Error: no test specified\" && exit 1"
@@ -10,7 +10,7 @@
     "adamant",
     "adamant api"
   ],
-  "author": "RomanS",
+  "author": "RomanS <devs@adamant.im> (https://adamant.im)",
   "license": "GPL-3.0",
   "dependencies": {
     "bignumber.js": "^8.0.1",
