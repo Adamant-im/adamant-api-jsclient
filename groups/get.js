@@ -16,14 +16,12 @@ return (type, input) => {
 			explorer_url = 'https://explorer.adamant.im/api/getAccount?address=' + input
 			break
             case 'delegate_forged':
-			endpoint = '/api/delegates/forging/getForgedByAccount?generatorPublicKey=' + input // за кого отдал голос адрес
+			endpoint = '/api/delegates/forging/getForgedByAccount?generatorPublicKey=' + input
 			break;
-			
-			case 'account_delegates':
-			endpoint = '/api/accounts/delegates?address=' + input // за кого отдал голос адрес
+	    case 'account_delegates':
+			endpoint = '/api/accounts/delegates?address=' + input
 			returned_field = 'delegates';
 			break
-			
             case 'block':
 			endpoint = '/api/blocks/get?id=' + input
 			break
@@ -35,18 +33,13 @@ return (type, input) => {
 			returned_field = 'delegate';
 			break
             case 'delegate_voters':
-			endpoint = '/api/delegates/voters?publicKey=' + input // кто отдал голос за делегата
+			endpoint = '/api/delegates/voters?publicKey=' + input
 			returned_field = 'accounts';
 			break
-			// case 'forged_by_account':
-			//     endpoint = '/api/delegates//forging/getForgedByAccount?publicKey=' + input // кто отдал голос за делегата
-			//     break
-			
             case 'blocks':
 			endpoint = '/api/blocks'; 
 			returned_field = 'blocks';
 			break
-			
             case 'transaction':
 			endpoint = '/api/transactions/get?id=' + input
 			break
