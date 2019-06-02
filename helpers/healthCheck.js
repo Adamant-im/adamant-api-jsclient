@@ -4,6 +4,7 @@ module.exports = (nodes) => {
 	if (typeof nodes === 'string')
 	return ()=>nodes;
 	
+	this.hotNode = nodes[0];
 	checkNodes(nodes, this);
 	
 	setInterval(()=>{
