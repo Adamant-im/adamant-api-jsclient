@@ -1,6 +1,6 @@
-var sodium = require('sodium-browserify-tweetnacl')
-var crypto = require('crypto')
-var Mnemonic = require('bitcore-mnemonic')
+var sodium = require('sodium-browserify-tweetnacl');
+var crypto = require('crypto');
+var Mnemonic = require('bitcore-mnemonic');
 var bignum = require('./bignumber.js');
 
 module.exports = {
@@ -8,15 +8,15 @@ module.exports = {
 		return new Mnemonic(Mnemonic.Words.ENGLISH).toString();
 	},
 	makeKeypairFromHash: function (hash) {
-		var keypair = sodium.crypto_sign_seed_keypair(hash)
+		var keypair = sodium.crypto_sign_seed_keypair(hash);
 		return {
 			publicKey: keypair.publicKey,
 			privateKey: keypair.secretKey
-		}
+		};
 	},
 	createHashFromPassPhrase: function (passPhrase) {
-		var secretMnemonic = new Mnemonic(passPhrase, Mnemonic.Words.ENGLISH)
-		return crypto.createHash('sha256').update(secretMnemonic.toSeed().toString('hex'), 'hex').digest()
+		var secretMnemonic = new Mnemonic(passPhrase, Mnemonic.Words.ENGLISH);
+		return crypto.createHash('sha256').update(secretMnemonic.toSeed().toString('hex'), 'hex').digest();
 	},
 	createKeypairFromPassPhrase: function (passPhrase) {
 		var hash = this.createHashFromPassPhrase(passPhrase);
@@ -32,4 +32,4 @@ module.exports = {
 		
 		return 'U' + bignum.fromBuffer(temp).toString();
 	}
-}
+};

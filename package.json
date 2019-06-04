@@ -1,35 +1,38 @@
 {
-  "name": "adamant-api",
-  "version": "0.1.6",
-  "description": "\"REST API for ADAMANT Blockchain\"",
-  "main": "index.js",
-  "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [
-      "adamant",
-      "adamant api"
-  ],
-  "author": "RomanS <devs@adamant.im> (https://adamant.im)",
-  "license": "GPL-3.0",
-  "dependencies": {
-      "bignumber.js": "^8.0.1",
-      "bitcore-mnemonic": "^1.5.0",
-      "bytebuffer": "^5.0.1",
-      "crypto": "^1.0.1",
-      "request": "^2.88.0",
-      "sodium-browserify-tweetnacl": "^0.2.3",
-      "sync-request": "^6.0.0"
-  },
-  "publishConfig": {
-      "access": "public"
-  },
-  "repository": {
-      "type": "git",
-      "url": "git+https://github.com/Adamant-im/adamant-api-jsclient.git"
-  },
-  "bugs": {
-      "url": "https://github.com/Adamant-im/adamant-api-jsclient/issues"
-  },
-  "homepage": "https://github.com/Adamant-im/adamant-api-jsclient#readme"
+    "name": "adamant-api",
+    "version": "0.1.7",
+    "description": "\"REST API for ADAMANT Blockchain\"",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "adamant",
+        "adamant api"
+    ],
+    "author": "RomanS <devs@adamant.im> (https://adamant.im)",
+    "license": "GPL-3.0",
+    "dependencies": {
+        "bignumber.js": "^8.0.1",
+        "bitcore-mnemonic": "^1.5.0",
+        "bytebuffer": "^5.0.1",
+        "crypto": "^1.0.1",
+        "ethereumjs-util": "^6.1.0",
+        "hdkey": "^1.1.1",
+        "request": "^2.88.0",
+        "sodium-browserify-tweetnacl": "^0.2.3",
+        "sync-request": "^6.0.0",
+        "web3": "^1.0.0-beta.55"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Adamant-im/adamant-api-jsclient.git"
+    },
+    "bugs": {
+        "url": "https://github.com/Adamant-im/adamant-api-jsclient/issues"
+    },
+    "homepage": "https://github.com/Adamant-im/adamant-api-jsclient#readme"
 }
