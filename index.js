@@ -3,13 +3,16 @@ const decodeMsg = require('./groups/decodeMsg');
 const Send = require('./groups/send');
 const healthCheck = require('./helpers/healthCheck');
 const eth = require('./groups/eth');
+const syncGet = require('./groups/syncGet');
 
-module.exports = (config) => {
-	const hotNode = healthCheck(config.node);
+module.exports = (params) => {
+	const hotNode = healthCheck(params.node);
+	const syncReq = syncGet(hotNode);
 	return {
-		get: Get(hotNode),
+		get: Get(syncReq),
 		send: Send(hotNode),
 		decodeMsg,
-		eth
+		eth,
+		syncGet: syncReq
 	};
 };
