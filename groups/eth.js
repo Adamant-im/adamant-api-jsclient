@@ -22,3 +22,5 @@ eth.keys = passphrase => {
 		privateKey: bufferToHex(privateKey)
 	};
 };
+
+module.exports = eth;
