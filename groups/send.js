@@ -6,19 +6,19 @@ const constants = require('../helpers/constants');
 const transactionFormer = require('../helpers/transactionFormer');
 
 module.exports = (hotNode) => {
-	return (passPhrase, address, payload, type = 'tokens', isEncode) => {
-		const recipient_name = address
-		const keypair = keys.createKeypairFromPassPhrase(passPhrase);
+	return (passPhrase, address, payload, type = 'tokens', isEncode, amount_comment) => {
+		const recipientId = address;
+		const keyPair = keys.createKeypairFromPassPhrase(passPhrase);
 
 		if (type === 'tokens') {
 			try {
 				const amount = parseInt(parseFloat(String(payload)) * 100000000);
 				const data = {
-					keyPair: keypair,
-					recipientId: recipient_name,
-					amount: amount
-				}
-				const transaction = transactionFormer.createTransaction(constants.transactionTypes.SEND, data)
+					keyPair,
+					recipientId,
+					amount
+				};
+				const transaction = transactionFormer.createTransaction(constants.transactionTypes.SEND, data);
 				const res = JSON.parse(request('POST', hotNode() + '/api/transactions/process', {
 					json: {
 						transaction
@@ -31,48 +31,53 @@ module.exports = (hotNode) => {
 				log.error(' Send tokens: ' + e);
 				return false;
 			}
-		} else if (type === 'message' || type === 'rich' || type === 'signal') {
+		} else if (['message', 'rich', 'signal'].includes(type)) {
 			try {
-				const message = payload
-				const message_type = 1
-				if (type === 'rich')
-					message_type = 2
-				if (type === 'signal')
-					message_type = 3
+				const message_type = 1;
+				
+				if (type === 'rich'){
+					message_type = 2;
+				};
+				if (type === 'signal'){
+					message_type = 3;
+				};
+				
 				const data = {
-					keyPair: keypair,
-					recipientId: recipient_name,
-					message,
+					keyPair,
+					recipientId,
 					message_type
+				};
+
+				if (amount_comment) {
+					data.amount = amount_comment * 100000000;
 				}
 
-				const res = request('GET', hotNode() + '/api/accounts/getPublicKey?address=' + recipient_name);
+				const res = request('GET', hotNode() + '/api/accounts/getPublicKey?address=' + recipientId);
 				const answer = JSON.parse(res.getBody().toString());
 
 				if (answer.success) {
-					const encrypt_data = encrypter.encodeMessage(data.message, keypair, answer.publicKey);
+					const encrypt_data = encrypter.encodeMessage(payload, keyPair, answer.publicKey);
 
-					data.message = encrypt_data.message
-					data.own_message = encrypt_data.own_message
-					transaction = transactionFormer.createTransaction(constants.transactionTypes.CHAT_MESSAGE, data);
-					if (isEncode) return transaction;
-					const res = JSON.parse(request('POST', hotNode() + '/api/transactions/process', {
+					data.message = encrypt_data.message;
+					data.own_message = encrypt_data.own_message;
+					const transaction = transactionFormer.createTransaction(constants.transactionTypes.CHAT_MESSAGE, data);
+				
+					if (isEncode) {
+						return transaction;
+					}
+				
+					return JSON.parse(request('POST', hotNode() + '/api/transactions/process', {
 						json: {
 							transaction
 						}
 					}).getBody().toString());
-
-					return res;
-
 				}
 			} catch (e) {
 				log.error(' Send ' + type + ': ' + e);
 				return false;
 			}
 		}
-
-	}
-
+	};
 };
 
 
