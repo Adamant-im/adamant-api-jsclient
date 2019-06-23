@@ -33,7 +33,7 @@ module.exports = (hotNode) => {
 			}
 		} else if (['message', 'rich', 'signal'].includes(type)) {
 			try {
-				const message_type = 1;
+				let message_type = 1;
 				
 				if (type === 'rich'){
 					message_type = 2;
@@ -49,7 +49,7 @@ module.exports = (hotNode) => {
 				};
 
 				if (amount_comment) {
-					data.amount = amount_comment * 100000000;
+					data.amount = +amount_comment * 100000000;
 				}
 
 				const res = request('GET', hotNode() + '/api/accounts/getPublicKey?address=' + recipientId);
