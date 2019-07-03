@@ -1,6 +1,6 @@
 {
     "name": "adamant-api",
-    "version": "0.1.13",
+    "version": "0.1.14",
     "description": "\"REST API for ADAMANT Blockchain\"",
     "main": "index.js",
     "scripts": {
@@ -20,6 +20,7 @@
         "ethereumjs-util": "^6.1.0",
         "hdkey": "^1.1.1",
         "request": "^2.88.0",
+        "ed2curve": "^0.2.1",
         "sodium-browserify-tweetnacl": "^0.2.3",
         "sync-request": "^6.0.0",
         "web3": "^1.0.0-beta.55"
