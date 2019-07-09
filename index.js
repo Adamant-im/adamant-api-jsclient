@@ -6,11 +6,11 @@ const eth = require('./groups/eth');
 const syncGet = require('./groups/syncGet');
 
 module.exports = (params) => {
-	const hotNode = healthCheck(params.node);
-	const syncReq = syncGet(hotNode);
+	const {node, changeNodes} = healthCheck(params.node);
+	const syncReq = syncGet(node, changeNodes);
 	return {
 		get: Get(syncReq),
-		send: Send(hotNode),
+		send: Send(node),
 		decodeMsg,
 		eth,
 		syncGet: syncReq

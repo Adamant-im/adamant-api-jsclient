@@ -64,7 +64,7 @@ module.exports = (syncReq) => {
 				return res;
 			}
 
-			log.error('Failed Get request: ' + type + ' ' + url + ' ' + res.error);
+			log.error('Failed Get request: ' + type + ' ' + url);
 			return false;
 		} catch (e) {
 			log.error('Catch Get request ' + type + ': ' + e);

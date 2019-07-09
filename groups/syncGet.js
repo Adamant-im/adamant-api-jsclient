@@ -1,7 +1,10 @@
 const request = require('request');
-module.exports = (node) => {
+const log = require('../helpers/log');
+
+module.exports = (node, changeNodes) => {
 	return (uri, isUrl, isNoJson) => {
 		return new Promise(resolve => {
+			const currentNode = node();
 			let url = isUrl && uri || node() + uri;
 			request(url, (a, b) => {
 				try {
@@ -12,7 +15,9 @@ module.exports = (node) => {
 						resolve(JSON.parse(body));
 					}
 				} catch (e) {
-					resolve(null, e);
+					changeNodes();
+					log.error(`Error response node: ${currentNode}`);
+					resolve(null);
 				}
 			});
 		});

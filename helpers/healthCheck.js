@@ -13,8 +13,14 @@ module.exports = (nodes) => {
 		checkNodes(_.shuffle(nodes), this)
 	}, 60000);
 
-	return () => {
-		return this.hotNode;
+	return {
+		node: () => {
+			return this.hotNode;
+		},
+		changeNodes: () => {
+			console.log('Health check warn: Force change node!');
+			checkNodes(_.shuffle(nodes), this);
+		}
 	};
 };
 
@@ -27,6 +33,7 @@ function checkNodes(nodes, context) {
 			// console.log('Error health check ' + n);
 		}
 	});
+	// console.log('Health check update node: ', context.hotNode);
 }
 
 function checkNode(url) {
