@@ -1,8 +1,6 @@
 const request = require('sync-request');
-const log = require('../helpers/log');
 
-
-module.exports = (syncReq) => {
+module.exports = (syncReq, log) => {
 	return async (type, input) => {
 		let endpoint = false,
 			explorer_url = false,
@@ -64,7 +62,7 @@ module.exports = (syncReq) => {
 				return res;
 			}
 
-			log.error('Failed Get request: ' + type + ' ' + url);
+			log.error(`Failed Get request: ${type} ${url} ${res && res.error}`);
 			return false;
 		} catch (e) {
 			log.error('Catch Get request ' + type + ': ' + e);

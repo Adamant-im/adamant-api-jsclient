@@ -1,8 +1,7 @@
 const request = require('request');
 const _ = require('lodash');
-const log = require('./log');
 
-module.exports = (nodes) => {
+module.exports = (nodes, log) => {
 	if (typeof nodes === 'string') {
 		return () => nodes;
 	}
@@ -10,7 +9,7 @@ module.exports = (nodes) => {
 	checkNodes(nodes, this);
 	this.hotNode = nodes[0];
 	setInterval(() => {
-		checkNodes(_.shuffle(nodes), this);
+		checkNodes(_.shuffle(nodes), this, log);
 	}, 60000);
 
 	return {
@@ -18,24 +17,27 @@ module.exports = (nodes) => {
 			return this.hotNode;
 		},
 		changeNodes: () => {
-			log.warn('[Health check]: Force change node!');
-			checkNodes(_.shuffle(nodes), this);
+			log.warn('[Health check]:  Force change node!');
+			checkNodes(_.shuffle(nodes), this, log);
 		}
 	};
 };
 
-function checkNodes(nodes, context) {
+async function checkNodes(nodes, context, log) {
 	let isFind = false;
-	nodes.forEach(async n => {
+	for (let n of nodes) {
 		const res = await checkNode(n + '/api/peers/version');
 		if (res) {
 			isFind = true;
 			context.hotNode = n;
+		} else {
+			console.log('Error check', n, !!res);
 		}
-	});
+	};
 	if (!isFind && context.hotNode) {
 		log.error('[Health check]: ALL nodes don`t ping! Pls check you internet connection!');
 	}
+	// console.log('Finish');
 }
 
 function checkNode(url) {

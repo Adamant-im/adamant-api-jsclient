@@ -1,11 +1,10 @@
 const request = require('sync-request');
-const log = require('../helpers/log');
 const keys = require('../helpers/keys');
 const encrypter = require('../helpers/encrypter');
 const constants = require('../helpers/constants');
 const transactionFormer = require('../helpers/transactionFormer');
 
-module.exports = (hotNode) => {
+module.exports = (hotNode, log) => {
 	return (passPhrase, address, payload, type = 'tokens', isEncode, amount_comment) => {
 		const recipientId = address;
 		const keyPair = keys.createKeypairFromPassPhrase(passPhrase);

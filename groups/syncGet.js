@@ -1,7 +1,6 @@
 const request = require('request');
-const log = require('../helpers/log');
 
-module.exports = (node, changeNodes) => {
+module.exports = (node, changeNodes, log) => {
 	return (uri, isUrl, isNoJson) => {
 		return new Promise(resolve => {
 			const currentNode = node();
