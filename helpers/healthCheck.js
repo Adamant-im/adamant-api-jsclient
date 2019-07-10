@@ -6,7 +6,7 @@ module.exports = (nodes, log) => {
 		return () => nodes;
 	}
 
-	checkNodes(nodes, this);
+	checkNodes(nodes, this, log);
 	this.hotNode = nodes[0];
 	setInterval(() => {
 		checkNodes(_.shuffle(nodes), this, log);
