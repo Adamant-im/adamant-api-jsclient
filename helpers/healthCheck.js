@@ -16,10 +16,10 @@ module.exports = (nodes, log) => {
 		node: () => {
 			return this.hotNode;
 		},
-		changeNodes: () => {
-			log.warn('[Health check]:  Force change node!');
+		changeNodes: _.throttle(() => {
+			log.warn('[Health check]: Force change node!');
 			checkNodes(_.shuffle(nodes), this, log);
-		}
+		}, 5000)
 	};
 };
 
