@@ -1,6 +1,6 @@
 {
     "name": "adamant-api",
-    "version": "0.1.17",
+    "version": "0.1.18",
     "description": "\"REST API for ADAMANT Blockchain\"",
     "main": "index.js",
     "scripts": {
