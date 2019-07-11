@@ -9,7 +9,7 @@ module.exports = (nodes, log) => {
 	checkNodes(nodes, this, log);
 	setInterval(() => {
 		checkNodes(_.shuffle(nodes), this, log);
-	}, 10000);
+	}, 60 * 1000);
 
 	return {
 		node: () => {
@@ -41,7 +41,6 @@ async function checkNodes(nodes, context, log) {
 	});
 
 	setTimeout(() => {
-
 		const count = health.length;
 		if (!count) {
 			log.error('[Health check]: ALL nodes don`t ping! Pls check you internet connection!');
