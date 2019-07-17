@@ -48,7 +48,7 @@ module.exports = (hotNode, log) => {
 				};
 
 				if (amount_comment) {
-					data.amount = +amount_comment * 100000000;
+					data.amount = parseInt(parseFloat(String(amount_comment)) * 100000000);
 				}
 
 				const res = request('GET', hotNode() + '/api/accounts/getPublicKey?address=' + recipientId);
