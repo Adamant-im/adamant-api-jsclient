@@ -1,16 +1,23 @@
 {
     "name": "adamant-api",
-    "version": "0.1.22",
+    "version": "0.2.1",
     "description": "\"REST API for ADAMANT Blockchain\"",
     "main": "index.js",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "keywords": [
+        "adm",
+        "adm api",
         "adamant",
-        "adamant api"
+        "adamant api",
+        "blockchain",
+        "messenger",
+        "chat",
+        "bitcoin",
+        "ethereum"        
     ],
-    "author": "RomanS <devs@adamant.im> (https://adamant.im)",
+    "author": "RomanS, Aleksei Lebedev <devs@adamant.im> (https://adamant.im)",
     "license": "GPL-3.0",
     "dependencies": {
         "bignumber.js": "^8.0.1",
