@@ -72,6 +72,7 @@ module.exports = (hotNode, log) => {
 						}
 					}).getBody().toString());
 				}
+
 			} catch (e) {
 				log.error(' Send ' + type + ': ' + e);
 				return false;
@@ -79,10 +80,3 @@ module.exports = (hotNode, log) => {
 		}
 	};
 };
-
-
-// {
-// success: true,
-// nodeTimestamp: 38796752,
-// transactionId: '5738662183517760803'
-// }
