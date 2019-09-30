@@ -6,11 +6,11 @@ Abilities:
 
 * Internal Health Check for ADAMANT nodes. This system ping all nodes in the list using `status` endpoint, and connect to node with actual height.
 * Encrypting and decrypting of messages
-* Working with ADM key pairs
-* Generating ETH crypto address and keys, tied to ADM account
 * Forming and signing transactions
+* Working with ADM key pairs
+* Generating ETH crypto address and keys, binded to ADM account
 * Working with ADAMANT epoch time
-* Writing to log, 
+* Logging
 
 # Usage
 

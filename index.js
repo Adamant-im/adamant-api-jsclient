@@ -4,6 +4,9 @@ const Send = require('./groups/send');
 const healthCheck = require('./helpers/healthCheck');
 const eth = require('./groups/eth');
 const syncGet = require('./groups/syncGet');
+const transactionFormer = require('./helpers/transactionFormer');
+const keys = require('./helpers/keys');
+const encrypter = require('./helpers/encypter');
 
 module.exports = (params, log) => {
 	log = log || console;
@@ -14,6 +17,9 @@ module.exports = (params, log) => {
 		send: Send(node, log),
 		decodeMsg,
 		eth,
-		syncGet: syncReq
+		syncGet: syncReq,
+		transactionFormer,
+		keys,
+		encrypter
 	};
 };

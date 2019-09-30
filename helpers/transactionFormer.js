@@ -6,6 +6,7 @@ var keys = require('./keys.js');
 var ByteBuffer = require('bytebuffer');
 const constants = require('./constants.js');
 const time = require('./time.js');
+
 module.exports = {
 	createTransaction: function (type, data) {
 		switch (type) {

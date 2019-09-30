@@ -9,7 +9,7 @@ module.exports = (syncReq, log) => {
 		case 'account':
 			endpoint = '/api/accounts?address=' + input;
 			break;
-		case 'full_account':
+		case 'full_account': // DEPRECATED
 			explorer_url = 'https://explorer.adamant.im/api/getAccount?address=' + input;
 			break;
 		case 'delegate_forged':
@@ -22,8 +22,11 @@ module.exports = (syncReq, log) => {
 		case 'block':
 			endpoint = '/api/blocks/get?id=' + input;
 			break;
-		case 'state':
-			endpoint = '/api/states/get?id=' + input;
+		case 'states':
+			endpoint = '/api/states/get';
+			if (input) {
+				endpoint = endpoint + '?' + input;
+			}
 			break;
 		case 'delegate':
 			endpoint = '/api/delegates/get?username=' + input;
@@ -35,6 +38,9 @@ module.exports = (syncReq, log) => {
 			break;
 		case 'blocks':
 			endpoint = '/api/blocks';
+			if (input) {
+				endpoint = endpoint + '?' + input;
+			}
 			returned_field = 'blocks';
 			break;
 		case 'transaction':
@@ -47,11 +53,11 @@ module.exports = (syncReq, log) => {
 			endpoint = '/api/' + input;
 			break;
 		default:
-			log.error('ADM api Not implemented yet');
+			log.error(`Endpoint not implemented yet. Use 'uri' to use not implemented endpoints.`);
 			return false;
 		}
 		try {
-			// const url = explorer_url || hotNode() + endpoint;
+
 			const url = explorer_url || endpoint;
 			// const res = JSON.parse(request('GET', url).getBody().toString());
 			const res = await syncReq(url, explorer_url);
@@ -62,10 +68,11 @@ module.exports = (syncReq, log) => {
 				return res;
 			}
 
-			log.error(`Failed Get request: ${type} ${url} ${res && res.error}`);
+			log.error(`Get request was not successful. Type: ${type}, URL: ${url}, Result: ${res && res.error}`);
 			return false;
+
 		} catch (e) {
-			log.error('Catch Get request ' + type + ': ' + e);
+			log.error('Filed to process Get request of type ' + type + ': ' + e);
 			return false;
 		}
 	};
