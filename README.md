@@ -1,6 +1,6 @@
 # ADAMANT JavaScript API library
 
-ADAMANT JavaScript API is a library intended to interact with ADAMANT blockchain for Node.js developers. Also [ADAMANT Console](https://github.com/Adamant-im/adamant-console/wiki) and [ADAMANT node Direct API](https://github.com/Adamant-im/adamant/wiki/) available.
+ADAMANT JavaScript API is a library intended to interact with ADAMANT blockchain for Node.js developers. Also [ADAMANT Console](https://github.com/Adamant-im/adamant-console/wiki) and [ADAMANT node Direct API](https://github.com/Adamant-im/adamant/wiki/) are available.
 
 Abilities:
 
