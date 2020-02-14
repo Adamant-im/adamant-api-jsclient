@@ -8,7 +8,7 @@ Abilities:
 * Encrypting and decrypting of messages
 * Forming and signing transactions
 * Working with ADM key pairs
-* Generating ETH crypto address and keys, binded to ADM account
+* Generating ETH crypto address and keys, bound to ADM account
 * Working with ADAMANT epoch time
 * Logging warnings, errors, info
 
@@ -24,7 +24,7 @@ Add current version of ADAMANT JavaScript API library in project's `package.json
 
 Or install library from npm:
 
-```
+``` bash
 npm i adamant-api
 ```
 
