@@ -56,10 +56,9 @@ module.exports = (syncReq, log) => {
 			log.error(`Endpoint not implemented yet. Use 'uri' to use not implemented endpoints.`);
 			return false;
 		}
-		try {
 
+		try {
 			const url = explorer_url || endpoint;
-			// const res = JSON.parse(request('GET', url).getBody().toString());
 			const res = await syncReq(url, explorer_url);
 			if (res && res.success) {
 				if (returned_field) {

@@ -4,7 +4,7 @@ ADAMANT JavaScript API is a library intended to interact with ADAMANT blockchain
 
 Abilities:
 
-* Internal Health Check for ADAMANT nodes. Health Check system pings all nodes in the list using `status` endpoint, and connect to a node with actual height.
+* Internal Health Check for ADAMANT nodes. Health Check system pings all nodes in the list using [`/status`](https://github.com/Adamant-im/adamant/wiki/API-Specification#get-blockchain-and-network-status) endpoint, and connect to a node with actual height.
 * Encrypting and decrypting of messages
 * Forming and signing transactions
 * Working with ADM key pairs
@@ -18,7 +18,7 @@ Add current version of ADAMANT JavaScript API library in project's `package.json
 
 ``` json
   "dependencies": {
-    "adamant-api": "^0.2.1",
+    "adamant-api": "^0.5.0",
     ...
 ```
 

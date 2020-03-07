@@ -6,7 +6,9 @@ const transactionFormer = require('../helpers/transactionFormer');
 const SAT = 100000000;
 
 module.exports = (hotNode, log) => {
+
 	return (passPhrase, address, payload, type = 'tokens', isEncode, amount_comment) => {
+
 		const recipientId = address;
 		const keyPair = keys.createKeypairFromPassPhrase(passPhrase);
 
@@ -28,19 +30,19 @@ module.exports = (hotNode, log) => {
 				return res;
 
 			} catch (e) {
-				log.error(' Send tokens: ' + e);
+				log.error('Error while sending tokens: ' + e);
 				return false;
 			}
+
 		} else if (['message', 'rich', 'signal'].includes(type)) {
+
 			try {
 				let message_type = 1;
 
-				if (type === 'rich'){
+				if (type === 'rich')
 					message_type = 2;
-				};
-				if (type === 'signal'){
+				if (type === 'signal')
 					message_type = 3;
-				};
 
 				const data = {
 					keyPair,
@@ -66,15 +68,18 @@ module.exports = (hotNode, log) => {
 						return transaction;
 					}
 
-					return JSON.parse(request('POST', hotNode() + '/api/transactions/process', {
+					const res = JSON.parse(request('POST', hotNode() + '/api/transactions/process', {
 						json: {
 							transaction
 						}
 					}).getBody().toString());
+
+					return res;
+
 				}
 
 			} catch (e) {
-				log.error(' Send ' + type + ': ' + e);
+				log.error(`Error while sending message of type ${type}: ${e}`);
 				return false;
 			}
 		}

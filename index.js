@@ -6,12 +6,14 @@ const eth = require('./groups/eth');
 const syncGet = require('./groups/syncGet');
 const transactionFormer = require('./helpers/transactionFormer');
 const keys = require('./helpers/keys');
-const encrypter = require('./helpers/encypter');
+const encrypter = require('./helpers/encrypter');
+const socket = require('./helpers/wsClient');
 
 module.exports = (params, log) => {
 	log = log || console;
 	const {node, changeNodes} = healthCheck(params.node, log);
 	const syncReq = syncGet(node, changeNodes, log);
+	
 	return {
 		get: Get(syncReq, log),
 		send: Send(node, log),
@@ -20,6 +22,7 @@ module.exports = (params, log) => {
 		syncGet: syncReq,
 		transactionFormer,
 		keys,
-		encrypter
+		encrypter,
+		socket
 	};
 };

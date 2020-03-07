@@ -1,73 +1,110 @@
 const request = require('request');
 const _ = require('lodash');
+const socket = require('./wsClient');
+const HEIGHT_EPSILON = 10; // Used to group nodes by height and choose synced
 
 module.exports = (nodes, log) => {
+
 	if (typeof nodes === 'string') {
 		return () => nodes;
 	}
 	this.hotNode = nodes[0];
+	this.liveNodes = [];
 	checkNodes(nodes, this, log);
+	
 	setInterval(() => {
 		checkNodes(_.shuffle(nodes), this, log);
 	}, 60 * 1000);
 
 	return {
-		node: () => {
+		node: () => { // Current active node for REST requests
 			return this.hotNode;
 		},
 		changeNodes: _.throttle(() => {
-			log.warn('[Health check]: Force change node!');
+			log.warn('[Health check]: Forcing to change node.');
 			checkNodes(_.shuffle(nodes), this, log);
 		}, 5000)
 	};
 };
 
+// Request every node for its status and make a list of active ones
 async function checkNodes(nodes, context, log) {
-	const health = [];
+
+	context.liveNodes = [];
 	nodes.forEach(async n => {
 		try {
 			const start = unix();
-			const height = await checkNode(n + '/api/node/status');
-			if (height) {
-				health.push({
+			const req = await checkNode(n + '/api/node/status');
+
+			if (req.status) {
+				context.liveNodes.push({
 					node: n,
+					ifHttps: n.startsWith("https"),
+					url: n.replace(/^https?:\/\/(.*)$/, '$1').split(":")[0],
+					outOfSync: false,
 					ping: unix() - start,
-					height: Math.round(height / 20)
+					height: req.status.network.height,
+					heightEpsilon: Math.round(req.status.network.height / HEIGHT_EPSILON),
+					ip: req.ip,
+					socketSupport: req.status.wsClient && req.status.wsClient.enabled,
+					wsPort: req.status.wsClient.port
 				});
 			} else {
-				console.log('Error check', n, height);
+				console.log(`Node ${n} haven't returned its status.`);
 			}
-		} catch (e) {}
+		} catch (e) {
+			console.log('Error while checking node', n);
+		}
 	});
 
-	setTimeout(() => {
-		const count = health.length;
+	setTimeout(() => { // Allow 3 seconds to request nodes
+
+		const count = context.liveNodes.length;
 		if (!count) {
-			log.error('[Health check]: ALL nodes don`t ping! Pls check you internet connection!');
+			log.error('[Health check]: All of ADAMANT nodes are unavailable. Check internet connection and nodes list in config.');
 			return;
 		}
 
+		// Set hotNode to one that have maximum height and minimum ping
 		if (count === 1) {
-			context.hotNode = health[0].node;
+			context.hotNode = context.liveNodes[0].node;
 		} else if (count === 2) {
-			const h0 = health[0];
-			const h1 = health[1];
+			const h0 = context.liveNodes[0];
+			const h1 = context.liveNodes[1];
 			context.hotNode = h0.height > h1.height ? h0.node : h1.node;
+
+			// Mark node outOfSync if needed
+			if (h0.heightEpsilon > h1.heightEpsilon) {
+				context.liveNodes[1].outOfSync = true
+			} else if (h0.heightEpsilon < h1.heightEpsilon) {
+				context.liveNodes[0].outOfSync = true
+			}
+
 		} else {
 			let biggestGroup = [];
-			const groups = _.groupBy(health, n => n.height);
+			const groups = _.groupBy(context.liveNodes, n => n.heightEpsilon);
 			Object.keys(groups).forEach(key => {
 				if (groups[key].length > biggestGroup.length){
 					biggestGroup = groups[key];
 				}
 			});
+
+			// All the nodes from the biggestGroup list are considered to be in sync, all the others are not
+    		context.liveNodes.forEach(node => {
+				node.outOfSync = !biggestGroup.includes(node)
+			  })
+			  
 			biggestGroup.sort((a, b) => a.ping - b.ping);
-			context.hotNode = biggestGroup[0].node;
+			context.liveNodes.sort((a, b) => a.ping - b.ping);
+			context.hotNode = biggestGroup[0].node; // Use node with minimum ping among which are synced
 		}
-		console.log('hotNode', context.hotNode);
+		socket.reviseConnection(context.liveNodes);
+		console.log(`[Health check] Supported nodes: ${context.liveNodes.length}. hotNode is ${context.hotNode}.`);
+		// console.log('liveNodes', context.liveNodes, context.liveNodes.length);
 	}, 3000);
 }
 
+// Request status from a single node
 function checkNode(url) {
 	return new Promise(resolve => {
 		request(url, (err, res, body) => {
@@ -75,8 +112,9 @@ function checkNode(url) {
 				resolve(false);
 			} else {
 				try {
-					const heigth = JSON.parse(body).network.height;
-					resolve(heigth);
+					const status = JSON.parse(body);
+					const result = {status: status, ip: res.connection.remoteAddress};
+					resolve(result);
 				} catch (e) {
 					resolve(false);
 				}
