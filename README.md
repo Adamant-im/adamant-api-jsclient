@@ -10,6 +10,7 @@ Abilities:
 * Working with ADM key pairs
 * Generating ETH crypto address and keys, bound to ADM account
 * Working with ADAMANT epoch time
+* Support for WebSocket connections
 * Logging warnings, errors, info
 
 # Usage
