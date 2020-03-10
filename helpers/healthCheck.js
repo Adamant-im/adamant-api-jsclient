@@ -1,19 +1,20 @@
 const request = require('request');
 const _ = require('lodash');
 const socket = require('./wsClient');
+const logger = require('./logger');
 const HEIGHT_EPSILON = 10; // Used to group nodes by height and choose synced
 
-module.exports = (nodes, log) => {
+module.exports = (nodes) => {
 
 	if (typeof nodes === 'string') {
 		return () => nodes;
 	}
 	this.hotNode = nodes[0];
 	this.liveNodes = [];
-	checkNodes(nodes, this, log);
+	checkNodes(nodes, this);
 	
 	setInterval(() => {
-		checkNodes(_.shuffle(nodes), this, log);
+		checkNodes(_.shuffle(nodes), this);
 	}, 60 * 1000);
 
 	return {
@@ -21,14 +22,14 @@ module.exports = (nodes, log) => {
 			return this.hotNode;
 		},
 		changeNodes: _.throttle(() => {
-			log.warn('[Health check]: Forcing to change node.');
-			checkNodes(_.shuffle(nodes), this, log);
+			logger.warn('[Health check]: Forcing to change node.');
+			checkNodes(_.shuffle(nodes), this);
 		}, 5000)
 	};
 };
 
 // Request every node for its status and make a list of active ones
-async function checkNodes(nodes, context, log) {
+async function checkNodes(nodes, context) {
 
 	context.liveNodes = [];
 	nodes.forEach(async n => {
@@ -50,10 +51,10 @@ async function checkNodes(nodes, context, log) {
 					wsPort: req.status.wsClient.port
 				});
 			} else {
-				console.log(`Node ${n} haven't returned its status.`);
+				logger.log(`Node ${n} haven't returned its status.`);
 			}
 		} catch (e) {
-			console.log('Error while checking node', n);
+			logger.log('Error while checking node', n);
 		}
 	});
 
@@ -61,7 +62,7 @@ async function checkNodes(nodes, context, log) {
 
 		const count = context.liveNodes.length;
 		if (!count) {
-			log.error('[Health check]: All of ADAMANT nodes are unavailable. Check internet connection and nodes list in config.');
+			logger.error('[Health check]: All of ADAMANT nodes are unavailable. Check internet connection and nodes list in config.');
 			return;
 		}
 
@@ -99,8 +100,8 @@ async function checkNodes(nodes, context, log) {
 			context.hotNode = biggestGroup[0].node; // Use node with minimum ping among which are synced
 		}
 		socket.reviseConnection(context.liveNodes);
-		console.log(`[Health check] Supported nodes: ${context.liveNodes.length}. hotNode is ${context.hotNode}.`);
-		// console.log('liveNodes', context.liveNodes, context.liveNodes.length);
+		logger.log(`[Health check] Supported nodes: ${context.liveNodes.length}. hotNode is ${context.hotNode}.`);
+		// logger.logog('liveNodes', context.liveNodes, context.liveNodes.length);
 	}, 3000);
 }
 

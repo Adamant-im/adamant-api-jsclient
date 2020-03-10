@@ -1,6 +1,6 @@
 const request = require('request');
 
-module.exports = (node, changeNodes, log) => {
+module.exports = (node, changeNodes) => {
 	return (uri, isUrl, isNoJson) => {
 		return new Promise(resolve => {
 			const currentNode = node();
@@ -15,7 +15,7 @@ module.exports = (node, changeNodes, log) => {
 					}
 				} catch (e) {
 					changeNodes();
-					log.error(`Error response node: ${currentNode}`);
+					logger.warn(`Failed to process Syn-Get request to ADAMANT node ${currentNode}. Forcing to change active node now. Error: ${e}.`);
 					resolve(null);
 				}
 			});

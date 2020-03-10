@@ -107,7 +107,8 @@ module.exports = {
 			assetSize = assetBytes.length;
 			break;
 		default:
-			alert('Not supported yet');
+			// 'Not supported yet'
+			return 0;
 		}
 		
 		var bb = new ByteBuffer(1 + 4 + 32 + 8 + 8 + 64 + 64 + assetSize, true);

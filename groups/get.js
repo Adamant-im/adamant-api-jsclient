@@ -1,60 +1,61 @@
 const request = require('sync-request');
+const logger = require('../helpers/logger');
 
-module.exports = (syncReq, log) => {
+module.exports = (syncReq) => {
 	return async (type, input) => {
 		let endpoint = false,
 			explorer_url = false,
 			returned_field = false;
 		switch (type) {
-		case 'account':
-			endpoint = '/api/accounts?address=' + input;
-			break;
-		case 'full_account': // DEPRECATED
-			explorer_url = 'https://explorer.adamant.im/api/getAccount?address=' + input;
-			break;
-		case 'delegate_forged':
-			endpoint = '/api/delegates/forging/getForgedByAccount?generatorPublicKey=' + input;
-			break;
-		case 'account_delegates':
-			endpoint = '/api/accounts/delegates?address=' + input;
-			returned_field = 'delegates';
-			break;
-		case 'block':
-			endpoint = '/api/blocks/get?id=' + input;
-			break;
-		case 'states':
-			endpoint = '/api/states/get';
-			if (input) {
-				endpoint = endpoint + '?' + input;
-			}
-			break;
-		case 'delegate':
-			endpoint = '/api/delegates/get?username=' + input;
-			returned_field = 'delegate';
-			break;
-		case 'delegate_voters':
-			endpoint = '/api/delegates/voters?publicKey=' + input;
-			returned_field = 'accounts';
-			break;
-		case 'blocks':
-			endpoint = '/api/blocks';
-			if (input) {
-				endpoint = endpoint + '?' + input;
-			}
-			returned_field = 'blocks';
-			break;
-		case 'transaction':
-			endpoint = '/api/transactions/get?id=' + input;
-			break;
-		case 'transactions':
-			endpoint = '/api/transactions?' + input.split(' ').join('').split(',').join('&');
-			break;
-		case 'uri':
-			endpoint = '/api/' + input;
-			break;
-		default:
-			log.error(`Endpoint not implemented yet. Use 'uri' to use not implemented endpoints.`);
-			return false;
+			case 'account':
+				endpoint = '/api/accounts?address=' + input;
+				break;
+			case 'full_account': // DEPRECATED
+				explorer_url = 'https://explorer.adamant.im/api/getAccount?address=' + input;
+				break;
+			case 'delegate_forged':
+				endpoint = '/api/delegates/forging/getForgedByAccount?generatorPublicKey=' + input;
+				break;
+			case 'account_delegates':
+				endpoint = '/api/accounts/delegates?address=' + input;
+				returned_field = 'delegates';
+				break;
+			case 'block':
+				endpoint = '/api/blocks/get?id=' + input;
+				break;
+			case 'states':
+				endpoint = '/api/states/get';
+				if (input) {
+					endpoint = endpoint + '?' + input;
+				}
+				break;
+			case 'delegate':
+				endpoint = '/api/delegates/get?username=' + input;
+				returned_field = 'delegate';
+				break;
+			case 'delegate_voters':
+				endpoint = '/api/delegates/voters?publicKey=' + input;
+				returned_field = 'accounts';
+				break;
+			case 'blocks':
+				endpoint = '/api/blocks';
+				if (input) {
+					endpoint = endpoint + '?' + input;
+				}
+				returned_field = 'blocks';
+				break;
+			case 'transaction':
+				endpoint = '/api/transactions/get?id=' + input;
+				break;
+			case 'transactions':
+				endpoint = '/api/transactions?' + input.split(' ').join('').split(',').join('&');
+				break;
+			case 'uri':
+				endpoint = '/api/' + input;
+				break;
+			default:
+				logger.error(`ADAMANT endpoint ${type} not implemented yet. Use 'uri' to use not implemented endpoints.`);
+				return false;
 		}
 
 		try {
@@ -67,11 +68,11 @@ module.exports = (syncReq, log) => {
 				return res;
 			}
 
-			log.error(`Get request was not successful. Type: ${type}, URL: ${url}, Result: ${res && res.error}`);
+			logger.warn(`Get request to ADAMANT node was not successful. Type: ${type}, URL: ${url}, Result: ${res && res.error}`);
 			return false;
 
 		} catch (e) {
-			log.error('Filed to process Get request of type ' + type + ': ' + e);
+			logger.error(`Failed to process Get request of type ${type} to ADAMANT node. Error: ${e}.`);
 			return false;
 		}
 	};

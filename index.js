@@ -8,15 +8,17 @@ const transactionFormer = require('./helpers/transactionFormer');
 const keys = require('./helpers/keys');
 const encrypter = require('./helpers/encrypter');
 const socket = require('./helpers/wsClient');
+const logger = require('adamant-api/helpers/logger');
 
 module.exports = (params, log) => {
 	log = log || console;
-	const {node, changeNodes} = healthCheck(params.node, log);
-	const syncReq = syncGet(node, changeNodes, log);
+	logger.initLogger(params.logLevel, log);
+	const {node, changeNodes} = healthCheck(params.node);
+	const syncReq = syncGet(node, changeNodes);
 	
 	return {
-		get: Get(syncReq, log),
-		send: Send(node, log),
+		get: Get(syncReq),
+		send: Send(node),
 		decodeMsg,
 		eth,
 		syncGet: syncReq,

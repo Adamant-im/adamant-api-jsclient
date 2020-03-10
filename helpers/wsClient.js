@@ -1,10 +1,10 @@
 const ioClient = require("socket.io-client");
 const _ = require('lodash');
+const logger = require('./logger');
 
 module.exports = {
     isSocketEnabled: false, // If we need socket connection
     wsType: "ws", // Socket connection type, "ws" (default) or "wss"
-    log: console, // Log object. Console if haven't passed
     admAddress: '', // ADM address to subscribe to notifications
     connection: null, // Socket connection
     onNewMessage: null, // Method to process new messages or transactions
@@ -18,7 +18,6 @@ module.exports = {
         this.isSocketEnabled = params.socket;
         this.wsType = params.wsType;
         this.admAddress = params.admAddress;
-        this.log = params.log || console;
     },
 
     // Runs after every healthCheck() to re-connect socket if needed
@@ -36,25 +35,25 @@ module.exports = {
     // Make socket connection and subscribe to new transactions
     setConnection() {
         if (this.activeSocketNodes.length === 0) {
-            console.log(`[Socket] No supported socket nodes at the moment.`);
+            logger.warn(`[Socket] No supported socket nodes at the moment.`);
             return;            
         }
 
         const node = this.socketAddress();
-        this.log.log(`[Socket] Supported nodes: ${this.activeSocketNodes.length}. Connecting to ${node}...`);
+        logger.log(`[Socket] Supported nodes: ${this.activeSocketNodes.length}. Connecting to ${node}...`);
         this.connection = ioClient.connect(node, { reconnection: false, timeout: 5000 });
 
         this.connection.on('connect', () => {
             this.connection.emit('address', this.admAddress);
-            this.log.info('[Socket] Connected to ' + node + ' and subscribed to incoming transactions for ' + this.admAddress + '.');
+            logger.info('[Socket] Connected to ' + node + ' and subscribed to incoming transactions for ' + this.admAddress + '.');
         });
         
         this.connection.on('disconnect', reason => {
-            this.log.warn('[Socket] Disconnected. Reason: ' + reason)
+            logger.warn('[Socket] Disconnected. Reason: ' + reason)
         });
         
         this.connection.on('connect_error', (err) => {
-            this.log.warn('[Socket] Connection error: ' + err)
+            logger.warn('[Socket] Connection error: ' + err)
         });
     
         this.connection.on('newTrans', transaction => {

@@ -2,10 +2,11 @@ const request = require('sync-request');
 const keys = require('../helpers/keys');
 const encrypter = require('../helpers/encrypter');
 const constants = require('../helpers/constants');
+const logger = require('../helpers/logger');
 const transactionFormer = require('../helpers/transactionFormer');
 const SAT = 100000000;
 
-module.exports = (hotNode, log) => {
+module.exports = (hotNode) => {
 
 	return (passPhrase, address, payload, type = 'tokens', isEncode, amount_comment) => {
 
@@ -30,7 +31,7 @@ module.exports = (hotNode, log) => {
 				return res;
 
 			} catch (e) {
-				log.error('Error while sending tokens: ' + e);
+				logger.error('Error while sending tokens: ' + e);
 				return false;
 			}
 
@@ -79,7 +80,7 @@ module.exports = (hotNode, log) => {
 				}
 
 			} catch (e) {
-				log.error(`Error while sending message of type ${type}: ${e}`);
+				logger.error(`Error while sending message of type ${type}: ${e}`);
 				return false;
 			}
 		}
