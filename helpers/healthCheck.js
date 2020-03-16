@@ -23,6 +23,7 @@ module.exports = (nodes) => {
 		},
 		changeNodes: _.throttle(() => {
 			logger.warn('[Health check]: Forcing to change node.');
+			// To do: choose not the fastest node? May the fastest be defective?
 			checkNodes(_.shuffle(nodes), this);
 		}, 5000)
 	};
