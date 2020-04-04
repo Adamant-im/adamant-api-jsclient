@@ -83,7 +83,7 @@ module.exports = {
             	host = node.url;
             socketUrl = socketUrl + host + ":" + node.wsPort
 	    } else {
-            socketUrl = socketUrl + node.url + ":" + node.wsPort;
+            socketUrl = socketUrl + node.url; // no port if wss
         }
         return socketUrl;
     },
