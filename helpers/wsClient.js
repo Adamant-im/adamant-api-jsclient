@@ -77,10 +77,14 @@ module.exports = {
     socketAddress() {
         const node = this.useFastest ? this.fastestNode() : this.randomNode();
         let socketUrl = this.wsType + "://";
-        if (this.wsType === "ws")
-            socketUrl = socketUrl + node.ip + ":" + node.wsPort
-        else
-            socketUrl = socketUrl + node.url + ":" + node.wsPort;
+        if (this.wsType === "ws") {
+            let host = node.ip;
+            if (!host || host === undefined)
+            	host = node.url;
+            socketUrl = socketUrl + host + ":" + node.wsPort
+	    } else {
+            socketUrl = socketUrl + node.url; // no port if wss
+        }
         return socketUrl;
     },
     
