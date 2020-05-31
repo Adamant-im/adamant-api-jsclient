@@ -19,7 +19,7 @@ Add current version of ADAMANT JavaScript API library in project's `package.json
 
 ``` json
   "dependencies": {
-    "adamant-api": "^0.5.2",
+    "adamant-api": "^0.5.3",
     ...
 ```
 
