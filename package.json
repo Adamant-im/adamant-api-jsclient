@@ -20,6 +20,7 @@
     "author": "RomanS, Aleksei Lebedev <devs@adamant.im> (https://adamant.im)",
     "license": "GPL-3.0",
     "dependencies": {
+        "axios": "^0.21.1",
         "socket.io-client": "^2.2.0",
         "bignumber.js": "^8.0.1",
         "bitcore-mnemonic": "^1.5.0",

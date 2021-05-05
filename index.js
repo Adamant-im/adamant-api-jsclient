@@ -1,4 +1,4 @@
-const Get = require('./groups/get');
+const get = require('./groups/get');
 const decodeMsg = require('./groups/decodeMsg');
 const Send = require('./groups/send');
 const healthCheck = require('./helpers/healthCheck');
@@ -14,10 +14,11 @@ module.exports = (params, log) => {
 	log = log || console;
 	logger.initLogger(params.logLevel, log);
 	const {node, changeNodes} = healthCheck(params.node);
+	const nodeManager = healthCheck(params.node);
 	const syncReq = syncGet(node, changeNodes);
 	
 	return {
-		get: Get(syncReq),
+		get: get(nodeManager),
 		send: Send(node),
 		decodeMsg,
 		eth,
