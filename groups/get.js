@@ -2,7 +2,7 @@ const axios = require('axios');
 const _ = require('lodash');
 const logger = require('../helpers/logger');
 
-const DEFAULT_GET_REQUEST_RETRIES = 2; // How much re-tries for get-requests by default
+const DEFAULT_GET_REQUEST_RETRIES = 3; // How much re-tries for get-requests by default. Total 3+1 tries
 
 module.exports = (nodeManager) => {
 	return (endpoint, params, maxRetries = DEFAULT_GET_REQUEST_RETRIES, retryNo = 0) => {
