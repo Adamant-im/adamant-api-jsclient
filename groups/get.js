@@ -17,10 +17,9 @@ module.exports = (nodeManager) => {
 				})
 			})
 
-    url = nodeManager.node() + '/api//' + url;
+    url = nodeManager.node() + '/api/' + url;
     return axios.get(url, { params })
       .then(function (response) {
-        console.log('success');
         return {
           success: true,
           response: response,
@@ -45,7 +44,7 @@ module.exports = (nodeManager) => {
 					status: error.response ? error.response.status : undefined,
 					statusText: error.response ? error.response.statusText : undefined,
 					error: error.toString(),
-					message: error.response ? error.response.data : undefined
+					message: error.response ? _.trim(error.response.data, '\n') : undefined
         }
       })
 

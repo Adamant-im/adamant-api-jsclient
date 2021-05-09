@@ -19,7 +19,7 @@ module.exports = (nodes) => {
   	*/
 	function changeNodes (isPlannedUpdate = false) {
 		if (!isCheckingNodes) {
-			this.changeNodesPromise = new Promise(async (resolve) => {
+			changeNodesPromise = new Promise(async (resolve) => {
 				if (!isPlannedUpdate) {
 					logger.warn('[ADAMANT js-api] Health check: Forcing to update active nodes…');
 				}
@@ -27,7 +27,7 @@ module.exports = (nodes) => {
 				resolve(true)
 			});
 		}
-		return this.changeNodesPromise
+		return changeNodesPromise
 	}
 
 	changeNodes(true)
