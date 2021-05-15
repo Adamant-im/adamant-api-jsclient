@@ -1,4 +1,5 @@
 module.exports = {
+
 	epochTime: new Date(Date.UTC(2017, 8, 2, 17, 0, 0, 0)),
 	fees: {
 		send: 50000000,
@@ -25,5 +26,7 @@ module.exports = {
 		CHAT_MESSAGE: 8,
 		STATE: 9
 	},
-	maxVotesPerTransaction: 33
+	maxVotesPerTransaction: 33,
+	sat: 100000000
+
 }
