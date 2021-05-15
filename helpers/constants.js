@@ -27,6 +27,12 @@ module.exports = {
 		STATE: 9
 	},
 	maxVotesPerTransaction: 33,
-	sat: 100000000
+	SAT: 100000000,
+	RE_BASE64 = /^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)$/,
+	RE_ADM_ADDRESS = /^U([0-9]{6,})$/i,
+	RE_BTC_ADDRESS = /^(bc1|[13])[a-km-zA-HJ-NP-Z02-9]{25,39}$/,
+	RE_DASH_ADDRESS = /^[7X][1-9A-HJ-NP-Za-km-z]{33,}$/,
+	RE_DOGE_ADDRESS = /^[A|D|9][A-Z0-9]([0-9a-zA-Z]{9,})$/,
+	RE_LSK_ADDRESS = /^[0-9]{2,21}L$/	,
 
 }
