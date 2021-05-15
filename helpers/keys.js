@@ -5,7 +5,7 @@ var bignum = require('./bignumber.js');
 
 module.exports = {
 
-	createNewPassPhrase: function () { 
+	createNewPassPhrase: function () {
 		return new Mnemonic(Mnemonic.Words.ENGLISH).toString();
 	},
 
@@ -29,7 +29,7 @@ module.exports = {
 
 	createAddressFromPublicKey: function (publicKey) {
 		var publicKeyHash = crypto.createHash('sha256').update(publicKey, 'hex').digest();
-		var temp = Buffer.alloc(8);	
+		var temp = Buffer.alloc(8);
 		for (var i = 0; i < 8; i++) {
 			temp[i] = publicKeyHash[7 - i];
 		}
