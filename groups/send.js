@@ -1,6 +1,6 @@
 const request = require('sync-request');
 const keys = require('../helpers/keys');
-const encrypter = require('../helpers/encrypter');
+const encryptor = require('../helpers/encryptor');
 const constants = require('../helpers/constants');
 const logger = require('../helpers/logger');
 const transactionFormer = require('../helpers/transactionFormer');
@@ -59,7 +59,7 @@ module.exports = (hotNode) => {
 				const answer = JSON.parse(res.getBody().toString());
 
 				if (answer.success) {
-					const encrypt_data = encrypter.encodeMessage(payload, keyPair, answer.publicKey);
+					const encrypt_data = encryptor.encodeMessage(payload, keyPair, answer.publicKey);
 
 					data.message = encrypt_data.message;
 					data.own_message = encrypt_data.own_message;

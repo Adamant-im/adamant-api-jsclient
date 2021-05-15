@@ -5,7 +5,7 @@ const healthCheck = require('./helpers/healthCheck');
 const eth = require('./groups/eth');
 const transactionFormer = require('./helpers/transactionFormer');
 const keys = require('./helpers/keys');
-const encrypter = require('./helpers/encrypter');
+const encryptor = require('./helpers/encryptor');
 const socket = require('./helpers/wsClient');
 const logger = require('adamant-api/helpers/logger');
 
@@ -21,7 +21,7 @@ module.exports = (params, log) => {
 		eth,
 		transactionFormer,
 		keys,
-		encrypter,
+		encryptor,
 		socket
 	};
 };
