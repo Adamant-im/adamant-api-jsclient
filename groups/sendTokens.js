@@ -21,14 +21,14 @@ module.exports = (nodeManager) => {
       const keyPair = keys.createKeypairFromPassPhrase(passPhrase);
 
       if (!validator.validateAdmAddress(address))
-        return badParameter('address')
+        return validator.badParameter('address', address)
 
       if (isAmountInADM) {
         amount = parseInt(parseFloat(String(amount)) * constants.SAT)
       }
 
       if (!validator.validateIntegerAmount(amount))
-        return badParameter('amount')
+        return validator.badParameter('amount', amount)
 
       const data = {
         keyPair,
