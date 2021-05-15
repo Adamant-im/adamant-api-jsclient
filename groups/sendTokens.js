@@ -5,6 +5,7 @@ const keys = require('../helpers/keys');
 const constants = require('../helpers/constants');
 const transactionFormer = require('../helpers/transactionFormer');
 const validator = require('../helpers/validator');
+const BigNumber = require('bignumber.js')
 
 const DEFAULT_SEND_TOKENS_RETRIES = 4; // How much re-tries for send tokens requests by default. Total 4+1 tries
 
@@ -24,16 +25,21 @@ module.exports = (nodeManager) => {
         return validator.badParameter('address', address)
 
       if (isAmountInADM) {
-        amount = parseInt(parseFloat(String(amount)) * constants.SAT)
+        // amount = parseInt(parseFloat(String(amount)) * constants.SAT)
+        amountInSat = BigNumber(String(amount)).multipliedBy(constants.SAT).toNumber()
+        console.log('BigNumber(String(amount)).multipliedBy(constants.SAT)', BigNumber(String(amount)).multipliedBy(constants.SAT))
+        console.log('BigNumber(String(amount)).multipliedBy(constants.SAT)', BigNumber(String(amount)).multipliedBy(constants.SAT).toNumber())
+      } else {
+        amountInSat = amount
       }
 
-      if (!validator.validateIntegerAmount(amount))
+      if (!validator.validateIntegerAmount(amountInSat))
         return validator.badParameter('amount', amount)
 
       const data = {
         keyPair,
         recipientId: address,
-        amount
+        amount: amountInSat
       };
 
       transaction = transactionFormer.createTransaction(constants.transactionTypes.SEND, data);

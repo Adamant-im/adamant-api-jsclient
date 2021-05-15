@@ -20,7 +20,7 @@ module.exports = {
 
   validateIntegerAmount(amount) {
     console.log(amount, typeof(amount)) 
-    if (!amount || typeof(amount) !== 'number' || isNaN(amount) || !isSafeInteger(amount))
+    if (!amount || typeof(amount) !== 'number' || isNaN(amount) || !Number.isSafeInteger(amount))
 		  return false
     else
       return true
