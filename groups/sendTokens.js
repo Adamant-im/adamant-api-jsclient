@@ -27,8 +27,6 @@ module.exports = (nodeManager) => {
       if (isAmountInADM) {
         // amount = parseInt(parseFloat(String(amount)) * constants.SAT)
         amountInSat = BigNumber(String(amount)).multipliedBy(constants.SAT).toNumber()
-        console.log('BigNumber(String(amount)).multipliedBy(constants.SAT)', BigNumber(String(amount)).multipliedBy(constants.SAT))
-        console.log('BigNumber(String(amount)).multipliedBy(constants.SAT)', BigNumber(String(amount)).multipliedBy(constants.SAT).toNumber())
       } else {
         amountInSat = amount
       }
@@ -50,18 +48,9 @@ module.exports = (nodeManager) => {
 
     }
 
-    console.log(transaction, transaction)
-
-    const params = {
-      json: {
-        transaction
-      }
-    };
-
     let url = nodeManager.node() + '/api/transactions/process';
-    return axios.post(url, { params })
+    return axios.post(url, { transaction })
       .then(function (response) {
-        console.log('done', response)
         return {
           success: true,
           response: response,
@@ -71,7 +60,6 @@ module.exports = (nodeManager) => {
         }
       })
       .catch(function (error) {
-        console.log('error', error)
 				let logMessage = `[ADAMANT js-api] Send tokens request: Request to ${url} failed with ${error.response ? error.response.status : undefined} status code, ${error.toString()}. Message: ${error.response ? _.trim(error.response.data, '\n') : undefined}. Try ${retryNo+1} of ${maxRetries+1}.`;
 				if (retryNo < maxRetries) {
 					logger.log(`${logMessage} Retrying…`);
