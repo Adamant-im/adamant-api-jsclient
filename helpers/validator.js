@@ -2,6 +2,11 @@ const constants = require('./constants');
 
 module.exports = {
 
+  isNumeric(str) {
+    if (typeof str !== "string") return false
+    return !isNaN(str) && !isNaN(parseFloat(str))
+  },
+
   validatePassPhrase(passPhrase) {
     if (!passPhrase || typeof(passPhrase) !== 'string' || passPhrase.length < 30)
 		  return false
@@ -18,6 +23,20 @@ module.exports = {
 
   validateIntegerAmount(amount) {
     if (!amount || typeof(amount) !== 'number' || isNaN(amount) || !Number.isSafeInteger(amount))
+		  return false
+    else
+      return true
+  },
+
+  validateStringAmount(amount) {
+    if (!amount || !this.isNumeric(amount))
+		  return false
+    else
+      return true
+  },
+
+  validateMessageType(message_type) {
+    if (!message_type || typeof(message_type) !== 'number' || ![1,2,3].includes(message_type))
 		  return false
     else
       return true

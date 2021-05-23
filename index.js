@@ -1,4 +1,5 @@
 const get = require('./groups/get');
+const getPublicKey = require('./groups/getPublicKey');
 const decodeMsg = require('./groups/decodeMsg');
 const Send = require('./groups/send');
 const sendTokens = require('./groups/sendTokens');
@@ -17,6 +18,7 @@ module.exports = (params, log) => {
 	
 	return {
 		get: get(nodeManager),
+		getPublicKey: getPublicKey(nodeManager),
 		// send: Send(node),
 		sendTokens: sendTokens(nodeManager),
 		decodeMsg,
