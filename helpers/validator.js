@@ -42,6 +42,13 @@ module.exports = {
       return true
   },
 
+  validateMessage(message) {
+    if (typeof(message) !== 'string')
+		  return false
+    else
+      return true
+  },
+
   badParameter(name, value) {
     return new Promise((resolve, reject) => {
       resolve({
@@ -51,6 +58,5 @@ module.exports = {
       })
     })
   }
-
 
 };
