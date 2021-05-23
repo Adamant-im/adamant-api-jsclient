@@ -26,7 +26,7 @@ module.exports = (nodeManager) => {
 
       if (isAmountInADM) {
         // amount = parseInt(parseFloat(String(amount)) * constants.SAT)
-        amountInSat = BigNumber(String(amount)).multipliedBy(constants.SAT).toNumber()
+        amountInSat = BigNumber(String(amount)).multipliedBy(constants.SAT).integerValue().toNumber()
       } else {
         amountInSat = amount
       }
