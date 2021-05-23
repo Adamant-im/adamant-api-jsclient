@@ -1,8 +1,8 @@
 const get = require('./groups/get');
 const getPublicKey = require('./groups/getPublicKey');
 const decodeMsg = require('./groups/decodeMsg');
-const Send = require('./groups/send');
 const sendTokens = require('./groups/sendTokens');
+const sendMessage = require('./groups/sendMessage');
 const healthCheck = require('./helpers/healthCheck');
 const eth = require('./groups/eth');
 const transactionFormer = require('./helpers/transactionFormer');
@@ -19,8 +19,8 @@ module.exports = (params, log) => {
 	return {
 		get: get(nodeManager),
 		getPublicKey: getPublicKey(nodeManager),
-		// send: Send(node),
 		sendTokens: sendTokens(nodeManager),
+		sendMessage: sendMessage(nodeManager),
 		decodeMsg,
 		eth,
 		transactionFormer,
