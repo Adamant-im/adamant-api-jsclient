@@ -1,4 +1,5 @@
 const constants = require('./constants');
+const BigNumber = require('bignumber.js')
 
 module.exports = {
 
@@ -47,6 +48,10 @@ module.exports = {
 		  return false
     else
       return true
+  },
+
+  AdmToSats(amount) {
+    return BigNumber(String(amount)).multipliedBy(constants.SAT).integerValue().toNumber()
   },
 
   badParameter(name, value) {
