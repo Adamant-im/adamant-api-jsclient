@@ -1,6 +1,6 @@
 const ioClient = require("socket.io-client");
-const _ = require('lodash');
 const logger = require('./logger');
+const validator = require('./validator');
 
 module.exports = {
 	
@@ -94,7 +94,7 @@ module.exports = {
 	},
 
 	randomNode() {
-		return this.activeSocketNodes[_.random(this.activeSocketNodes.length - 1)]
+		return this.activeSocketNodes[validator.getRandomIntInclusive(0, this.activeSocketNodes.length - 1)]
 	}
 
 }

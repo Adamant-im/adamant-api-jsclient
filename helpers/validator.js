@@ -3,6 +3,12 @@ const BigNumber = require('bignumber.js')
 
 module.exports = {
 
+  getRandomIntInclusive(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1) + min); //The maximum is inclusive and the minimum is inclusive
+  },
+
   isNumeric(str) {
     if (typeof str !== "string") return false
     return !isNaN(str) && !isNaN(parseFloat(str))
@@ -128,7 +134,7 @@ module.exports = {
       results.details.status = response.response ? response.response.status : undefined;
       results.details.statusText = response.response ? response.response.statusText : undefined;
       results.details.error = response.toString();
-      results.details.message = response.response ? _.trim(response.response.data, '\n') : undefined;
+      results.details.message = response.response && response.response.data ? response.response.data.toString().trim() : undefined;
       results.details.response = response.response;
       results.errorMessage = `${results.details.error}${results.details.message ? '. Message: ' + results.details.message : ''}`;
     }

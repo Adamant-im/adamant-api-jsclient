@@ -1,7 +1,7 @@
 const axios = require('axios');
-const _ = require('lodash');
 const socket = require('./wsClient');
 const logger = require('./logger');
+const validator = require('./validator');
 const dnsPromises = require('dns').promises;
 
 const CHECK_NODES_INTERVAL = 60 * 5 * 1000; // Update active nodes every 5 minutes
@@ -124,7 +124,7 @@ async function checkNodes(forceChangeActiveNode) {
 				this.liveNodes.sort((a, b) => a.ping - b.ping);
 
 				if (this.activeNode === biggestGroup[0].node && forceChangeActiveNode)
-					this.activeNode = biggestGroup[_.random(1, biggestGroup.length-1)].node // Use random node from which are synced
+					this.activeNode = biggestGroup[validator.getRandomIntInclusive(1, biggestGroup.length-1)].node // Use random node from which are synced
 				else
 					this.activeNode = biggestGroup[0].node; // Use node with minimum ping among which are synced
 			}
