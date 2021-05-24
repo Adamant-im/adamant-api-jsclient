@@ -3,6 +3,7 @@ const nacl = require('tweetnacl/nacl-fast');
 const keys = require('../helpers/keys');
 
 module.exports = (msg, senderPublicKey, passPhrase, nonce) => {
+
 	const keypair = keys.createKeypairFromPassPhrase(passPhrase);
 	let privateKey = keypair.privateKey;
 	if (typeof msg === 'string') {
@@ -23,10 +24,11 @@ module.exports = (msg, senderPublicKey, passPhrase, nonce) => {
 	const DHSecretKey = ed2curve.convertSecretKey(privateKey);
 	const decrypted = nacl.box.open(msg, nonce, DHPublicKey, DHSecretKey);
 	return decrypted ? Utf8ArrayToStr(decrypted) : ''
+
 }
 
-
 function hexToBytes(hexString = '') {
+
 	const bytes = []
 
 	for (let c = 0; c < hexString.length; c += 2) {
@@ -34,9 +36,11 @@ function hexToBytes(hexString = '') {
 	}
 
 	return Uint8Array.from(bytes);
+
 }
 
 function Utf8ArrayToStr(array) {
+
 	var out, i, len, c;
 	var char2, char3;
 
@@ -75,4 +79,5 @@ function Utf8ArrayToStr(array) {
 	}
 
 	return out;
+
 }
