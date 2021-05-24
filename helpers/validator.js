@@ -109,13 +109,13 @@ module.exports = {
     results.details = {};
 
     if (isRequestSuccess) {
-      results.success = response.success && response.data && response.data.success;
+      results.success = response.data && response.data.success;
       results.data = response.data;
       results.details.status = response.status;
       results.details.statusText = response.statusText;
       results.details.response = response;
       if (!results.success && results.data)
-        results.errorMessage = `Node's reply: ${results.data.error}.`
+        results.errorMessage = `Node's reply: ${results.data.error}`
     } else {
       results.success = false;
       results.data = undefined;
@@ -124,7 +124,7 @@ module.exports = {
       results.details.error = response.toString();
       results.details.message = response.response ? _.trim(response.response.data, '\n') : undefined;
       results.details.response = response.response;
-      results.errorMessage = `${results.details.error}. Message: ${results.details.message}.`;
+      results.errorMessage = `${results.details.error}. Message: ${results.details.message}`;
     }
 
     return results;
