@@ -8,6 +8,16 @@ module.exports = {
     return !isNaN(str) && !isNaN(parseFloat(str))
   },
 
+  tryParseJSON(jsonString) {
+    try {
+      let o = JSON.parse(jsonString);
+      if (o && typeof o === "object") {
+        return o;
+      }
+    } catch (e) { }
+    return false
+  },
+
   validatePassPhrase(passPhrase) {
     if (!passPhrase || typeof(passPhrase) !== 'string' || passPhrase.length < 30)
 		  return false
@@ -43,23 +53,53 @@ module.exports = {
       return true
   },
 
-  validateMessage(message) {
+  validateMessage(message, message_type) {
     if (typeof(message) !== 'string')
-		  return false
-    else
-      return true
+		  return {
+        result: false,
+        error: `Message must be a string`
+      }
+    else {
+      if (message_type === 2 || message_type === 3) {
+
+        let json = this.tryParseJSON(message)
+
+        if (!json) 
+          return {
+            result: false,
+            error: `For rich and signal messages, 'message' must be a JSON string`
+          }
+        
+        if (json.type && json.type.toLowerCase().includes('_transaction'))
+          if (json.type.toLowerCase() !== json.type)
+            return {
+              result: false,
+              error: `Value '<coin>_transaction' must be in lower case`
+            }
+      
+        if (typeof json.amount !== 'string' || !this.validateStringAmount(json.amount))
+          return {
+            result: false,
+            error: `Field 'amount' must be a string, representing a number`
+          }        
+
+      }
+    }
+    return {
+      result: true
+    }
   },
 
   AdmToSats(amount) {
     return BigNumber(String(amount)).multipliedBy(constants.SAT).integerValue().toNumber()
   },
 
-  badParameter(name, value) {
+  badParameter(name, value, customMessage) {
     return new Promise((resolve, reject) => {
       resolve({
         success: false,
         error: 'Bad parameters',
-        message: `Wrong ${name} parameter${value ? ': ' + value : ''}`
+        message: `Wrong '${name}' parameter${value ? ': ' + value : ''}${customMessage ? '. Error: ' + customMessage : ''}`
       })
     })
   }
