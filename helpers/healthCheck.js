@@ -109,17 +109,29 @@ async function checkNodes(forceChangeActiveNode) {
 					this.liveNodes[0].outOfSync = true
 				}
 			} else {
+
 				let biggestGroup = [];
-				const groups = _.groupBy(this.liveNodes, n => n.heightEpsilon);
+				// const groups = _.groupBy(this.liveNodes, n => n.heightEpsilon);
+				const groups = this.liveNodes.reduce(function (grouped, node) {
+					var int = Math.floor(node.heightEpsilon);
+					if (!grouped.hasOwnProperty(int)) {
+						grouped[int] = [];
+					}
+					grouped[int].push(node);
+					return grouped;
+				}, {});
+
 				Object.keys(groups).forEach(key => {
 					if (groups[key].length > biggestGroup.length) {
 						biggestGroup = groups[key];
 					}
 				});
+
 				// All the nodes from the biggestGroup list are considered to be in sync, all the others are not
 				this.liveNodes.forEach(node => {
 					node.outOfSync = !biggestGroup.includes(node)
 				})
+
 				biggestGroup.sort((a, b) => a.ping - b.ping);
 				this.liveNodes.sort((a, b) => a.ping - b.ping);
 
@@ -127,6 +139,7 @@ async function checkNodes(forceChangeActiveNode) {
 					this.activeNode = biggestGroup[validator.getRandomIntInclusive(1, biggestGroup.length-1)].node // Use random node from which are synced
 				else
 					this.activeNode = biggestGroup[0].node; // Use node with minimum ping among which are synced
+			
 			}
 			socket.reviseConnection(this.liveNodes);
 			logger.log(`[ADAMANT js-api] Health check: Found ${this.liveNodes.length} supported nodes. Active node is ${this.activeNode}.`);
