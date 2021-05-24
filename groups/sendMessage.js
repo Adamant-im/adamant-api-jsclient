@@ -83,7 +83,6 @@ module.exports = (nodeManager) => {
           try {
 
             const encryptedMessage = encryptor.encodeMessage(message, keyPair, publicKey);
-            console.log(encryptedMessage)
             data.message = encryptedMessage.message;
             data.own_message = encryptedMessage.own_message;
 
@@ -112,8 +111,7 @@ module.exports = (nodeManager) => {
             return new Promise((resolve, reject) => {
               resolve({
                 success: false,
-                error: 'Failed to process a message',
-                message: `Unable to encode message '${message}' with public key ${publicKey}, or unable to build a transaction. Exception: ` + e
+                errorMessage: `Unable to encode message '${message}' with public key ${publicKey}, or unable to build a transaction. Exception: ` + e
               })
             })
 
@@ -124,8 +122,7 @@ module.exports = (nodeManager) => {
           return new Promise((resolve, reject) => {
             resolve({
               success: false,
-              error: 'No public key',
-              message: `Unable to get public key for ${address}. It is necessary for sending an encrypted message. Account may be uninitialized (https://medium.com/adamant-im/chats-and-uninitialized-accounts-in-adamant-5035438e2fcd), or network error`
+              errorMessage: `Unable to get public key for ${address}. It is necessary for sending an encrypted message. Account may be uninitialized (https://medium.com/adamant-im/chats-and-uninitialized-accounts-in-adamant-5035438e2fcd), or network error`
             })
           })
 
