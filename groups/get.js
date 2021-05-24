@@ -1,5 +1,4 @@
 const axios = require('axios');
-const _ = require('lodash');
 const logger = require('../helpers/logger');
 const validator = require('../helpers/validator');
 
@@ -8,7 +7,7 @@ const DEFAULT_GET_REQUEST_RETRIES = 3; // How much re-tries for get-requests by 
 module.exports = (nodeManager) => {
 	return (endpoint, params, maxRetries = DEFAULT_GET_REQUEST_RETRIES, retryNo = 0) => {
 
-		let url = _.trim(endpoint, "/ ")
+		let url = trimAny(endpoint, "/ ");
 		if (!url || !validator.validateEndpoint(endpoint))
 			  return validator.badParameter('endpoint')
 
@@ -32,3 +31,16 @@ module.exports = (nodeManager) => {
 
   }
 };
+
+function trimAny(str, chars) {
+	if (!str || typeof str !== 'string')
+		return ''
+	let start = 0, 
+		end = str.length;
+	while(start < end && chars.indexOf(str[start]) >= 0)
+		++start;
+	while(end > start && chars.indexOf(str[end - 1]) >= 0)
+		--end;
+	return (start > 0 || end < str.length) ? str.substring(start, end) : str;
+}
+
