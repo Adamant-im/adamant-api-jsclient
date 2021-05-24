@@ -49,13 +49,7 @@ module.exports = (nodeManager) => {
     let url = nodeManager.node() + '/api/transactions/process';
     return axios.post(url, { transaction })
       .then(function (response) {
-        return {
-          success: true,
-          response: response,
-					status: response.status,
-					statusText: response.statusText,
-					result: response.data
-        }
+        return validator.formatRequestResults(response, true)
       })
       .catch(function (error) {
 				let logMessage = `[ADAMANT js-api] Send tokens request: Request to ${url} failed with ${error.response ? error.response.status : undefined} status code, ${error.toString()}. Message: ${error.response ? _.trim(error.response.data, '\n') : undefined}. Try ${retryNo+1} of ${maxRetries+1}.`;
@@ -67,14 +61,7 @@ module.exports = (nodeManager) => {
 						})
 				}
 				logger.warn(`${logMessage} No more attempts, returning error.`);
-        return {
-          success: false,
-          response: error.response,
-					status: error.response ? error.response.status : undefined,
-					statusText: error.response ? error.response.statusText : undefined,
-					error: error.toString(),
-					message: error.response ? _.trim(error.response.data, '\n') : undefined
-        }
+        return validator.formatRequestResults(error, false)
       })
 
   }

@@ -102,6 +102,33 @@ module.exports = {
         message: `Wrong '${name}' parameter${value ? ': ' + value : ''}${customMessage ? '. Error: ' + customMessage : ''}`
       })
     })
+  },
+
+  formatRequestResults(response, isRequestSuccess) {
+    let results = {};
+    results.details = {};
+
+    if (isRequestSuccess) {
+      results.success = response.success && response.data && response.data.success;
+      results.data = response.data;
+      results.details.status = response.status;
+      results.details.statusText = response.statusText;
+      results.details.response = response;
+      if (!results.success && results.data)
+        results.errorMessage = `Node's reply: ${results.data.error}.`
+    } else {
+      results.success = false;
+      results.data = undefined;
+      results.details.status = response.response ? response.response.status : undefined;
+      results.details.statusText = response.response ? response.response.statusText : undefined;
+      results.details.error = response.toString();
+      results.details.message = response.response ? _.trim(response.response.data, '\n') : undefined;
+      results.details.response = response.response;
+      results.errorMessage = `${results.details.error}. Message: ${results.details.message}.`;
+    }
+
+    return results;
+
   }
 
 };
