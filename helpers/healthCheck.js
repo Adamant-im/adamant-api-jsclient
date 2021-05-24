@@ -1,7 +1,8 @@
-const request = require('request');
+const axios = require('axios');
 const _ = require('lodash');
 const socket = require('./wsClient');
 const logger = require('./logger');
+const dnsPromises = require('dns').promises;
 
 const CHECK_NODES_INTERVAL = 60 * 5 * 1000; // Update active nodes every 5 minutes
 const HEIGHT_EPSILON = 10; // Used to group nodes by height and choose synced
@@ -60,19 +61,22 @@ async function checkNodes(forceChangeActiveNode) {
 
 		for (const n of this.nodesList) {
 			try {
-				const start = unixTimestamp();
-				const req = await checkNode(n + '/api/node/status');
+				let start = unixTimestamp();
+				let req = await checkNode(n + '/api/node/status');
+				let url = n.replace(/^https?:\/\/(.*)$/, '$1').split(":")[0];
+				let ifIP = /(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}/.test(url)
 
 				if (req.status) {
 					this.liveNodes.push({
 						node: n,
 						ifHttps: n.startsWith("https"),
-						url: n.replace(/^https?:\/\/(.*)$/, '$1').split(":")[0],
+						ifIP,
+						url,
 						outOfSync: false,
 						ping: unixTimestamp() - start,
 						height: req.status.network.height,
 						heightEpsilon: Math.round(req.status.network.height / HEIGHT_EPSILON),
-						ip: req.ip,
+						ip: ifIP ? url : await getIP(url),
 						socketSupport: req.status.wsClient && req.status.wsClient.enabled,
 						wsPort: req.status.wsClient.port
 					});
@@ -137,28 +141,27 @@ async function checkNodes(forceChangeActiveNode) {
 
 }
 
+async function getIP(url) {
+	try {
+		let addresses = await dnsPromises.resolve4(url);
+		if (addresses && addresses[0] !== '0.0.0.0')
+			return addresses[0]
+	} catch (e) { }
+};
+
 /**
 	* Requests status from a single ADAMANT node
 	* @param url {string} Node URL to request
 	* @returns {Promise} Node's status information
 	*/
-// Request status from a single node
 function checkNode(url) {
-	return new Promise(resolve => {
-		request(url, (err, res, body) => {
-			if (err) {
-				resolve(false);
-			} else {
-				try {
-					const status = JSON.parse(body);
-					const result = { status: status, ip: res.connection.remoteAddress };
-					resolve(result);
-				} catch (e) {
-					resolve(false);
-				}
-			}
-		});
-	});
+	return axios.get(url)
+		.then(function (response) {
+			return { status: response.data }
+		})
+		.catch(function (error) {
+			return false
+		})
 };
 
 function unixTimestamp() {
