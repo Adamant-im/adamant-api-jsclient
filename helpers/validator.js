@@ -124,7 +124,7 @@ module.exports = {
       results.details.error = response.toString();
       results.details.message = response.response ? _.trim(response.response.data, '\n') : undefined;
       results.details.response = response.response;
-      results.errorMessage = `${results.details.error}. Message: ${results.details.message}`;
+      results.errorMessage = `${results.details.error}${results.details.message ? '. Message: ' + results.details.message : ''}`;
     }
 
     return results;
