@@ -1,5 +1,4 @@
 const axios = require('axios');
-const _ = require('lodash');
 const logger = require('../helpers/logger');
 const keys = require('../helpers/keys');
 const constants = require('../helpers/constants');
@@ -52,7 +51,7 @@ module.exports = (nodeManager) => {
         return validator.formatRequestResults(response, true)
       })
       .catch(function (error) {
-				let logMessage = `[ADAMANT js-api] Send tokens request: Request to ${url} failed with ${error.response ? error.response.status : undefined} status code, ${error.toString()}. Message: ${error.response ? _.trim(error.response.data, '\n') : undefined}. Try ${retryNo+1} of ${maxRetries+1}.`;
+				let logMessage = `[ADAMANT js-api] Send tokens request: Request to ${url} failed with ${error.response ? error.response.status : undefined} status code, ${error.toString()}${error.response && error.response.data ? '. Message: ' + error.response.data.toString().trim() : ''}. Try ${retryNo+1} of ${maxRetries+1}.`;
 				if (retryNo < maxRetries) {
 					logger.log(`${logMessage} Retrying…`);
 					return nodeManager.changeNodes()
