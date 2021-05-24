@@ -98,8 +98,7 @@ module.exports = {
     return new Promise((resolve, reject) => {
       resolve({
         success: false,
-        error: 'Bad parameters',
-        message: `Wrong '${name}' parameter${value ? ': ' + value : ''}${customMessage ? '. Error: ' + customMessage : ''}`
+        errorMessage: `Wrong '${name}' parameter${value ? ': ' + value : ''}${customMessage ? '. Error: ' + customMessage : ''}`
       })
     })
   },
