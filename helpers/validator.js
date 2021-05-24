@@ -25,6 +25,13 @@ module.exports = {
       return true
   },
 
+  validateEndpoint(endpoint) {
+    if (!endpoint || typeof(endpoint) !== 'string')
+		  return false
+    else
+      return true
+  },
+
   validateAdmAddress(address) {
     if (!address || typeof(address) !== 'string' || !constants.RE_ADM_ADDRESS.test(address))
 		  return false

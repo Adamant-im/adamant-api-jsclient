@@ -9,14 +9,8 @@ module.exports = (nodeManager) => {
 	return (endpoint, params, maxRetries = DEFAULT_GET_REQUEST_RETRIES, retryNo = 0) => {
 
 		let url = _.trim(endpoint, "/ ")
-		if (!url || typeof(endpoint) !== 'string')
-			return new Promise((resolve, reject) => {
-				reject({
-					success: false,
-					error: 'Bad parameters',
-					message: `Wrong endpoint parameter: ${endpoint}`
-				})
-			})
+		if (!url || !validator.validateEndpoint(endpoint))
+			  return validator.badParameter('endpoint')
 
     url = nodeManager.node() + '/api/' + url;
     return axios.get(url, { params })
