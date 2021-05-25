@@ -5,7 +5,7 @@ const validator = require('./validator');
 const dnsPromises = require('dns').promises;
 
 const CHECK_NODES_INTERVAL = 60 * 5 * 1000; // Update active nodes every 5 minutes
-const HEIGHT_EPSILON = 10; // Used to group nodes by height and choose synced
+const HEIGHT_EPSILON = 5; // Used to group nodes by height and choose synced
 
 module.exports = (nodes) => {
 
@@ -86,34 +86,42 @@ async function checkNodes(forceChangeActiveNode) {
 				}
 
 			} catch (e) {
-				logger.log(`[ADAMANT js-api] Health check: Error while checking node ${n}:`, e);
+				logger.log(`[ADAMANT js-api] Health check: Error while checking node ${n}, ` + e);
 			}
 		}
 
 		const count = this.liveNodes.length;
+		let outOfSyncCount = 0;
+
 		if (!count) {
 			logger.error(`[ADAMANT js-api] Health check: All of ${this.nodesList.length} nodes are unavailable. Check internet connection and nodes list in config.`);
 		} else {
 
 			// Set activeNode to one that have maximum height and minimum ping
 			if (count === 1) {
+
 				this.activeNode = this.liveNodes[0].node;
+
 			} else if (count === 2) {
+
 				const h0 = this.liveNodes[0];
 				const h1 = this.liveNodes[1];
 				this.activeNode = h0.height > h1.height ? h0.node : h1.node;
 				// Mark node outOfSync if needed
 				if (h0.heightEpsilon > h1.heightEpsilon) {
 					this.liveNodes[1].outOfSync = true
+					outOfSyncCount += 1;
 				} else if (h0.heightEpsilon < h1.heightEpsilon) {
 					this.liveNodes[0].outOfSync = true
+					outOfSyncCount += 1;
 				}
+
 			} else {
 
 				let biggestGroup = [];
-				// const groups = _.groupBy(this.liveNodes, n => n.heightEpsilon);
+				// Removing lodash: const groups = _.groupBy(this.liveNodes, n => n.heightEpsilon);
 				const groups = this.liveNodes.reduce(function (grouped, node) {
-					var int = Math.floor(node.heightEpsilon);
+					var int = Math.floor(node.heightEpsilon); // Excessive, it is already rounded
 					if (!grouped.hasOwnProperty(int)) {
 						grouped[int] = [];
 					}
@@ -131,23 +139,31 @@ async function checkNodes(forceChangeActiveNode) {
 				this.liveNodes.forEach(node => {
 					node.outOfSync = !biggestGroup.includes(node)
 				})
+				outOfSyncCount = this.liveNodes.length - biggestGroup.length;
 
 				biggestGroup.sort((a, b) => a.ping - b.ping);
 				this.liveNodes.sort((a, b) => a.ping - b.ping);
 
-				if (this.activeNode === biggestGroup[0].node && forceChangeActiveNode)
+				if (forceChangeActiveNode && biggestGroup.length > 1 && this.activeNode === biggestGroup[0].node)
 					this.activeNode = biggestGroup[validator.getRandomIntInclusive(1, biggestGroup.length-1)].node // Use random node from which are synced
 				else
 					this.activeNode = biggestGroup[0].node; // Use node with minimum ping among which are synced
 			
 			}
 			socket.reviseConnection(this.liveNodes);
-			logger.log(`[ADAMANT js-api] Health check: Found ${this.liveNodes.length} supported nodes. Active node is ${this.activeNode}.`);
+			let unavailableCount = this.nodesList.length - this.liveNodes.length;
+			let supportedCount = this.liveNodes.length - outOfSyncCount;
+			let nodesInfoString = '';
+			if (unavailableCount)
+				nodesInfoString += `, ${unavailableCount} nodes didn't respond`
+			if (outOfSyncCount)
+				nodesInfoString += `, ${outOfSyncCount} nodes are not synced`
+			logger.log(`[ADAMANT js-api] Health check: Found ${supportedCount} supported and synced nodes${nodesInfoString}. Active node is ${this.activeNode}.`);
 			
 		}
 
 	} catch (e) {
-		logger.warn('[ADAMANT js-api] Health check: Error in checkNodes()', e);
+		logger.warn('[ADAMANT js-api] Health check: Error in checkNodes(), ' + e);
 	}
 
 	this.isCheckingNodes = false;
