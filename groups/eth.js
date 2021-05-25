@@ -1,9 +1,8 @@
-const Web3 = require('web3');
 var Mnemonic = require('bitcore-mnemonic');
 const hdkey = require('hdkey');
 const HD_KEY_PATH = "m/44'/60'/3'/1/0";
-const {bufferToHex, privateToAddress } = require('ethereumjs-util');
-const {eth} = new Web3('https://ethnode1.adamant.im');
+const { bufferToHex, privateToAddress } = require('ethereumjs-util');
+const eth = { }
 
 /**
  * Generates a ETH account from the passphrase specified.
