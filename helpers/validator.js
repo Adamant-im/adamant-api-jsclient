@@ -45,6 +45,13 @@ module.exports = {
       return true
   },
 
+  validateAdmPublicKey(publicKey) {
+    if (!publicKey || typeof(publicKey) !== 'string' || publicKey.length !== 64 || !constants.RE_HEX.test(publicKey))
+		  return false
+    else
+      return true
+  },
+
   validateIntegerAmount(amount) {
     if (!amount || typeof(amount) !== 'number' || isNaN(amount) || !Number.isSafeInteger(amount))
 		  return false

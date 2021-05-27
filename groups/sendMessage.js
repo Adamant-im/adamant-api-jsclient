@@ -14,7 +14,7 @@ module.exports = (nodeManager) => {
 		* Creates Message transaction, signs it, and broadcasts to ADAMANT network. Supports Basic, Rich and Signal Message Types.
     * See https://github.com/Adamant-im/adamant/wiki/Message-Types
     * @param {string} passPhrase Senders's passPhrase. Sender's address will be derived from it.
-    * @param {string} address Recipient's ADAMANT address
+    * @param {string} addressOrPublicKey Recipient's ADAMANT address or public key. Using public key is faster, as the library wouldn't request it from the network
     * @param {string} message Message plain text in case of basic message. Stringified JSON in case of rich or signal messages.
     * Example of rich message for Ether in-chat transfer: `{"type":"eth_transaction","amount":"0.002","hash":"0xfa46d2b3c99878f1f9863fcbdb0bc27d220d7065c6528543cbb83ced84487deb","comments":"I like to send it, send it"}`
     * @param {string, number} message_type Type of message: basic, rich, or signal
@@ -23,9 +23,10 @@ module.exports = (nodeManager) => {
     * @param {number} maxRetries How much times to retry request
     * @returns {Promise} Request results
   	*/
-	return (passPhrase, address, message, message_type = 'basic', amount, isAmountInADM = true, maxRetries = DEFAULT_SEND_MESSAGE_RETRIES, retryNo = 0) => {
+	return (passPhrase, addressOrPublicKey, message, message_type = 'basic', amount, isAmountInADM = true, maxRetries = DEFAULT_SEND_MESSAGE_RETRIES, retryNo = 0) => {
 
     let keyPair, data;
+    let address, publicKey;
 
     try {
 
@@ -34,8 +35,17 @@ module.exports = (nodeManager) => {
     
       keyPair = keys.createKeypairFromPassPhrase(passPhrase);
 
-      if (!validator.validateAdmAddress(address))
-        return validator.badParameter('address', address)
+      if (!validator.validateAdmAddress(addressOrPublicKey)) {
+        if (!validator.validateAdmPublicKey(addressOrPublicKey)) {
+          return validator.badParameter('addressOrPublicKey', addressOrPublicKey)
+        } else {
+          publicKey = addressOrPublicKey;
+          address = keys.createAddressFromPublicKey(publicKey)
+        }
+      } else {
+        publicKey = '';
+        address = addressOrPublicKey
+      }
 
       if (message_type === 'basic')
         message_type = 1;
@@ -53,7 +63,7 @@ module.exports = (nodeManager) => {
 
       data = {
         keyPair,
-        recipientId: address,
+        recipientId: addressOrPublicKey,
         message_type
       };
   
@@ -74,7 +84,7 @@ module.exports = (nodeManager) => {
 
     }
 
-    return getPublicKey(nodeManager)(address)
+    return getPublicKey(nodeManager)(addressOrPublicKey)
       .then((publicKey) => {
 
         if (publicKey) {
@@ -98,7 +108,7 @@ module.exports = (nodeManager) => {
                   logger.log(`${logMessage} Retrying…`);
                   return nodeManager.changeNodes()
                     .then(function () {
-                      return module.exports(nodeManager)(passPhrase, address, message, message_type, tokensAmount, maxRetries, ++retryNo)
+                      return module.exports(nodeManager)(passPhrase, addressOrPublicKey, message, message_type, tokensAmount, maxRetries, ++retryNo)
                     })
                 }
                 logger.warn(`${logMessage} No more attempts, returning error.`);
@@ -121,7 +131,7 @@ module.exports = (nodeManager) => {
           return new Promise((resolve, reject) => {
             resolve({
               success: false,
-              errorMessage: `Unable to get public key for ${address}. It is necessary for sending an encrypted message. Account may be uninitialized (https://medium.com/adamant-im/chats-and-uninitialized-accounts-in-adamant-5035438e2fcd), or network error`
+              errorMessage: `Unable to get public key for ${addressOrPublicKey}. It is necessary for sending an encrypted message. Account may be uninitialized (https://medium.com/adamant-im/chats-and-uninitialized-accounts-in-adamant-5035438e2fcd), or network error`
             })
           })
 

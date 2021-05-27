@@ -28,6 +28,7 @@ module.exports = {
 	},
 	maxVotesPerTransaction: 33,
 	SAT: 100000000,
+	RE_HEX: /^[a-fA-F0-9]+$/,
 	RE_BASE64: /^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)$/,
 	RE_ADM_ADDRESS: /^U([0-9]{6,})$/,
 	RE_BTC_ADDRESS: /^(bc1|[13])[a-km-zA-HJ-NP-Z02-9]{25,39}$/,
