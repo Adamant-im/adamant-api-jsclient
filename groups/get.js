@@ -7,7 +7,7 @@ const DEFAULT_GET_REQUEST_RETRIES = 3; // How much re-tries for get-requests by 
 module.exports = (nodeManager) => {
 	return (endpoint, params, maxRetries = DEFAULT_GET_REQUEST_RETRIES, retryNo = 0) => {
 
-		let url = trimAny(endpoint, "/ ");
+		let url = trimAny(endpoint, "/ ").replace(/^api\//, '');
 		if (!url || !validator.validateEndpoint(endpoint))
 			  return validator.badParameter('endpoint')
 

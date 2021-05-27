@@ -11,12 +11,12 @@ const DEFAULT_SEND_MESSAGE_RETRIES = 4; // How much re-tries for send message re
 
 module.exports = (nodeManager) => {
   /**
-		* Sends encrypted basic, rich, or signal message
+		* Creates Message transaction, signs it, and broadcasts to ADAMANT network. Supports Basic, Rich and Signal Message Types.
     * See https://github.com/Adamant-im/adamant/wiki/Message-Types
     * @param {string} passPhrase Senders's passPhrase. Sender's address will be derived from it.
     * @param {string} address Recipient's ADAMANT address
     * @param {string} message Message plain text in case of basic message. Stringified JSON in case of rich or signal messages.
-    * Example of rich message for token transfer: `{"type":"eth_transaction","amount":"0.002","hash":"0xfa46d2b3c99878f1f9863fcbdb0bc27d220d7065c6528543cbb83ced84487deb","comments":"I like to send it, send it"}`
+    * Example of rich message for Ether in-chat transfer: `{"type":"eth_transaction","amount":"0.002","hash":"0xfa46d2b3c99878f1f9863fcbdb0bc27d220d7065c6528543cbb83ced84487deb","comments":"I like to send it, send it"}`
     * @param {string, number} message_type Type of message: basic, rich, or signal
     * @param {string, number} amount Amount to send with a message
     * @param {boolean} isAmountInADM If amount specified in ADM, or in sats (10^-8 ADM)

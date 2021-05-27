@@ -8,6 +8,16 @@ const validator = require('../helpers/validator');
 const DEFAULT_SEND_TOKENS_RETRIES = 4; // How much re-tries for send tokens requests by default. Total 4+1 tries
 
 module.exports = (nodeManager) => {
+  /**
+		* Creates Token Transfer transaction, signs it, and broadcasts to ADAMANT network
+    * See https://github.com/Adamant-im/adamant/wiki/Transaction-Types#type-0-token-transfer-transaction
+    * @param {string} passPhrase Senders's passPhrase. Sender's address will be derived from it.
+    * @param {string} address Recipient's ADAMANT address
+    * @param {string, number} amount Amount to send
+    * @param {boolean} isAmountInADM If amount specified in ADM, or in sats (10^-8 ADM)
+    * @param {number} maxRetries How much times to retry request
+    * @returns {Promise} Request results
+  	*/
 	return (passPhrase, address, amount, isAmountInADM = true, maxRetries = DEFAULT_SEND_TOKENS_RETRIES, retryNo = 0) => {
 
     let transaction;
