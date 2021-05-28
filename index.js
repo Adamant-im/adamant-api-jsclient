@@ -1,3 +1,4 @@
+const constants = require('./helpers/constants.js');
 const get = require('./groups/get');
 const getPublicKey = require('./groups/getPublicKey');
 const decodeMsg = require('./groups/decodeMsg');
@@ -9,7 +10,7 @@ const transactionFormer = require('./helpers/transactionFormer');
 const keys = require('./helpers/keys');
 const encryptor = require('./helpers/encryptor');
 const socket = require('./helpers/wsClient');
-const logger = require('adamant-api/helpers/logger');
+const logger = require('./helpers/logger');
 
 module.exports = (params, log) => {
 	log = log || console;
@@ -26,6 +27,7 @@ module.exports = (params, log) => {
 		transactionFormer,
 		keys,
 		encryptor,
-		socket
+		socket,
+		constants
 	};
 };
