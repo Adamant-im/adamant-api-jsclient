@@ -1,30 +1,33 @@
-const Get = require('./groups/get');
+const constants = require('./helpers/constants.js');
+const get = require('./groups/get');
+const getPublicKey = require('./groups/getPublicKey');
 const decodeMsg = require('./groups/decodeMsg');
-const Send = require('./groups/send');
+const sendTokens = require('./groups/sendTokens');
+const sendMessage = require('./groups/sendMessage');
 const healthCheck = require('./helpers/healthCheck');
 const eth = require('./groups/eth');
-const syncGet = require('./groups/syncGet');
 const transactionFormer = require('./helpers/transactionFormer');
 const keys = require('./helpers/keys');
-const encrypter = require('./helpers/encrypter');
+const encryptor = require('./helpers/encryptor');
 const socket = require('./helpers/wsClient');
-const logger = require('adamant-api/helpers/logger');
+const logger = require('./helpers/logger');
 
 module.exports = (params, log) => {
 	log = log || console;
 	logger.initLogger(params.logLevel, log);
-	const {node, changeNodes} = healthCheck(params.node);
-	const syncReq = syncGet(node, changeNodes);
+	const nodeManager = healthCheck(params.node);
 	
 	return {
-		get: Get(syncReq),
-		send: Send(node),
+		get: get(nodeManager),
+		getPublicKey: getPublicKey(nodeManager),
+		sendTokens: sendTokens(nodeManager),
+		sendMessage: sendMessage(nodeManager),
 		decodeMsg,
 		eth,
-		syncGet: syncReq,
 		transactionFormer,
 		keys,
-		encrypter,
-		socket
+		encryptor,
+		socket,
+		constants
 	};
 };

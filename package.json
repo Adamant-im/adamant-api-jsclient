@@ -1,47 +1,58 @@
 {
-    "name": "adamant-api",
-    "version": "0.5.3",
-    "description": "\"REST API for ADAMANT Blockchain\"",
-    "main": "index.js",
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "keywords": [
-        "adm",
-        "adm api",
-        "adamant",
-        "adamant api",
-        "blockchain",
-        "messenger",
-        "chat",
-        "bitcoin",
-        "ethereum"        
-    ],
-    "author": "RomanS, Aleksei Lebedev <devs@adamant.im> (https://adamant.im)",
-    "license": "GPL-3.0",
-    "dependencies": {
-        "socket.io-client": "^2.2.0",
-        "bignumber.js": "^8.0.1",
-        "bitcore-mnemonic": "^1.5.0",
-        "bytebuffer": "^5.0.1",
-        "crypto": "^1.0.1",
-        "ed2curve": "^0.2.1",
-        "ethereumjs-util": "^6.1.0",
-        "hdkey": "^1.1.1",
-        "request": "^2.88.0",
-        "sodium-browserify-tweetnacl": "^0.2.3",
-        "sync-request": "^6.0.0",
-        "web3": "^1.0.0-beta.55"
-    },
-    "publishConfig": {
-        "access": "public"
-    },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/Adamant-im/adamant-api-jsclient.git"
-    },
-    "bugs": {
-        "url": "https://github.com/Adamant-im/adamant-api-jsclient/issues"
-    },
-    "homepage": "https://github.com/Adamant-im/adamant-api-jsclient#readme"
+	"name": "adamant-api",
+	"version": "1.0.0",
+	"description": "REST API for ADAMANT Blockchain",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "RomanS, Aleksei Lebedev <devs@adamant.im> (https://adamant.im)",
+	"license": "GPL-3.0",
+	"dependencies": {
+		"axios": "^0.21.1",
+		"bignumber.js": "^9.0.1",
+		"bitcore-mnemonic": "^8.25.10",
+		"bytebuffer": "^5.0.1",
+		"ed2curve": "^0.3.0",
+		"ethereumjs-util": "^7.0.10",
+		"hdkey": "^2.0.1",
+		"socket.io-client": "^2.4.0",
+		"sodium-browserify-tweetnacl": "^0.2.6"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"keywords": [
+		"adm",
+		"adamant",
+		"blockchain",
+		"messenger",
+		"chat",
+		"decentralized messenger",
+		"anonymous messenger",
+		"secure messenger",
+		"wallet",
+		"crypto wallet",
+		"private keys",
+		"communication",
+		"decentralized",
+		"decentralization",
+		"anonymous",
+		"anonymity",
+		"secure",
+		"encrypted",
+		"encryption",
+		"crypto",
+		"cryptocurrency",
+		"bitcoin",
+		"ethereum"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Adamant-im/adamant-api-jsclient.git"
+	},
+	"bugs": {
+		"url": "https://github.com/Adamant-im/adamant-api-jsclient/issues"
+	},
+	"homepage": "https://github.com/Adamant-im/adamant-api-jsclient#readme"
 }

@@ -1,74 +1,46 @@
-const request = require('sync-request');
+const axios = require('axios');
 const logger = require('../helpers/logger');
+const validator = require('../helpers/validator');
 
-module.exports = (syncReq) => {
-	return async (type, params) => {
-		let endpoint;
-		let returned_field = false;
-		switch (type) {
-			case 'account':
-				endpoint = '/api/accounts?address=' + params;
-				break;
-			case 'delegate_forged':
-				endpoint = '/api/delegates/forging/getForgedByAccount?generatorPublicKey=' + params;
-				break;
-			case 'account_delegates':
-				endpoint = '/api/accounts/delegates?address=' + params;
-				returned_field = 'delegates';
-				break;
-			case 'block':
-				endpoint = '/api/blocks/get?id=' + params;
-				break;
-			case 'states':
-				endpoint = '/api/states/get';
-				if (params) {
-					endpoint = endpoint + '?' + params;
+const DEFAULT_GET_REQUEST_RETRIES = 3; // How much re-tries for get-requests by default. Total 3+1 tries
+
+module.exports = (nodeManager) => {
+	return (endpoint, params, maxRetries = DEFAULT_GET_REQUEST_RETRIES, retryNo = 0) => {
+
+		let url = trimAny(endpoint, "/ ").replace(/^api\//, '');
+		if (!url || !validator.validateEndpoint(endpoint))
+			  return validator.badParameter('endpoint')
+
+    url = nodeManager.node() + '/api/' + url;
+    return axios.get(url, { params })
+      .then(function (response) {
+        return validator.formatRequestResults(response, true)
+      })
+      .catch(function (error) {
+				let logMessage = `[ADAMANT js-api] Get-request: Request to ${url} failed with ${error.response ? error.response.status : undefined} status code, ${error.toString()}${error.response && error.response.data ? '. Message: ' + error.response.data.toString().trim() : ''}. Try ${retryNo+1} of ${maxRetries+1}.`;
+				if (retryNo < maxRetries) {
+					logger.log(`${logMessage} Retrying…`);
+					return nodeManager.changeNodes()
+						.then(function () {
+							return module.exports(nodeManager)(endpoint, params, maxRetries, ++retryNo)
+						})
 				}
-				break;
-			case 'delegate':
-				endpoint = '/api/delegates/get?username=' + params;
-				returned_field = 'delegate';
-				break;
-			case 'delegate_voters':
-				endpoint = '/api/delegates/voters?publicKey=' + params;
-				returned_field = 'accounts';
-				break;
-			case 'blocks':
-				endpoint = '/api/blocks';
-				if (params) {
-					endpoint = endpoint + '?' + params;
-				}
-				returned_field = 'blocks';
-				break;
-			case 'transaction':
-				endpoint = '/api/transactions/get?id=' + params;
-				break;
-			case 'transactions':
-				endpoint = '/api/transactions?' + params.split(' ').join('').split(',').join('&');
-				break;
-			case 'uri':
-				endpoint = '/api/' + params;
-				break;
-			default:
-				logger.error(`ADAMANT endpoint ${type} not implemented yet. Use 'uri' to use not implemented endpoints.`);
-				return false;
-		}
+				logger.warn(`${logMessage} No more attempts, returning error.`);
+        return validator.formatRequestResults(error, false)
+      })
 
-		try {
-			const res = await syncReq(endpoint);
-			if (res && res.success) {
-				if (returned_field) {
-					return res[returned_field];
-				}
-				return res;
-			}
-
-			logger.warn(`Get request to ADAMANT node was not successful. Type: ${type}, URL: ${endpoint}, Result: ${res && res.error}`);
-			return false;
-
-		} catch (e) {
-			logger.error(`Failed to process Get request of type ${type} to ADAMANT node. Error: ${e}.`);
-			return false;
-		}
-	};
+  }
 };
+
+function trimAny(str, chars) {
+	if (!str || typeof str !== 'string')
+		return ''
+	let start = 0, 
+		end = str.length;
+	while(start < end && chars.indexOf(str[start]) >= 0)
+		++start;
+	while(end > start && chars.indexOf(str[end - 1]) >= 0)
+		--end;
+	return (start > 0 || end < str.length) ? str.substring(start, end) : str;
+}
+
