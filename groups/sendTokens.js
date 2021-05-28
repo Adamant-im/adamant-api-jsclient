@@ -37,7 +37,7 @@ module.exports = (nodeManager) => {
         } else {
           publicKey = addressOrPublicKey;
           try {
-            address = keys.createAddressFromPublicKey('publicKey')
+            address = keys.createAddressFromPublicKey(publicKey)
           } catch (e) {
             return validator.badParameter('addressOrPublicKey', addressOrPublicKey)
           }
