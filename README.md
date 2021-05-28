@@ -8,6 +8,7 @@ Features:
 * GET-requests to the blockchain
 * Sending tokens
 * Sending messages
+* Caching public keys
 * Encrypting and decrypting of messages
 * Forming and signing transactions
 * Working with ADM key pairs
