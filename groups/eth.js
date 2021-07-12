@@ -6,7 +6,7 @@ const eth = { }
 
 /**
  * Generates a ETH account from the passphrase specified.
- * @param {string} passphrase user-defined passphrase
+ * @param {string} passphrase ADAMANT account passphrase
  * @returns {{address: String, privateKey: Buffer}}
  */
 

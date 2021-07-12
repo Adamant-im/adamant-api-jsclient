@@ -11,7 +11,7 @@ module.exports = (nodes) => {
 
 	isCheckingNodes = false;
 	nodesList = nodes;
-	activeNode = nodesList[0];
+	activeNode = nodesList[0]; // Note: it may be not synced; and before first health check a node can reply with obsolete data
 	liveNodes = [];
 
 	/**

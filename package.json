@@ -1,6 +1,6 @@
 {
 	"name": "adamant-api",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"description": "REST API for ADAMANT Blockchain",
 	"main": "index.js",
 	"scripts": {
@@ -11,8 +11,10 @@
 	"dependencies": {
 		"axios": "^0.21.1",
 		"bignumber.js": "^9.0.1",
+    "bitcoinjs-lib": "^5.2.0",
 		"bitcore-mnemonic": "^8.25.10",
 		"bytebuffer": "^5.0.1",
+    "coininfo": "^5.1.0",
 		"ed2curve": "^0.3.0",
 		"ethereumjs-util": "^7.0.10",
 		"hdkey": "^2.0.1",
