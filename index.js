@@ -6,6 +6,7 @@ const sendTokens = require('./groups/sendTokens');
 const sendMessage = require('./groups/sendMessage');
 const healthCheck = require('./helpers/healthCheck');
 const eth = require('./groups/eth');
+const dash = require('./groups/dash');
 const transactionFormer = require('./helpers/transactionFormer');
 const keys = require('./helpers/keys');
 const encryptor = require('./helpers/encryptor');
@@ -24,6 +25,7 @@ module.exports = (params, log) => {
 		sendMessage: sendMessage(nodeManager),
 		decodeMsg,
 		eth,
+		dash,
 		transactionFormer,
 		keys,
 		encryptor,
