@@ -1,7 +1,7 @@
-import coininfo from 'coininfo'
+coininfo = require('coininfo');
 
-export default Object.freeze({
+module.exports = {
   DOGE: coininfo.dogecoin.main.toBitcoinJS(),
   DASH: coininfo.dash.main.toBitcoinJS(),
   BTC: coininfo.bitcoin.main.toBitcoinJS() 
-})
+}
