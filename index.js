@@ -7,6 +7,7 @@ const sendMessage = require('./groups/sendMessage');
 const healthCheck = require('./helpers/healthCheck');
 const eth = require('./groups/eth');
 const dash = require('./groups/dash');
+const btc = require('./groups/btc');
 const transactionFormer = require('./helpers/transactionFormer');
 const keys = require('./helpers/keys');
 const encryptor = require('./helpers/encryptor');
@@ -26,6 +27,7 @@ module.exports = (params, log) => {
 		decodeMsg,
 		eth,
 		dash,
+		btc,
 		transactionFormer,
 		keys,
 		encryptor,
