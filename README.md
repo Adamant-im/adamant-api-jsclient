@@ -12,7 +12,7 @@ Features:
 * Encrypting and decrypting of messages
 * Forming and signing transactions
 * Working with ADM key pairs
-* Generating ETH crypto address and keys, bound to ADM account
+* Generating crypto wallets (addresses and keys), bound to ADM account
 * Working with ADAMANT epoch time
 * Support for WebSocket connections
 * Logging warnings, errors, info
@@ -29,7 +29,7 @@ Add current version of ADAMANT JavaScript API library in project's `package.json
 
 ``` json
   "dependencies": {
-    "adamant-api": "^1.0.0-beta.2",
+    "adamant-api": "^1.2.0",
 ```
 
 Or install library from npm:
