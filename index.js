@@ -9,6 +9,7 @@ const eth = require('./groups/eth');
 const dash = require('./groups/dash');
 const btc = require('./groups/btc');
 const doge = require('./groups/doge');
+const lsk = require('./groups/lsk');
 const transactionFormer = require('./helpers/transactionFormer');
 const keys = require('./helpers/keys');
 const encryptor = require('./helpers/encryptor');
@@ -19,7 +20,7 @@ module.exports = (params, log) => {
 	log = log || console;
 	logger.initLogger(params.logLevel, log);
 	const nodeManager = healthCheck(params.node);
-	
+
 	return {
 		get: get(nodeManager),
 		getPublicKey: getPublicKey(nodeManager),
@@ -30,6 +31,7 @@ module.exports = (params, log) => {
 		dash,
 		btc,
 		doge,
+		lsk,
 		transactionFormer,
 		keys,
 		encryptor,
