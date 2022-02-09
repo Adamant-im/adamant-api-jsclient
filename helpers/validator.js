@@ -52,6 +52,17 @@ module.exports = {
       return true
   },
 
+  validateAdmVotes(publicKeys) {
+    for (let i = publicKeys.length - 1; i >= 0; i--) {
+      const publicKey = publicKeys[i];
+
+      if (!publicKey || typeof(publicKey) !== 'string' || !constants.RE_ADM_VOTE.test(publicKey))
+		    return false
+    }
+
+    return true
+  },
+
   validateIntegerAmount(amount) {
     if (!amount || typeof(amount) !== 'number' || isNaN(amount) || !Number.isSafeInteger(amount))
 		  return false

@@ -3,6 +3,7 @@ const get = require('./groups/get');
 const getPublicKey = require('./groups/getPublicKey');
 const decodeMsg = require('./groups/decodeMsg');
 const delegateNew = require('./groups/delegateNew');
+const voteForDelegate = require('./groups/voteForDelegate');
 const sendTokens = require('./groups/sendTokens');
 const sendMessage = require('./groups/sendMessage');
 const healthCheck = require('./helpers/healthCheck');
@@ -27,6 +28,7 @@ module.exports = (params, log) => {
 		sendTokens: sendTokens(nodeManager),
 		sendMessage: sendMessage(nodeManager),
 		delegateNew: delegateNew(nodeManager),
+		voteForDelegate: voteForDelegate(nodeManager),
 		decodeMsg,
 		eth,
 		dash,
