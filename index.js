@@ -2,6 +2,7 @@ const constants = require('./helpers/constants.js');
 const get = require('./groups/get');
 const getPublicKey = require('./groups/getPublicKey');
 const decodeMsg = require('./groups/decodeMsg');
+const delegateNew = require('./groups/delegateNew');
 const sendTokens = require('./groups/sendTokens');
 const sendMessage = require('./groups/sendMessage');
 const healthCheck = require('./helpers/healthCheck');
@@ -19,12 +20,13 @@ module.exports = (params, log) => {
 	log = log || console;
 	logger.initLogger(params.logLevel, log);
 	const nodeManager = healthCheck(params.node);
-	
+
 	return {
 		get: get(nodeManager),
 		getPublicKey: getPublicKey(nodeManager),
 		sendTokens: sendTokens(nodeManager),
 		sendMessage: sendMessage(nodeManager),
+		delegateNew: delegateNew(nodeManager),
 		decodeMsg,
 		eth,
 		dash,

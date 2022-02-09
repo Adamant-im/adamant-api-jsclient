@@ -84,30 +84,38 @@ module.exports = {
 
         let json = this.tryParseJSON(message)
 
-        if (!json) 
+        if (!json)
           return {
             result: false,
             error: `For rich and signal messages, 'message' must be a JSON string`
           }
-        
+
         if (json.type && json.type.toLowerCase().includes('_transaction'))
           if (json.type.toLowerCase() !== json.type)
             return {
               result: false,
               error: `Value '<coin>_transaction' must be in lower case`
             }
-      
+
         if (typeof json.amount !== 'string' || !this.validateStringAmount(json.amount))
           return {
             result: false,
             error: `Field 'amount' must be a string, representing a number`
-          }        
+          }
 
       }
     }
     return {
       result: true
     }
+  },
+
+  validateDelegateName(name) {
+    if (typeof name !== 'string') {
+      return false;
+    }
+
+    return /^[\w!@$&_]*$/.test(name);
   },
 
   AdmToSats(amount) {
