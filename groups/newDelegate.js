@@ -9,13 +9,11 @@ const DEFAULT_SEND_TOKENS_RETRIES = 4; // How much re-tries for send tokens requ
 
 module.exports = (nodeManager) => {
   /**
-		* Creates Token Transfer transaction, signs it, and broadcasts to ADAMANT network
-    * See https://github.com/Adamant-im/adamant/wiki/Transaction-Types#type-0-token-transfer-transaction
+		* Registers user account as delegate
     * @param {string} passPhrase Senders's passPhrase. Sender's address will be derived from it.
-    * @param {string} addressOrPublicKey Recipient's ADAMANT address or public key.
-    * Address is preferred, as if we get public key, we should derive address from it.
-    * @param {string, number} amount Amount to send
-    * @param {boolean} isAmountInADM If amount specified in ADM, or in sats (10^-8 ADM)
+    * @param {string} username Delegate name you want to register with.
+    * It must be unique in ADAMANT blockchain. It should not be similar to ADAMANT address.
+    * Delegate name can only contain alphanumeric characters and symbols !@$&_.
     * @param {number} maxRetries How much times to retry request
     * @returns {Promise} Request results
   	*/

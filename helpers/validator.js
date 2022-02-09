@@ -126,7 +126,7 @@ module.exports = {
       return false;
     }
 
-    return /^[\w!@$&_]*$/.test(name);
+    return constants.RE_ADM_DELEGATE_NAME.test(name);
   },
 
   AdmToSats(amount) {
