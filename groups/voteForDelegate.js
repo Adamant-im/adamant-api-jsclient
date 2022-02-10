@@ -5,7 +5,7 @@ const constants = require('../helpers/constants');
 const transactionFormer = require('../helpers/transactionFormer');
 const validator = require('../helpers/validator');
 
-const DEFAULT_SEND_TOKENS_RETRIES = 4; // How much re-tries for send tokens requests by default. Total 4+1 tries
+const DEFAULT_VOTE_FOR_DELEGATE_RETRIES = 4; // How much re-tries for send tokens requests by default. Total 4+1 tries
 
 module.exports = (nodeManager) => {
   /**
@@ -16,7 +16,7 @@ module.exports = (nodeManager) => {
     * @param {number} maxRetries How much times to retry request
     * @returns {Promise} Request results
   	*/
-	return (passPhrase, votes, maxRetries = DEFAULT_SEND_TOKENS_RETRIES, retryNo = 0) => {
+	return (passPhrase, votes, maxRetries = DEFAULT_VOTE_FOR_DELEGATE_RETRIES, retryNo = 0) => {
 
     let transaction;
 
