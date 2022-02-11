@@ -52,15 +52,25 @@ module.exports = {
       return true
   },
 
-  validateAdmVotes(publicKeys) {
-    for (let i = publicKeys.length - 1; i >= 0; i--) {
-      const publicKey = publicKeys[i];
+  validateAdmVoteForPublicKey(publicKey) {
+    if (!publicKey || typeof(publicKey) !== 'string' || !constants.RE_ADM_VOTE_FOR_PUBLIC_KEY.test(publicKey))
+      return false
+    else
+      return true
+  },
 
-      if (!publicKey || typeof(publicKey) !== 'string' || !constants.RE_ADM_VOTE.test(publicKey))
-		    return false
-    }
+  validateAdmVoteForAddress(address) {
+    if (!address || typeof(address) !== 'string' || !constants.RE_ADM_VOTE_FOR_ADDRESS.test(address))
+      return false
+    else
+      return true
+  },
 
-    return true
+  validateAdmVoteForDelegateName(delegateName) {
+    if (!delegateName || typeof(delegateName) !== 'string' || !constants.RE_ADM_VOTE_FOR_DELEGATE_NAME.test(delegateName))
+      return false
+    else
+      return true
   },
 
   validateIntegerAmount(amount) {
