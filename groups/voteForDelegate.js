@@ -33,7 +33,8 @@ module.exports = (nodeManager) => {
 
       const uniqueVotes = [];
 
-      votes.forEach((vote, i) => {
+      for (let i = votes.length - 1; i >= 0; i--) {
+        const vote = votes[i];
         const voteName = vote.slice(1);
         const voteDirection = vote.charAt(0);
 
@@ -41,38 +42,36 @@ module.exports = (nodeManager) => {
 
         if (cachedPublicKey) {
           votes[i] = `${voteDirection}${cachedPublicKey}`;
+        } else {
+          if (validator.validateAdmVoteForAddress(vote)) {
+            const res = await get(nodeManager)('/accounts', { address: voteName });
 
-          continue;
-        }
+            if (res.success) {
+              const publicKey = res.data.account.publicKey;
 
-        if (validator.validateAdmVoteForAddress(vote)) {
-          const res = await get(nodeManager)('/accounts', { address: voteName });
+              votes[i] = `${voteDirection}${publicKey}`;
+              publicKeysCache[voteName] = publicKey;
+            } else {
+              logger.warn(`[ADAMANT js-api] Failed to get public key for ${vote}. ${res.errorMessage}.`);
 
-          if (res.success) {
-            const publicKey = res.data.account.publicKey;
+              return validator.badParameter('votes');
+            }
+          } else if (validator.validateAdmVoteForDelegateName(vote)) {
+            const res = await get(nodeManager)('/delegates/get', { username: voteName });
 
-            votes[i] = `${voteDirection}${publicKey}`;
-            publicKeysCache[voteName] = publicKey;
-          } else {
-            logger.warn(`[ADAMANT js-api] Failed to get public key for ${vote}. ${res.errorMessage}.`);
+            if (res.success) {
+              const publicKey = res.data.delegate.publicKey;
 
+              votes[i] = `${voteDirection}${publicKey}`;
+              publicKeysCache[voteName] = publicKey;
+            } else {
+              logger.warn(`[ADAMANT js-api] Failed to get public key for ${vote}. ${res.errorMessage}.`);
+
+              return validator.badParameter('votes');
+            }
+          } else if (!validator.validateAdmVoteForPublicKey(vote)) {
             return validator.badParameter('votes');
           }
-        } else if (validator.validateAdmVoteForDelegateName(vote)) {
-			    const res = await get(nodeManager)('/delegates/get', { username: voteName });
-
-          if (res.success) {
-            const publicKey = res.data.delegate.publicKey;
-
-            votes[i] = `${voteDirection}${publicKey}`;
-            publicKeysCache[voteName] = publicKey;
-          } else {
-            logger.warn(`[ADAMANT js-api] Failed to get public key for ${vote}. ${res.errorMessage}.`);
-
-            return validator.badParameter('votes');
-          }
-        } else if (!validator.validateAdmVoteForPublicKey(vote)) {
-			    return validator.badParameter('votes');
         }
 
         // Exclude duplicates
@@ -81,7 +80,7 @@ module.exports = (nodeManager) => {
         if (!foundCopy) {
           uniqueVotes.push(votes[i]);
         }
-      });
+      }
 
       const type = constants.transactionTypes.VOTE;
 
