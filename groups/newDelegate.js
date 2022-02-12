@@ -17,18 +17,20 @@ module.exports = (nodeManager) => {
     * @param {number} maxRetries How much times to retry request
     * @returns {Promise} Request results
   	*/
-	return (passPhrase, username, maxRetries = DEFAULT_NEW_DELEGATE_RETRIES, retryNo = 0) => {
+	return async (passPhrase, username, maxRetries = DEFAULT_NEW_DELEGATE_RETRIES, retryNo = 0) => {
 
     let transaction;
 
     try {
-      if (!validator.validatePassPhrase(passPhrase))
-			  return validator.badParameter('passPhrase')
+      if (!validator.validatePassPhrase(passPhrase)) {
+			  return validator.badParameter('passPhrase');
+      }
 
       const keyPair = keys.createKeypairFromPassPhrase(passPhrase);
 
-      if (!validator.validateDelegateName(username))
-			  return validator.badParameter('username')
+      if (!validator.validateDelegateName(username)) {
+			  return validator.badParameter('username');
+      }
 
       const type = constants.transactionTypes.DELEGATE;
 
@@ -41,28 +43,30 @@ module.exports = (nodeManager) => {
       transaction = transactionFormer.createTransaction(type, data);
 
     } catch (e) {
-
-      return validator.badParameter('#exception_catched#', e)
-
+      return validator.badParameter('#exception_catched#', e);
     }
 
-    let url = nodeManager.node() + '/api/delegates';
-    return axios.post(url, transaction)
-      .then(function (response) {
-        return validator.formatRequestResults(response, true)
-      })
-      .catch(function (error) {
-				let logMessage = `[ADAMANT js-api] New delegate request: Request to ${url} failed with ${error.response ? error.response.status : undefined} status code, ${error.toString()}${error.response && error.response.data ? '. Message: ' + error.response.data.toString().trim() : ''}. Try ${retryNo+1} of ${maxRetries+1}.`;
-				if (retryNo < maxRetries) {
-					logger.log(`${logMessage} Retrying…`);
-					return nodeManager.changeNodes()
-						.then(function () {
-							return module.exports(nodeManager)(passPhrase, addressOrPublicKey, amount, isAmountInADM, maxRetries, ++retryNo)
-						})
-				}
-				logger.warn(`${logMessage} No more attempts, returning error.`);
-        return validator.formatRequestResults(error, false)
-      })
+    const url = nodeManager.node() + '/api/delegates';
 
+    try {
+      const response = await axios.post(url, transaction);
+
+      return validator.formatRequestResults(response, true);
+    } catch (error) {
+      const logMessage = `[ADAMANT js-api] New delegate request: Request to ${url} failed with ${error.response ? error.response.status : undefined} status code, ${error.toString()}${error.response && error.response.data ? '. Message: ' + error.response.data.toString().trim() : ''}. Try ${retryNo+1} of ${maxRetries+1}.`;
+
+      if (retryNo < maxRetries) {
+        logger.log(`${logMessage} Retrying…`);
+
+        return nodeManager.changeNodes()
+          .then(() => (
+            module.exports(nodeManager)(passPhrase, addressOrPublicKey, amount, isAmountInADM, maxRetries, ++retryNo)
+          ));
+      }
+
+      logger.warn(`${logMessage} No more attempts, returning error.`);
+
+      return validator.formatRequestResults(error, false);
+    }
   }
 };

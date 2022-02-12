@@ -25,15 +25,15 @@ module.exports = (nodeManager) => {
     let transaction;
 
     try {
-      if (!validator.validatePassPhrase(passPhrase))
+      if (!validator.validatePassPhrase(passPhrase)) {
 			  return validator.badParameter('passPhrase');
+      }
 
       const keyPair = keys.createKeypairFromPassPhrase(passPhrase);
 
       const uniqueVotes = [];
 
-      for (let i = votes.length - 1; i >= 0; i--) {
-        const vote = votes[i];
+      votes.forEach((vote, i) => {
         const voteName = vote.slice(1);
         const voteDirection = vote.charAt(0);
 
@@ -41,6 +41,7 @@ module.exports = (nodeManager) => {
 
         if (cachedPublicKey) {
           votes[i] = `${voteDirection}${cachedPublicKey}`;
+
           continue;
         }
 
@@ -49,34 +50,38 @@ module.exports = (nodeManager) => {
 
           if (res.success) {
             const publicKey = res.data.account.publicKey;
+
             votes[i] = `${voteDirection}${publicKey}`;
             publicKeysCache[voteName] = publicKey;
           } else {
             logger.warn(`[ADAMANT js-api] Failed to get public key for ${vote}. ${res.errorMessage}.`);
-            return validator.badParameter('votes')
+
+            return validator.badParameter('votes');
           }
         } else if (validator.validateAdmVoteForDelegateName(vote)) {
 			    const res = await get(nodeManager)('/delegates/get', { username: voteName });
 
           if (res.success) {
             const publicKey = res.data.delegate.publicKey;
+
             votes[i] = `${voteDirection}${publicKey}`;
             publicKeysCache[voteName] = publicKey;
           } else {
             logger.warn(`[ADAMANT js-api] Failed to get public key for ${vote}. ${res.errorMessage}.`);
-            return validator.badParameter('votes')
+
+            return validator.badParameter('votes');
           }
         } else if (!validator.validateAdmVoteForPublicKey(vote)) {
-			    return validator.badParameter('votes')
+			    return validator.badParameter('votes');
         }
 
         // Exclude duplicates
-        const foundCopy = uniqueVotes.findIndex((v) => v.slice(1) === votes[i].slice(1));
+        const foundCopy = uniqueVotes.find((v) => v.slice(1) === votes[i].slice(1));
 
-        if (foundCopy === -1) {
+        if (!foundCopy) {
           uniqueVotes.push(votes[i]);
         }
-      }
+      });
 
       const type = constants.transactionTypes.VOTE;
 
@@ -87,30 +92,31 @@ module.exports = (nodeManager) => {
       };
 
       transaction = transactionFormer.createTransaction(type, data);
-
-    } catch (e) {
-
-      return validator.badParameter('#exception_catched#', e)
-
+    } catch (error) {
+      return validator.badParameter('#exception_catched#', error)
     }
 
-    let url = nodeManager.node() + '/api/accounts/delegates';
-    return axios.post(url, transaction)
-      .then(function (response) {
-        return validator.formatRequestResults(response, true)
-      })
-      .catch(function (error) {
-				let logMessage = `[ADAMANT js-api] Vote for delegate request: Request to ${url} failed with ${error.response ? error.response.status : undefined} status code, ${error.toString()}${error.response && error.response.data ? '. Message: ' + error.response.data.toString().trim() : ''}. Try ${retryNo+1} of ${maxRetries+1}.`;
-				if (retryNo < maxRetries) {
-					logger.log(`${logMessage} Retrying…`);
-					return nodeManager.changeNodes()
-						.then(function () {
-							return module.exports(nodeManager)(passPhrase, addressOrPublicKey, amount, isAmountInADM, maxRetries, ++retryNo)
-						})
-				}
-				logger.warn(`${logMessage} No more attempts, returning error.`);
-        return validator.formatRequestResults(error, false)
-      })
+    const url = nodeManager.node() + '/api/accounts/delegates';
 
+    try {
+      const response = await axios.post(url, transaction);
+
+      return validator.formatRequestResults(response, true);
+    } catch(error) {
+      const logMessage = `[ADAMANT js-api] Vote for delegate request: Request to ${url} failed with ${error.response ? error.response.status : undefined} status code, ${error.toString()}${error.response && error.response.data ? '. Message: ' + error.response.data.toString().trim() : ''}. Try ${retryNo+1} of ${maxRetries+1}.`;
+
+      if (retryNo < maxRetries) {
+        logger.log(`${logMessage} Retrying…`);
+
+        return nodeManager.changeNodes()
+          .then(() => (
+            module.exports(nodeManager)(passPhrase, addressOrPublicKey, amount, isAmountInADM, maxRetries, ++retryNo)
+          ));
+      }
+
+      logger.warn(`${logMessage} No more attempts, returning error.`);
+
+      return validator.formatRequestResults(error, false);
+    }
   }
 };
