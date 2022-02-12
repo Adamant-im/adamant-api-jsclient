@@ -49,7 +49,6 @@ module.exports = (nodeManager) => {
           if (res.success) {
             const publicKey = res.data.account.publicKey;
             votes[i] = `${voteDirection}${publicKey}`;
-            console.log(publicKey);
             publicKeysCache[voteName] = publicKey;
           } else {
             logger.warn(`[ADAMANT js-api] Failed to get public key for ${vote}. ${res.errorMessage}.`);
