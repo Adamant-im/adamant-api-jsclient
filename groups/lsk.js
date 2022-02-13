@@ -30,7 +30,12 @@ lsk.keys = passphrase => {
   const privateKey = keyPair.secretKey.toString('hex');
 
   return {
-	network, keyPair, address, addressHexBinary, addressHex, privateKey
+    network,
+    keyPair,
+    address,
+    addressHexBinary,
+    addressHex,
+    privateKey
   }
 };
 
