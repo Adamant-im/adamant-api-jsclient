@@ -3,15 +3,15 @@ const sodium = require('sodium-browserify-tweetnacl')
 const pbkdf2 = require('pbkdf2');
 
 const coinNetworks = require('./coinNetworks');
-const { bytesToHex } = require("../helpers/encryptor");
+const {bytesToHex} = require('../helpers/encryptor');
 
-const lsk = {}
+const lsk = {};
 
 const LiskHashSettings = {
-    SALT: 'adm',
-    ITERATIONS: 2048,
-    KEYLEN: 32,
-    DIGEST: 'sha256'
+  SALT: 'adm',
+  ITERATIONS: 2048,
+  KEYLEN: 32,
+  DIGEST: 'sha256'
 }
 
 /**
@@ -21,22 +21,17 @@ const LiskHashSettings = {
  */
 
 lsk.keys = passphrase => {
-    const network = coinNetworks.LSK
-    const liskSeed = pbkdf2.pbkdf2Sync(passphrase, LiskHashSettings.SALT, LiskHashSettings.ITERATIONS, LiskHashSettings.KEYLEN, LiskHashSettings.DIGEST)
-    const keyPair = sodium.crypto_sign_seed_keypair(liskSeed)
-    const address = cryptography.getBase32AddressFromPublicKey(keyPair.publicKey)
-	const addressHexBinary = cryptography.getAddressFromPublicKey(keyPair.publicKey)
-	const addressHex = bytesToHex(addressHexBinary)
-    const privateKey = keyPair.secretKey.toString('hex')
+  const network = coinNetworks.LSK;
+  const liskSeed = pbkdf2.pbkdf2Sync(passphrase, LiskHashSettings.SALT, LiskHashSettings.ITERATIONS, LiskHashSettings.KEYLEN, LiskHashSettings.DIGEST);
+  const keyPair = sodium.crypto_sign_seed_keypair(liskSeed);
+  const address = cryptography.getBase32AddressFromPublicKey(keyPair.publicKey);
+  const addressHexBinary = cryptography.getAddressFromPublicKey(keyPair.publicKey);
+  const addressHex = bytesToHex(addressHexBinary);
+  const privateKey = keyPair.secretKey.toString('hex');
 
-    return {
-        network,
-        keyPair,
-        address,
-		addressHexBinary,
-		addressHex,
-        privateKey
-    }
+  return {
+	network, keyPair, address, addressHexBinary, addressHex, privateKey
+  }
 };
 
 module.exports = lsk;
