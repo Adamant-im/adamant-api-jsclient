@@ -15,7 +15,7 @@ const LiskHashSettings = {
 /**
  * Generates a LSK account from the passphrase specified.
  * @param {string} passphrase ADAMANT account passphrase
- * @returns {object} network info, keyPair, privateKey, privateKeyWIF
+ * @returns {object} network info, keyPair, address, addressHexBinary, addressHex, privateKey
  */
 
 lsk.keys = passphrase => {
