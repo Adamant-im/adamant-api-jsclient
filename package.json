@@ -1,6 +1,6 @@
 {
 	"name": "adamant-api",
-	"version": "1.4.0",
+	"version": "1.5.0",
 	"description": "REST API for ADAMANT Blockchain",
 	"main": "index.js",
 	"scripts": {
@@ -14,10 +14,12 @@
     "bitcoinjs-lib": "^5.2.0",
 		"bitcore-mnemonic": "^8.25.25",
 		"bytebuffer": "^5.0.1",
-    "coininfo": "^5.1.0",
+		"coininfo": "^5.1.0",
 		"ed2curve": "^0.3.0",
 		"ethereumjs-util": "^7.1.4",
 		"hdkey": "^2.0.1",
+		"pbkdf2": "^3.1.2",
+    "@liskhq/lisk-cryptography": "3.2.0",
 		"socket.io-client": "^2.4.0",
 		"sodium-browserify-tweetnacl": "^0.2.6"
 	},
