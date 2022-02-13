@@ -1,8 +1,10 @@
-const coinNetworks = require('./coinNetworks');
-const pbkdf2 = require('pbkdf2');
-const sodium = require('sodium-browserify-tweetnacl')
 const cryptography = require('@liskhq/lisk-cryptography')
-const {bytesToHex} = require("../helpers/encryptor");
+const sodium = require('sodium-browserify-tweetnacl')
+const pbkdf2 = require('pbkdf2');
+
+const coinNetworks = require('./coinNetworks');
+const { bytesToHex } = require("../helpers/encryptor");
+
 const lsk = {}
 
 const LiskHashSettings = {
