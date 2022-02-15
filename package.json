@@ -9,7 +9,7 @@
 		"lint:fix": "eslint --fix .eslintrc.js",
 		"prepare": "husky install"
 	},
-	"author": "RomanS, Aleksei Lebedev <devs@adamant.im> (https://adamant.im)",
+	"author": "ADAMANT Foundation <devs@adamant.im> (https://adamant.im)",
 	"license": "GPL-3.0",
 	"dependencies": {
 		"@liskhq/lisk-cryptography": "3.2.0",
