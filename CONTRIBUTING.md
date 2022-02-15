@@ -10,6 +10,8 @@ Before submitting your contribution, please make sure to take a moment and read 
 
 ## Pull Request Guidelines
 
+- The master branch is just a snapshot of the latest stable release. All development should be done in dedicated branches. Do not submit PRs against the master branch.
+
 - Checkout a topic branch from a base branch, e.g. `master`, and merge back against that branch.
 
 - If adding a new feature add accompanying test case.
