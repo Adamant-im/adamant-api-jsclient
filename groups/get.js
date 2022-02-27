@@ -1,4 +1,4 @@
-const axios = require('axios');
+const axios = require('../helpers/axiosClient');
 const logger = require('../helpers/logger');
 const validator = require('../helpers/validator');
 
@@ -35,7 +35,7 @@ module.exports = (nodeManager) => {
 function trimAny(str, chars) {
 	if (!str || typeof str !== 'string')
 		return ''
-	let start = 0, 
+	let start = 0,
 		end = str.length;
 	while(start < end && chars.indexOf(str[start]) >= 0)
 		++start;

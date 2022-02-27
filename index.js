@@ -17,6 +17,7 @@ const keys = require('./helpers/keys');
 const encryptor = require('./helpers/encryptor');
 const socket = require('./helpers/wsClient');
 const logger = require('./helpers/logger');
+const axios = require('./helpers/axiosClient');
 
 module.exports = (params, log) => {
 	log = log || console;
@@ -40,6 +41,7 @@ module.exports = (params, log) => {
 		keys,
 		encryptor,
 		socket,
-		constants
+		constants,
+	  	axios,
 	};
 };

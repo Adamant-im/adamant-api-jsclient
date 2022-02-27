@@ -1,4 +1,4 @@
-const axios = require('axios');
+const axios = require('../helpers/axiosClient');
 const socket = require('./wsClient');
 const logger = require('./logger');
 const validator = require('./validator');
@@ -148,7 +148,7 @@ async function checkNodes(forceChangeActiveNode) {
 					this.activeNode = biggestGroup[validator.getRandomIntInclusive(1, biggestGroup.length-1)].node // Use random node from which are synced
 				else
 					this.activeNode = biggestGroup[0].node; // Use node with minimum ping among which are synced
-			
+
 			}
 			socket.reviseConnection(this.liveNodes);
 			let unavailableCount = this.nodesList.length - this.liveNodes.length;
@@ -159,7 +159,7 @@ async function checkNodes(forceChangeActiveNode) {
 			if (outOfSyncCount)
 				nodesInfoString += `, ${outOfSyncCount} nodes are not synced`
 			logger.log(`[ADAMANT js-api] Health check: Found ${supportedCount} supported and synced nodes${nodesInfoString}. Active node is ${this.activeNode}.`);
-			
+
 		}
 
 	} catch (e) {
