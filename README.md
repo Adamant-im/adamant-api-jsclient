@@ -8,6 +8,8 @@ Features:
 * GET-requests to the blockchain
 * Sending tokens
 * Sending messages
+* Creating a delegate
+* Voting for delegates
 * Caching public keys
 * Encrypting and decrypting of messages
 * Forming and signing transactions
@@ -29,7 +31,7 @@ Add current version of ADAMANT JavaScript API library in project's `package.json
 
 ``` json
   "dependencies": {
-    "adamant-api": "^1.2.0",
+    "adamant-api": "^1.4.0",
 ```
 
 Or install library from npm:
