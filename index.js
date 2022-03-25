@@ -21,7 +21,7 @@ const logger = require('./helpers/logger');
 module.exports = (params, log) => {
 	log = log || console;
 	logger.initLogger(params.logLevel, log);
-	const nodeManager = healthCheck(params.node);
+	const nodeManager = healthCheck(params.node, params.checkHealthAtStartup);
 
 	return {
 		get: get(nodeManager),

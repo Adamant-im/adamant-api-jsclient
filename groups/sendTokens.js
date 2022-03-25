@@ -1,4 +1,4 @@
-const axios = require('axios');
+const axios = require('../helpers/axiosClient');
 const logger = require('../helpers/logger');
 const keys = require('../helpers/keys');
 const constants = require('../helpers/constants');
@@ -28,7 +28,7 @@ module.exports = (nodeManager) => {
 
       if (!validator.validatePassPhrase(passPhrase))
 			  return validator.badParameter('passPhrase')
-    
+
       const keyPair = keys.createKeypairFromPassPhrase(passPhrase);
 
       if (!validator.validateAdmAddress(addressOrPublicKey)) {
@@ -46,7 +46,7 @@ module.exports = (nodeManager) => {
         publicKey = '';
         address = addressOrPublicKey
       }
-      
+
       if (isAmountInADM) {
         amountInSat = validator.AdmToSats(amount)
       } else {

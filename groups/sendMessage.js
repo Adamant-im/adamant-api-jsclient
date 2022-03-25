@@ -1,4 +1,4 @@
-const axios = require('axios');
+const axios = require('../helpers/axiosClient');
 const logger = require('../helpers/logger');
 const keys = require('../helpers/keys');
 const constants = require('../helpers/constants');
@@ -34,7 +34,7 @@ module.exports = (nodeManager) => {
 
       if (!validator.validatePassPhrase(passPhrase))
 			  return validator.badParameter('passPhrase')
-    
+
       keyPair = keys.createKeypairFromPassPhrase(passPhrase);
 
       if (!validator.validateAdmAddress(addressOrPublicKey)) {
@@ -59,7 +59,7 @@ module.exports = (nodeManager) => {
         message_type = 2;
       if (message_type === 'signal')
         message_type = 3;
-        
+
       if (!validator.validateMessageType(message_type))
         return validator.badParameter('message_type', message_type)
 
@@ -72,13 +72,13 @@ module.exports = (nodeManager) => {
         recipientId: address,
         message_type
       };
-  
+
       if (amount) {
         if (isAmountInADM) {
           amountInSat = validator.AdmToSats(amount)
         } else {
           amountInSat = amount
-        }  
+        }
         if (!validator.validateIntegerAmount(amountInSat))
           return validator.badParameter('amount', amount)
         data.amount = amountInSat;
@@ -126,7 +126,7 @@ module.exports = (nodeManager) => {
           logger.warn(`${logMessage} No more attempts, returning error.`);
           return validator.formatRequestResults(error, false)
         })
-        
+
     } catch (e) {
 
       return new Promise((resolve, reject) => {

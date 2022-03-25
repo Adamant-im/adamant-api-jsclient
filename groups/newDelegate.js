@@ -1,4 +1,4 @@
-const axios = require('axios');
+const axios = require('../helpers/axiosClient');
 const logger = require('../helpers/logger');
 const keys = require('../helpers/keys');
 const constants = require('../helpers/constants');
