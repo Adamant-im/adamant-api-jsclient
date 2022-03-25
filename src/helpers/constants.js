@@ -12,7 +12,7 @@ module.exports = {
     chat_message: 100000,
     profile_update: 5000000,
     avatar_upload: 10000000,
-    state_store: 100000
+    state_store: 100000,
   },
   transactionTypes: {
     SEND: 0,
@@ -24,7 +24,7 @@ module.exports = {
     IN_TRANSFER: 6,
     OUT_TRANSFER: 7,
     CHAT_MESSAGE: 8,
-    STATE: 9
+    STATE: 9,
   },
   maxVotesPerTransaction: 33,
   SAT: 100000000,
@@ -38,6 +38,6 @@ module.exports = {
   RE_BTC_ADDRESS: /^(bc1|[13])[a-km-zA-HJ-NP-Z02-9]{25,39}$/,
   RE_DASH_ADDRESS: /^[7X][1-9A-HJ-NP-Za-km-z]{33,}$/,
   RE_DOGE_ADDRESS: /^[A|D|9][A-Z0-9]([0-9a-zA-Z]{9,})$/,
-  RE_LSK_ADDRESS: /^[0-9]{2,21}L$/
+  RE_LSK_ADDRESS: /^[0-9]{2,21}L$/,
 
-}
+};

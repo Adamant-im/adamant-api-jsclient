@@ -2,17 +2,17 @@ const constants = require('./constants.js');
 
 module.exports = {
 
-  getEpochTime: function (time) {
+  getEpochTime: function(time) {
     if (time === undefined) {
       time = Date.now();
     }
-    var d = constants.epochTime;
-    var t = d.getTime();
+    const d = constants.epochTime;
+    const t = d.getTime();
     return Math.floor((time - t) / 1000);
   },
 
-  getTime: function (time) {
+  getTime: function(time) {
     return this.getEpochTime(time);
-  }
+  },
 
-}
+};

@@ -8,6 +8,6 @@ module.exports = {
     name: 'Lisk',
     port: 8000,
     wsPort: 8001,
-    unit: 'LSK'
+    unit: 'LSK',
   },
-}
+};

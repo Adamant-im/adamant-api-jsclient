@@ -18,10 +18,9 @@ module.exports = (nodeManager) => {
     * @param {string[]} votes PublicKeys, ADM addresses and delegate names for upvote and downvote.
     * It would be more efficient to pass publicKey, otherwise the api will make additional queries
     * @param {number} maxRetries How much times to retry request
-    * @returns {Promise} Request results
+    * @return {Promise} Request results
   */
   return async (passPhrase, votes, maxRetries = DEFAULT_VOTE_FOR_DELEGATE_RETRIES, retryNo = 0) => {
-
     let transaction;
 
     try {
@@ -44,7 +43,7 @@ module.exports = (nodeManager) => {
           votes[i] = `${voteDirection}${cachedPublicKey}`;
         } else {
           if (validator.validateAdmVoteForAddress(vote)) {
-            const res = await get(nodeManager)('/accounts', { address: voteName });
+            const res = await get(nodeManager)('/accounts', {address: voteName});
 
             if (res.success) {
               const publicKey = res.data.account.publicKey;
@@ -57,7 +56,7 @@ module.exports = (nodeManager) => {
               return validator.badParameter('votes');
             }
           } else if (validator.validateAdmVoteForDelegateName(vote)) {
-            const res = await get(nodeManager)('/delegates/get', { username: voteName });
+            const res = await get(nodeManager)('/delegates/get', {username: voteName});
 
             if (res.success) {
               const publicKey = res.data.delegate.publicKey;
@@ -92,7 +91,7 @@ module.exports = (nodeManager) => {
 
       transaction = transactionFormer.createTransaction(type, data);
     } catch (error) {
-      return validator.badParameter('#exception_catched#', error)
+      return validator.badParameter('#exception_catched#', error);
     }
 
     const url = nodeManager.node() + '/api/accounts/delegates';
@@ -101,21 +100,21 @@ module.exports = (nodeManager) => {
       const response = await axios.post(url, transaction);
 
       return validator.formatRequestResults(response, true);
-    } catch(error) {
+    } catch (error) {
       const logMessage = `[ADAMANT js-api] Vote for delegate request: Request to ${url} failed with ${error.response ? error.response.status : undefined} status code, ${error.toString()}${error.response && error.response.data ? '. Message: ' + error.response.data.toString().trim() : ''}. Try ${retryNo+1} of ${maxRetries+1}.`;
 
       if (retryNo < maxRetries) {
         logger.log(`${logMessage} Retrying…`);
 
         return nodeManager.changeNodes()
-          .then(() => (
-            module.exports(nodeManager)(passPhrase, addressOrPublicKey, amount, isAmountInADM, maxRetries, ++retryNo)
-          ));
+            .then(() => (
+              module.exports(nodeManager)(passPhrase, addressOrPublicKey, amount, isAmountInADM, maxRetries, ++retryNo)
+            ));
       }
 
       logger.warn(`${logMessage} No more attempts, returning error.`);
 
       return validator.formatRequestResults(error, false);
     }
-  }
+  };
 };

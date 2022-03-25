@@ -26,118 +26,116 @@ module.exports = (nodeManager) => {
     * @returns {Promise} Request results
   */
   return async (passPhrase, addressOrPublicKey, message, message_type = 'basic', amount, isAmountInADM = true, maxRetries = DEFAULT_SEND_MESSAGE_RETRIES, retryNo = 0) => {
-
-    let keyPair, data;
-    let address, publicKey;
+    let keyPair; let data;
+    let address; let publicKey;
 
     try {
-
-      if (!validator.validatePassPhrase(passPhrase))
-        return validator.badParameter('passPhrase')
+      if (!validator.validatePassPhrase(passPhrase)) {
+        return validator.badParameter('passPhrase');
+      }
 
       keyPair = keys.createKeypairFromPassPhrase(passPhrase);
 
       if (!validator.validateAdmAddress(addressOrPublicKey)) {
         if (!validator.validateAdmPublicKey(addressOrPublicKey)) {
-          return validator.badParameter('addressOrPublicKey', addressOrPublicKey)
+          return validator.badParameter('addressOrPublicKey', addressOrPublicKey);
         } else {
           publicKey = addressOrPublicKey;
           try {
-            address = keys.createAddressFromPublicKey(publicKey)
+            address = keys.createAddressFromPublicKey(publicKey);
           } catch (e) {
-            return validator.badParameter('addressOrPublicKey', addressOrPublicKey)
+            return validator.badParameter('addressOrPublicKey', addressOrPublicKey);
           }
         }
       } else {
         publicKey = '';
-        address = addressOrPublicKey
+        address = addressOrPublicKey;
       }
 
-      if (message_type === 'basic')
+      if (message_type === 'basic') {
         message_type = 1;
-      if (message_type === 'rich')
+      }
+      if (message_type === 'rich') {
         message_type = 2;
-      if (message_type === 'signal')
+      }
+      if (message_type === 'signal') {
         message_type = 3;
+      }
 
-      if (!validator.validateMessageType(message_type))
-        return validator.badParameter('message_type', message_type)
+      if (!validator.validateMessageType(message_type)) {
+        return validator.badParameter('message_type', message_type);
+      }
 
-      let messageValidation = validator.validateMessage(message, message_type);
-      if (!messageValidation.result)
-        return validator.badParameter('message', message, messageValidation.error)
+      const messageValidation = validator.validateMessage(message, message_type);
+      if (!messageValidation.result) {
+        return validator.badParameter('message', message, messageValidation.error);
+      }
 
       data = {
         keyPair,
         recipientId: address,
-        message_type
+        message_type,
       };
 
       if (amount) {
         if (isAmountInADM) {
-          amountInSat = validator.AdmToSats(amount)
+          amountInSat = validator.AdmToSats(amount);
         } else {
-          amountInSat = amount
+          amountInSat = amount;
         }
-        if (!validator.validateIntegerAmount(amountInSat))
-          return validator.badParameter('amount', amount)
+        if (!validator.validateIntegerAmount(amountInSat)) {
+          return validator.badParameter('amount', amount);
+        }
         data.amount = amountInSat;
       }
-
     } catch (e) {
-
-      return validator.badParameter('#exception_catched#', e)
-
+      return validator.badParameter('#exception_catched#', e);
     }
 
-    if (!publicKey)
+    if (!publicKey) {
       publicKey = await getPublicKey(nodeManager)(address);
+    }
 
-    if (!publicKey)
+    if (!publicKey) {
       return new Promise((resolve, reject) => {
         resolve({
           success: false,
-          errorMessage: `Unable to get public key for ${addressOrPublicKey}. It is necessary for sending an encrypted message. Account may be uninitialized (https://medium.com/adamant-im/chats-and-uninitialized-accounts-in-adamant-5035438e2fcd), or network error`
-        })
-      })
+          errorMessage: `Unable to get public key for ${addressOrPublicKey}. It is necessary for sending an encrypted message. Account may be uninitialized (https://medium.com/adamant-im/chats-and-uninitialized-accounts-in-adamant-5035438e2fcd), or network error`,
+        });
+      });
+    }
 
     try {
-
       const encryptedMessage = encryptor.encodeMessage(message, keyPair, publicKey);
       data.message = encryptedMessage.message;
       data.own_message = encryptedMessage.own_message;
 
-      let transaction = transactionFormer.createTransaction(constants.transactionTypes.CHAT_MESSAGE, data);
+      const transaction = transactionFormer.createTransaction(constants.transactionTypes.CHAT_MESSAGE, data);
 
-      let url = nodeManager.node() + '/api/transactions/process';
-      return axios.post(url, { transaction })
-        .then(function (response) {
-          return validator.formatRequestResults(response, true)
-        })
-        .catch(function (error) {
-          let logMessage = `[ADAMANT js-api] Send message request: Request to ${url} failed with ${error.response ? error.response.status : undefined} status code, ${error.toString()}${error.response && error.response.data ? '. Message: ' + error.response.data.toString().trim() : ''}. Try ${retryNo+1} of ${maxRetries+1}.`;
-          if (retryNo < maxRetries) {
-            logger.log(`${logMessage} Retrying…`);
-            return nodeManager.changeNodes()
-              .then(function () {
-                return module.exports(nodeManager)(passPhrase, addressOrPublicKey, message, message_type, tokensAmount, maxRetries, ++retryNo)
-              })
-          }
-          logger.warn(`${logMessage} No more attempts, returning error.`);
-          return validator.formatRequestResults(error, false)
-        })
-
+      const url = nodeManager.node() + '/api/transactions/process';
+      return axios.post(url, {transaction})
+          .then(function(response) {
+            return validator.formatRequestResults(response, true);
+          })
+          .catch(function(error) {
+            const logMessage = `[ADAMANT js-api] Send message request: Request to ${url} failed with ${error.response ? error.response.status : undefined} status code, ${error.toString()}${error.response && error.response.data ? '. Message: ' + error.response.data.toString().trim() : ''}. Try ${retryNo+1} of ${maxRetries+1}.`;
+            if (retryNo < maxRetries) {
+              logger.log(`${logMessage} Retrying…`);
+              return nodeManager.changeNodes()
+                  .then(function() {
+                    return module.exports(nodeManager)(passPhrase, addressOrPublicKey, message, message_type, tokensAmount, maxRetries, ++retryNo);
+                  });
+            }
+            logger.warn(`${logMessage} No more attempts, returning error.`);
+            return validator.formatRequestResults(error, false);
+          });
     } catch (e) {
-
       return new Promise((resolve, reject) => {
         resolve({
           success: false,
-          errorMessage: `Unable to encode message '${message}' with public key ${publicKey}, or unable to build a transaction. Exception: ` + e
-        })
-      })
-
+          errorMessage: `Unable to encode message '${message}' with public key ${publicKey}, or unable to build a transaction. Exception: ` + e,
+        });
+      });
     }
-
-  } // sendMessage()
-
+  }; // sendMessage()
 };

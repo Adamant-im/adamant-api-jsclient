@@ -1,8 +1,8 @@
-var Mnemonic = require('bitcore-mnemonic');
+const Mnemonic = require('bitcore-mnemonic');
 const hdkey = require('hdkey');
-const HD_KEY_PATH = "m/44'/60'/3'/1/0";
-const { bufferToHex, privateToAddress } = require('ethereumjs-util');
-const eth = { }
+const HD_KEY_PATH = 'm/44\'/60\'/3\'/1/0';
+const {bufferToHex, privateToAddress} = require('ethereumjs-util');
+const eth = { };
 
 /**
  * Generates a ETH account from the passphrase specified.
@@ -10,14 +10,14 @@ const eth = { }
  * @returns {{address: String, privateKey: Buffer}}
  */
 
-eth.keys = passphrase => {
+eth.keys = (passphrase) => {
   const mnemonic = new Mnemonic(passphrase, Mnemonic.Words.ENGLISH);
   const seed = mnemonic.toSeed();
   const privateKey = hdkey.fromMasterSeed(seed).derive(HD_KEY_PATH)._privateKey;
 
   return {
     address: bufferToHex(privateToAddress(privateKey)),
-    privateKey: bufferToHex(privateKey)
+    privateKey: bufferToHex(privateKey),
   };
 };
 

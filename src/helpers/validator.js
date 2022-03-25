@@ -1,55 +1,59 @@
 const constants = require('./constants');
-const BigNumber = require('bignumber.js')
+const BigNumber = require('bignumber.js');
 
 module.exports = {
 
   getRandomIntInclusive(min, max) {
     min = Math.ceil(min);
     max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min + 1) + min); //The maximum is inclusive and the minimum is inclusive
+    return Math.floor(Math.random() * (max - min + 1) + min); // The maximum is inclusive and the minimum is inclusive
   },
 
   isNumeric(str) {
-    if (typeof str !== "string") return false
-    return !isNaN(str) && !isNaN(parseFloat(str))
+    if (typeof str !== 'string') return false;
+    return !isNaN(str) && !isNaN(parseFloat(str));
   },
 
   tryParseJSON(jsonString) {
     try {
-      let o = JSON.parse(jsonString);
-      if (o && typeof o === "object") {
+      const o = JSON.parse(jsonString);
+      if (o && typeof o === 'object') {
         return o;
       }
     } catch (e) { }
-    return false
+    return false;
   },
 
   validatePassPhrase(passPhrase) {
-    if (!passPhrase || typeof(passPhrase) !== 'string' || passPhrase.length < 30)
-      return false
-    else
-      return true
+    if (!passPhrase || typeof(passPhrase) !== 'string' || passPhrase.length < 30) {
+      return false;
+    } else {
+      return true;
+    }
   },
 
   validateEndpoint(endpoint) {
-    if (!endpoint || typeof(endpoint) !== 'string')
-      return false
-    else
-      return true
+    if (!endpoint || typeof(endpoint) !== 'string') {
+      return false;
+    } else {
+      return true;
+    }
   },
 
   validateAdmAddress(address) {
-    if (!address || typeof(address) !== 'string' || !constants.RE_ADM_ADDRESS.test(address))
-      return false
-    else
-      return true
+    if (!address || typeof(address) !== 'string' || !constants.RE_ADM_ADDRESS.test(address)) {
+      return false;
+    } else {
+      return true;
+    }
   },
 
   validateAdmPublicKey(publicKey) {
-    if (!publicKey || typeof(publicKey) !== 'string' || publicKey.length !== 64 || !constants.RE_HEX.test(publicKey))
-      return false
-    else
-      return true
+    if (!publicKey || typeof(publicKey) !== 'string' || publicKey.length !== 64 || !constants.RE_HEX.test(publicKey)) {
+      return false;
+    } else {
+      return true;
+    }
   },
 
   validateAdmVoteForPublicKey(publicKey) {
@@ -65,61 +69,66 @@ module.exports = {
   },
 
   validateIntegerAmount(amount) {
-    if (!amount || typeof(amount) !== 'number' || isNaN(amount) || !Number.isSafeInteger(amount))
-      return false
-    else
-      return true
+    if (!amount || typeof(amount) !== 'number' || isNaN(amount) || !Number.isSafeInteger(amount)) {
+      return false;
+    } else {
+      return true;
+    }
   },
 
   validateStringAmount(amount) {
-    if (!amount || !this.isNumeric(amount))
-      return false
-    else
-      return true
+    if (!amount || !this.isNumeric(amount)) {
+      return false;
+    } else {
+      return true;
+    }
   },
 
   validateMessageType(message_type) {
-    if (!message_type || typeof(message_type) !== 'number' || ![1,2,3].includes(message_type))
-      return false
-    else
-      return true
+    if (!message_type || typeof(message_type) !== 'number' || ![1, 2, 3].includes(message_type)) {
+      return false;
+    } else {
+      return true;
+    }
   },
 
   validateMessage(message, message_type) {
-    if (typeof(message) !== 'string')
+    if (typeof(message) !== 'string') {
       return {
         result: false,
-        error: `Message must be a string`
-      }
-    else {
+        error: `Message must be a string`,
+      };
+    } else {
       if (message_type === 2 || message_type === 3) {
+        const json = this.tryParseJSON(message);
 
-        let json = this.tryParseJSON(message)
-
-        if (!json)
+        if (!json) {
           return {
             result: false,
-            error: `For rich and signal messages, 'message' must be a JSON string`
-          }
+            error: `For rich and signal messages, 'message' must be a JSON string`,
+          };
+        }
 
-        if (json.type && json.type.toLowerCase().includes('_transaction'))
-          if (json.type.toLowerCase() !== json.type)
+        if (json.type && json.type.toLowerCase().includes('_transaction')) {
+          if (json.type.toLowerCase() !== json.type) {
             return {
               result: false,
-              error: `Value '<coin>_transaction' must be in lower case`
-            }
+              error: `Value '<coin>_transaction' must be in lower case`,
+            };
+          }
+        }
 
-        if (typeof json.amount !== 'string' || !this.validateStringAmount(json.amount))
+        if (typeof json.amount !== 'string' || !this.validateStringAmount(json.amount)) {
           return {
             result: false,
-            error: `Field 'amount' must be a string, representing a number`
-          }
-
+            error: `Field 'amount' must be a string, representing a number`,
+          };
+        }
       }
     }
     return {
-      result: true
-    }
+      result: true,
+    };
   },
 
   validateDelegateName(name) {
@@ -131,20 +140,20 @@ module.exports = {
   },
 
   AdmToSats(amount) {
-    return BigNumber(String(amount)).multipliedBy(constants.SAT).integerValue().toNumber()
+    return BigNumber(String(amount)).multipliedBy(constants.SAT).integerValue().toNumber();
   },
 
   badParameter(name, value, customMessage) {
     return new Promise((resolve, reject) => {
       resolve({
         success: false,
-        errorMessage: `Wrong '${name}' parameter${value ? ': ' + value : ''}${customMessage ? '. Error: ' + customMessage : ''}`
-      })
-    })
+        errorMessage: `Wrong '${name}' parameter${value ? ': ' + value : ''}${customMessage ? '. Error: ' + customMessage : ''}`,
+      });
+    });
   },
 
   formatRequestResults(response, isRequestSuccess) {
-    let results = {};
+    const results = {};
     results.details = {};
 
     if (isRequestSuccess) {
@@ -153,8 +162,9 @@ module.exports = {
       results.details.status = response.status;
       results.details.statusText = response.statusText;
       results.details.response = response;
-      if (!results.success && results.data)
-        results.errorMessage = `Node's reply: ${results.data.error}`
+      if (!results.success && results.data) {
+        results.errorMessage = `Node's reply: ${results.data.error}`;
+      }
     } else {
       results.success = false;
       results.data = undefined;
@@ -167,7 +177,6 @@ module.exports = {
     }
 
     return results;
-
-  }
+  },
 
 };

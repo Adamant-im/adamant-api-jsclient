@@ -1,39 +1,39 @@
-var sodium = require('sodium-browserify-tweetnacl');
-var crypto = require('crypto');
-var Mnemonic = require('bitcore-mnemonic');
-var bignum = require('./bignumber.js');
+const sodium = require('sodium-browserify-tweetnacl');
+const crypto = require('crypto');
+const Mnemonic = require('bitcore-mnemonic');
+const bignum = require('./bignumber.js');
 
 module.exports = {
 
-  createNewPassPhrase: function () {
+  createNewPassPhrase: function() {
     return new Mnemonic(Mnemonic.Words.ENGLISH).toString();
   },
 
-  makeKeypairFromHash: function (hash) {
-    var keypair = sodium.crypto_sign_seed_keypair(hash);
+  makeKeypairFromHash: function(hash) {
+    const keypair = sodium.crypto_sign_seed_keypair(hash);
     return {
       publicKey: keypair.publicKey,
-      privateKey: keypair.secretKey
+      privateKey: keypair.secretKey,
     };
   },
 
-  createHashFromPassPhrase: function (passPhrase) {
-    var secretMnemonic = new Mnemonic(passPhrase, Mnemonic.Words.ENGLISH);
+  createHashFromPassPhrase: function(passPhrase) {
+    const secretMnemonic = new Mnemonic(passPhrase, Mnemonic.Words.ENGLISH);
     return crypto.createHash('sha256').update(secretMnemonic.toSeed().toString('hex'), 'hex').digest();
   },
 
-  createKeypairFromPassPhrase: function (passPhrase) {
-    var hash = this.createHashFromPassPhrase(passPhrase);
+  createKeypairFromPassPhrase: function(passPhrase) {
+    const hash = this.createHashFromPassPhrase(passPhrase);
     return this.makeKeypairFromHash(hash);
   },
 
-  createAddressFromPublicKey: function (publicKey) {
-    var publicKeyHash = crypto.createHash('sha256').update(publicKey, 'hex').digest();
-    var temp = Buffer.alloc(8);
-    for (var i = 0; i < 8; i++) {
+  createAddressFromPublicKey: function(publicKey) {
+    const publicKeyHash = crypto.createHash('sha256').update(publicKey, 'hex').digest();
+    const temp = Buffer.alloc(8);
+    for (let i = 0; i < 8; i++) {
       temp[i] = publicKeyHash[7 - i];
     }
     return 'U' + bignum.fromBuffer(temp).toString();
-  }
+  },
 
-}
+};

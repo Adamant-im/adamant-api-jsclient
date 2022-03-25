@@ -15,10 +15,9 @@ module.exports = (nodeManager) => {
     * It must be unique in ADAMANT blockchain. It should not be similar to ADAMANT address.
     * Delegate name can only contain alphanumeric characters and symbols !@$&_.
     * @param {number} maxRetries How much times to retry request
-    * @returns {Promise} Request results
+    * @return {Promise} Request results
   */
   return async (passPhrase, username, maxRetries = DEFAULT_NEW_DELEGATE_RETRIES, retryNo = 0) => {
-
     let transaction;
 
     try {
@@ -41,7 +40,6 @@ module.exports = (nodeManager) => {
       };
 
       transaction = transactionFormer.createTransaction(type, data);
-
     } catch (e) {
       return validator.badParameter('#exception_catched#', e);
     }
@@ -59,14 +57,14 @@ module.exports = (nodeManager) => {
         logger.log(`${logMessage} Retrying…`);
 
         return nodeManager.changeNodes()
-          .then(() => (
-            module.exports(nodeManager)(passPhrase, addressOrPublicKey, amount, isAmountInADM, maxRetries, ++retryNo)
-          ));
+            .then(() => (
+              module.exports(nodeManager)(passPhrase, addressOrPublicKey, amount, isAmountInADM, maxRetries, ++retryNo)
+            ));
       }
 
       logger.warn(`${logMessage} No more attempts, returning error.`);
 
       return validator.formatRequestResults(error, false);
     }
-  }
+  };
 };

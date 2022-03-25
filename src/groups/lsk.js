@@ -1,5 +1,5 @@
-const cryptography = require('@liskhq/lisk-cryptography')
-const sodium = require('sodium-browserify-tweetnacl')
+const cryptography = require('@liskhq/lisk-cryptography');
+const sodium = require('sodium-browserify-tweetnacl');
 const pbkdf2 = require('pbkdf2');
 
 const coinNetworks = require('./coinNetworks');
@@ -11,8 +11,8 @@ const LiskHashSettings = {
   SALT: 'adm',
   ITERATIONS: 2048,
   KEYLEN: 32,
-  DIGEST: 'sha256'
-}
+  DIGEST: 'sha256',
+};
 
 /**
  * Generates a LSK account from the passphrase specified.
@@ -20,7 +20,7 @@ const LiskHashSettings = {
  * @returns {object} network info, keyPair, address, addressHexBinary, addressHex, privateKey
  */
 
-lsk.keys = passphrase => {
+lsk.keys = (passphrase) => {
   const network = coinNetworks.LSK;
   const liskSeed = pbkdf2.pbkdf2Sync(passphrase, LiskHashSettings.SALT, LiskHashSettings.ITERATIONS, LiskHashSettings.KEYLEN, LiskHashSettings.DIGEST);
   const keyPair = sodium.crypto_sign_seed_keypair(liskSeed);
@@ -35,8 +35,8 @@ lsk.keys = passphrase => {
     address,
     addressHexBinary,
     addressHex,
-    privateKey
-  }
+    privateKey,
+  };
 };
 
 module.exports = lsk;
