@@ -26,28 +26,28 @@ module.exports = {
 
   validatePassPhrase(passPhrase) {
     if (!passPhrase || typeof(passPhrase) !== 'string' || passPhrase.length < 30)
-		  return false
+      return false
     else
       return true
   },
 
   validateEndpoint(endpoint) {
     if (!endpoint || typeof(endpoint) !== 'string')
-		  return false
+      return false
     else
       return true
   },
 
   validateAdmAddress(address) {
     if (!address || typeof(address) !== 'string' || !constants.RE_ADM_ADDRESS.test(address))
-		  return false
+      return false
     else
       return true
   },
 
   validateAdmPublicKey(publicKey) {
     if (!publicKey || typeof(publicKey) !== 'string' || publicKey.length !== 64 || !constants.RE_HEX.test(publicKey))
-		  return false
+      return false
     else
       return true
   },
@@ -66,28 +66,28 @@ module.exports = {
 
   validateIntegerAmount(amount) {
     if (!amount || typeof(amount) !== 'number' || isNaN(amount) || !Number.isSafeInteger(amount))
-		  return false
+      return false
     else
       return true
   },
 
   validateStringAmount(amount) {
     if (!amount || !this.isNumeric(amount))
-		  return false
+      return false
     else
       return true
   },
 
   validateMessageType(message_type) {
     if (!message_type || typeof(message_type) !== 'number' || ![1,2,3].includes(message_type))
-		  return false
+      return false
     else
       return true
   },
 
   validateMessage(message, message_type) {
     if (typeof(message) !== 'string')
-		  return {
+      return {
         result: false,
         error: `Message must be a string`
       }

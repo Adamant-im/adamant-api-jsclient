@@ -11,14 +11,14 @@ const eth = { }
  */
 
 eth.keys = passphrase => {
-	const mnemonic = new Mnemonic(passphrase, Mnemonic.Words.ENGLISH);
-	const seed = mnemonic.toSeed();
-	const privateKey = hdkey.fromMasterSeed(seed).derive(HD_KEY_PATH)._privateKey;
+  const mnemonic = new Mnemonic(passphrase, Mnemonic.Words.ENGLISH);
+  const seed = mnemonic.toSeed();
+  const privateKey = hdkey.fromMasterSeed(seed).derive(HD_KEY_PATH)._privateKey;
 
-	return {
-		address: bufferToHex(privateToAddress(privateKey)),
-		privateKey: bufferToHex(privateKey)
-	};
+  return {
+    address: bufferToHex(privateToAddress(privateKey)),
+    privateKey: bufferToHex(privateKey)
+  };
 };
 
 module.exports = eth;

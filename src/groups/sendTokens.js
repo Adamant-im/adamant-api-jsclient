@@ -9,7 +9,7 @@ const DEFAULT_SEND_TOKENS_RETRIES = 4; // How much re-tries for send tokens requ
 
 module.exports = (nodeManager) => {
   /**
-		* Creates Token Transfer transaction, signs it, and broadcasts to ADAMANT network
+    * Creates Token Transfer transaction, signs it, and broadcasts to ADAMANT network
     * See https://github.com/Adamant-im/adamant/wiki/Transaction-Types#type-0-token-transfer-transaction
     * @param {string} passPhrase Senders's passPhrase. Sender's address will be derived from it.
     * @param {string} addressOrPublicKey Recipient's ADAMANT address or public key.
@@ -18,8 +18,8 @@ module.exports = (nodeManager) => {
     * @param {boolean} isAmountInADM If amount specified in ADM, or in sats (10^-8 ADM)
     * @param {number} maxRetries How much times to retry request
     * @returns {Promise} Request results
-  	*/
-	return (passPhrase, addressOrPublicKey, amount, isAmountInADM = true, maxRetries = DEFAULT_SEND_TOKENS_RETRIES, retryNo = 0) => {
+  */
+  return (passPhrase, addressOrPublicKey, amount, isAmountInADM = true, maxRetries = DEFAULT_SEND_TOKENS_RETRIES, retryNo = 0) => {
 
     let transaction;
     let address, publicKey;
@@ -27,7 +27,7 @@ module.exports = (nodeManager) => {
     try {
 
       if (!validator.validatePassPhrase(passPhrase))
-			  return validator.badParameter('passPhrase')
+        return validator.badParameter('passPhrase')
 
       const keyPair = keys.createKeypairFromPassPhrase(passPhrase);
 
@@ -76,15 +76,15 @@ module.exports = (nodeManager) => {
         return validator.formatRequestResults(response, true)
       })
       .catch(function (error) {
-				let logMessage = `[ADAMANT js-api] Send tokens request: Request to ${url} failed with ${error.response ? error.response.status : undefined} status code, ${error.toString()}${error.response && error.response.data ? '. Message: ' + error.response.data.toString().trim() : ''}. Try ${retryNo+1} of ${maxRetries+1}.`;
-				if (retryNo < maxRetries) {
-					logger.log(`${logMessage} Retrying…`);
-					return nodeManager.changeNodes()
-						.then(function () {
-							return module.exports(nodeManager)(passPhrase, addressOrPublicKey, amount, isAmountInADM, maxRetries, ++retryNo)
-						})
-				}
-				logger.warn(`${logMessage} No more attempts, returning error.`);
+        let logMessage = `[ADAMANT js-api] Send tokens request: Request to ${url} failed with ${error.response ? error.response.status : undefined} status code, ${error.toString()}${error.response && error.response.data ? '. Message: ' + error.response.data.toString().trim() : ''}. Try ${retryNo + 1} of ${maxRetries + 1}.`;
+        if (retryNo < maxRetries) {
+          logger.log(`${logMessage} Retrying…`);
+          return nodeManager.changeNodes()
+            .then(function () {
+              return module.exports(nodeManager)(passPhrase, addressOrPublicKey, amount, isAmountInADM, maxRetries, ++retryNo)
+            })
+        }
+        logger.warn(`${logMessage} No more attempts, returning error.`);
         return validator.formatRequestResults(error, false)
       })
 

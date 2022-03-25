@@ -19,27 +19,27 @@ const socket = require('./helpers/wsClient');
 const logger = require('./helpers/logger');
 
 module.exports = (params, log) => {
-	log = log || console;
-	logger.initLogger(params.logLevel, log);
-	const nodeManager = healthCheck(params.node, params.checkHealthAtStartup);
+  log = log || console;
+  logger.initLogger(params.logLevel, log);
+  const nodeManager = healthCheck(params.node, params.checkHealthAtStartup);
 
-	return {
-		get: get(nodeManager),
-		getPublicKey: getPublicKey(nodeManager),
-		sendTokens: sendTokens(nodeManager),
-		sendMessage: sendMessage(nodeManager),
-		newDelegate: newDelegate(nodeManager),
-		voteForDelegate: voteForDelegate(nodeManager),
-		decodeMsg,
-		eth,
-		dash,
-		btc,
-		doge,
-		lsk,
-		transactionFormer,
-		keys,
-		encryptor,
-		socket,
-		constants
-	};
+  return {
+    get: get(nodeManager),
+    getPublicKey: getPublicKey(nodeManager),
+    sendTokens: sendTokens(nodeManager),
+    sendMessage: sendMessage(nodeManager),
+    newDelegate: newDelegate(nodeManager),
+    voteForDelegate: voteForDelegate(nodeManager),
+    decodeMsg,
+    eth,
+    dash,
+    btc,
+    doge,
+    lsk,
+    transactionFormer,
+    keys,
+    encryptor,
+    socket,
+    constants
+  };
 };

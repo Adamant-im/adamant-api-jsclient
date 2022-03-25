@@ -12,21 +12,21 @@ const publicKeysCache = { };
 
 module.exports = (nodeManager) => {
   /**
-		* Creates votes for delegate transaction, signs it, and broadcasts to ADAMANT network
+    * Creates votes for delegate transaction, signs it, and broadcasts to ADAMANT network
     * See https://github.com/Adamant-im/adamant/wiki/Transaction-Types#type-3-vote-for-delegate-transaction
     * @param {string} passPhrase Senders's passPhrase. Sender's address will be derived from it.
     * @param {string[]} votes PublicKeys, ADM addresses and delegate names for upvote and downvote.
     * It would be more efficient to pass publicKey, otherwise the api will make additional queries
     * @param {number} maxRetries How much times to retry request
     * @returns {Promise} Request results
-  	*/
-	return async (passPhrase, votes, maxRetries = DEFAULT_VOTE_FOR_DELEGATE_RETRIES, retryNo = 0) => {
+  */
+  return async (passPhrase, votes, maxRetries = DEFAULT_VOTE_FOR_DELEGATE_RETRIES, retryNo = 0) => {
 
     let transaction;
 
     try {
       if (!validator.validatePassPhrase(passPhrase)) {
-			  return validator.badParameter('passPhrase');
+        return validator.badParameter('passPhrase');
       }
 
       const keyPair = keys.createKeypairFromPassPhrase(passPhrase);

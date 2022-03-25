@@ -9,27 +9,27 @@ const DEFAULT_NEW_DELEGATE_RETRIES = 4; // How much re-tries for send tokens req
 
 module.exports = (nodeManager) => {
   /**
-		* Registers user account as delegate
+    * Registers user account as delegate
     * @param {string} passPhrase Senders's passPhrase. Sender's address will be derived from it.
     * @param {string} username Delegate name you want to register with.
     * It must be unique in ADAMANT blockchain. It should not be similar to ADAMANT address.
     * Delegate name can only contain alphanumeric characters and symbols !@$&_.
     * @param {number} maxRetries How much times to retry request
     * @returns {Promise} Request results
-  	*/
-	return async (passPhrase, username, maxRetries = DEFAULT_NEW_DELEGATE_RETRIES, retryNo = 0) => {
+  */
+  return async (passPhrase, username, maxRetries = DEFAULT_NEW_DELEGATE_RETRIES, retryNo = 0) => {
 
     let transaction;
 
     try {
       if (!validator.validatePassPhrase(passPhrase)) {
-			  return validator.badParameter('passPhrase');
+        return validator.badParameter('passPhrase');
       }
 
       const keyPair = keys.createKeypairFromPassPhrase(passPhrase);
 
       if (!validator.validateDelegateName(username)) {
-			  return validator.badParameter('username');
+        return validator.badParameter('username');
       }
 
       const type = constants.transactionTypes.DELEGATE;

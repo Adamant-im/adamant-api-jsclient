@@ -11,7 +11,7 @@ const DEFAULT_SEND_MESSAGE_RETRIES = 4; // How much re-tries for send message re
 
 module.exports = (nodeManager) => {
   /**
-		* Encrypts a message, creates Message transaction, signs it, and broadcasts to ADAMANT network. Supports Basic, Rich and Signal Message Types.
+    * Encrypts a message, creates Message transaction, signs it, and broadcasts to ADAMANT network. Supports Basic, Rich and Signal Message Types.
     * See https://github.com/Adamant-im/adamant/wiki/Message-Types
     * @param {string} passPhrase Senders's passPhrase. Sender's address will be derived from it.
     * @param {string} addressOrPublicKey Recipient's ADAMANT address or public key.
@@ -24,8 +24,8 @@ module.exports = (nodeManager) => {
     * @param {boolean} isAmountInADM If amount specified in ADM, or in sats (10^-8 ADM)
     * @param {number} maxRetries How much times to retry request
     * @returns {Promise} Request results
-  	*/
-	return async (passPhrase, addressOrPublicKey, message, message_type = 'basic', amount, isAmountInADM = true, maxRetries = DEFAULT_SEND_MESSAGE_RETRIES, retryNo = 0) => {
+  */
+  return async (passPhrase, addressOrPublicKey, message, message_type = 'basic', amount, isAmountInADM = true, maxRetries = DEFAULT_SEND_MESSAGE_RETRIES, retryNo = 0) => {
 
     let keyPair, data;
     let address, publicKey;
@@ -33,7 +33,7 @@ module.exports = (nodeManager) => {
     try {
 
       if (!validator.validatePassPhrase(passPhrase))
-			  return validator.badParameter('passPhrase')
+        return validator.badParameter('passPhrase')
 
       keyPair = keys.createKeypairFromPassPhrase(passPhrase);
 
