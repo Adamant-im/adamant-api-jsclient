@@ -7,7 +7,7 @@ const dnsPromises = require('dns').promises;
 const CHECK_NODES_INTERVAL = 60 * 5 * 1000; // Update active nodes every 5 minutes
 const HEIGHT_EPSILON = 5; // Used to group nodes by height and choose synced
 
-module.exports = (nodes) => {
+module.exports = (nodes, checkHealthAtStartup = true) => {
 
 	isCheckingNodes = false;
 	nodesList = nodes;
@@ -16,29 +16,32 @@ module.exports = (nodes) => {
 
 	/**
 		* Updates active nodes. If nodes are already updating, returns Promise of previous call
-    * @returns {Promise} Call changeNodes().then to do something when update complete
-  	*/
-	function changeNodes (isPlannedUpdate = false) {
+		* @returns {Promise} Call changeNodes().then to do something when update complete
+		*/
+	function changeNodes(isPlannedUpdate = false) {
 		if (!isCheckingNodes) {
 			changeNodesPromise = new Promise(async (resolve) => {
 				if (!isPlannedUpdate) {
 					logger.warn('[ADAMANT js-api] Health check: Forcing to update active nodes…');
 				}
-				await checkNodes(isPlannedUpdate? false : true)
+				await checkNodes(isPlannedUpdate ? false : true)
 				resolve(true)
 			});
 		}
 		return changeNodesPromise
 	}
 
-	changeNodes(true)
-	setInterval(() => { changeNodes(true)	}, CHECK_NODES_INTERVAL);
+
+	if (checkHealthAtStartup) {
+		changeNodes(true)
+		setInterval(() => { changeNodes(true) }, CHECK_NODES_INTERVAL);
+	}
 
 	return {
 
 		/**
-     * @returns {string} Current active node, f. e. http://88.198.156.44:36666
-     */
+		 * @returns {string} Current active node, f. e. http://88.198.156.44:36666
+		 */
 		node: () => {
 			return activeNode;
 		},
@@ -145,7 +148,7 @@ async function checkNodes(forceChangeActiveNode) {
 				this.liveNodes.sort((a, b) => a.ping - b.ping);
 
 				if (forceChangeActiveNode && biggestGroup.length > 1 && this.activeNode === biggestGroup[0].node)
-					this.activeNode = biggestGroup[validator.getRandomIntInclusive(1, biggestGroup.length-1)].node // Use random node from which are synced
+					this.activeNode = biggestGroup[validator.getRandomIntInclusive(1, biggestGroup.length - 1)].node // Use random node from which are synced
 				else
 					this.activeNode = biggestGroup[0].node; // Use node with minimum ping among which are synced
 
