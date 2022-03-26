@@ -1,127 +1,190 @@
 const sodium = require('sodium-browserify-tweetnacl');
 const crypto = require('crypto');
-const bignum = require('./bignumber.js');
-const keys = require('./keys.js');
 const ByteBuffer = require('bytebuffer');
+
+const BigNum = require('./bignumber.js');
+const keys = require('./keys.js');
 const constants = require('./constants.js');
 const time = require('./time.js');
 
 module.exports = {
+  createTransaction(type, data) {
+    const {
+      SEND,
+      VOTE,
+      DELEGATE,
+      CHAT_MESSAGE,
+      STATE,
+    } = constants.transactionTypes;
 
-  createTransaction: function(type, data) {
-    switch (type) {
-      case constants.transactionTypes.SEND:
-        return this.createSendTransaction(data);
-      case constants.transactionTypes.VOTE:
-        return this.createVoteTransaction(data);
-      case constants.transactionTypes.DELEGATE:
-        return this.createDelegateTransaction(data);
-      case constants.transactionTypes.CHAT_MESSAGE:
-        return this.createChatTransaction(data);
-      case constants.transactionTypes.STATE:
-        return this.createStateTransaction(data);
-    }
-    return {};
+    const actions = {
+      [SEND]: () => this.createSendTransaction(data),
+      [VOTE]: () => this.createVoteTransaction(data),
+      [DELEGATE]: () => this.createDelegateTransaction(data),
+      [CHAT_MESSAGE]: () => this.createChatTransaction(data),
+      [STATE]: () => this.createStateTransaction(data),
+    };
+
+    const action = actions[type];
+
+    return action ? action() : ({});
   },
+  createBasicTransaction(data) {
+    const transaction = {
+      type: data.transactionType,
+      timestamp: time.getTime(),
+      amount: 0,
+      senderPublicKey: data.keyPair.publicKey.toString('hex'),
+      senderId: keys.createAddressFromPublicKey(data.keyPair.publicKey),
+      asset: {},
+    };
 
-  createBasicTransaction: function(data) {
-    const transaction = {type: data.transactionType, amount: 0, timestamp: time.getTime(), asset: {}, senderPublicKey: data.keyPair.publicKey.toString('hex'), senderId: keys.createAddressFromPublicKey(data.keyPair.publicKey)};
     return transaction;
   },
+  createSendTransaction(data) {
+    const details = {
+      ...data,
+      transactionType: constants.transactionTypes.SEND,
+    };
 
-  createSendTransaction: function(data) {
-    data.transactionType = constants.transactionTypes.SEND;
-    const transaction = this.createBasicTransaction(data);
-    transaction.asset = {};
-    transaction.recipientId = data.recipientId;
-    transaction.amount = data.amount;
-    transaction.signature = this.transactionSign(transaction, data.keyPair);
+    const transaction = {
+      ...this.createBasicTransaction(details),
+      recipientId: details.recipientId,
+      amount: details.amount,
+      asset: {},
+    };
+
+    transaction.signature = this.transactionSign(transaction, details.keyPair);
+
     return transaction;
   },
+  createStateTransaction(data) {
+    const details = {
+      ...data,
+      transactionType: constants.transactionTypes.STATE,
+    };
 
-  createStateTransaction: function(data) {
-    data.transactionType = constants.transactionTypes.STATE;
-    const transaction = this.createBasicTransaction(data);
-    transaction.asset = {
-      'state': {
-        key: data.key,
-        value: data.value,
-        type: 0,
+    const transaction = {
+      ...this.createBasicTransaction(details),
+      recipientId: null,
+      amount: 0,
+      asset: {
+        state: {
+          key: details.key,
+          value: details.value,
+          type: 0,
+        },
       },
     };
-    transaction.recipientId = null;
-    transaction.amount = 0;
-    transaction.signature = this.transactionSign(transaction, data.keyPair);
+
+    transaction.signature = this.transactionSign(transaction, details.keyPair);
+
     return transaction;
   },
+  createChatTransaction(data) {
+    const details = {
+      ...data,
+      transactionType: constants.transactionTypes.CHAT_MESSAGE,
+    };
 
-  createChatTransaction: function(data) {
-    data.transactionType = constants.transactionTypes.CHAT_MESSAGE;
-    const transaction = this.createBasicTransaction(data);
-    transaction.asset = {
-      'chat': {
-        message: data.message,
-        own_message: data.own_message,
-        type: data.message_type,
+    const transaction = {
+      ...this.createBasicTransaction(details),
+      recipientId: details.recipientId,
+      amount: details.amount || 0,
+      asset: {
+        chat: {
+          message: data.message,
+          own_message: data.own_message,
+          type: data.message_type,
+        },
       },
     };
-    transaction.recipientId = data.recipientId;
-    transaction.amount = data.amount || 0;
-    transaction.signature = this.transactionSign(transaction, data.keyPair);
+
+    transaction.signature = this.transactionSign(transaction, details.keyPair);
+
     return transaction;
   },
+  createDelegateTransaction(data) {
+    const details = {
+      ...data,
+      transactionType: constants.transactionTypes.DELEGATE,
+    };
 
-  createDelegateTransaction: function(data) {
-    data.transactionType = constants.transactionTypes.DELEGATE;
-    const transaction = this.createBasicTransaction(data);
-    transaction.asset = {'delegate': {'username': data.username, publicKey: data.keyPair.publicKey.toString('hex')}};
-    transaction.recipientId = null;
-    transaction.signature = this.transactionSign(transaction, data.keyPair);
+    const transaction = {
+      ...this.createBasicTransaction(details),
+      recipientId: null,
+      asset: {
+        delegate: {
+          username: details.username,
+          publicKey: details.keyPair.publicKey.toString('hex'),
+        },
+      },
+    };
+
+    transaction.signature = this.transactionSign(transaction, details.keyPair);
+
     return transaction;
   },
-
   createVoteTransaction: function(data) {
-    data.transactionType = constants.transactionTypes.VOTE;
-    const transaction = this.createBasicTransaction(data);
-    transaction.asset = {'votes': data.votes};
+    const details = {
+      ...data,
+      transactionType: constants.transactionTypes.VOTE,
+    };
+
+    const transaction = {
+      ...this.createBasicTransaction(details),
+      asset: {
+        votes: details.votes,
+      },
+    };
+
     transaction.recipientId = transaction.senderId;
-    transaction.signature = this.transactionSign(transaction, data.keyPair);
+    transaction.signature = this.transactionSign(transaction, details.keyPair);
+
     return transaction;
   },
+  getHash(trs) {
+    const hash = crypto
+        .createHash('sha256')
+        .update(this.getBytes(trs))
+        .digest();
 
-  getHash: function(trs) {
-    return crypto.createHash('sha256').update(this.getBytes(trs)).digest();
+    return hash;
   },
+  getAssetBytes(transaction) {
+    const {type} = transaction;
+    const {
+      SEND,
+      VOTE,
+      DELEGATE,
+      CHAT_MESSAGE,
+      STATE,
+    } = constants.transactionTypes;
 
-  getBytes: function(transaction) {
+    if (type === SEND) {
+      return {assetBytes: null, assetSize: 0};
+    }
+
+    const actions = {
+      [VOTE]: this.voteGetBytes,
+      [DELEGATE]: this.delegatesGetBytes,
+      [CHAT_MESSAGE]: this.chatGetBytes,
+      [STATE]: this.statesGetBytes,
+    };
+
+    const getBytes = actions[type];
+
+    if (getBytes) {
+      const assetBytes = getBytes(transaction);
+
+      return {assetBytes, assetSize: assetBytes.length};
+    }
+  },
+  getBytes(transaction) {
     const skipSignature = false;
     const skipSecondSignature = true;
-    let assetSize = 0;
-    let assetBytes = null;
 
-    switch (transaction.type) {
-      case constants.transactionTypes.SEND:
-        break;
-      case constants.transactionTypes.DELEGATE:
-        assetBytes = this.delegatesGetBytes(transaction);
-        assetSize = assetBytes.length;
-        break;
-      case constants.transactionTypes.STATE:
-        assetBytes = this.statesGetBytes(transaction);
-        assetSize = assetBytes.length;
-        break;
-      case constants.transactionTypes.VOTE:
-        assetBytes = this.voteGetBytes(transaction);
-        assetSize = assetBytes.length;
-        break;
-      case constants.transactionTypes.CHAT_MESSAGE:
-        assetBytes = this.chatGetBytes(transaction);
-        assetSize = assetBytes.length;
-        break;
-      default:
-        // 'Not supported yet'
-        return 0;
-    }
+    const {assetSize, assetBytes} = this.getAssetBytes(transaction);
 
     const bb = new ByteBuffer(1 + 4 + 32 + 8 + 8 + 64 + 64 + assetSize, true);
 
@@ -129,27 +192,29 @@ module.exports = {
     bb.writeInt(transaction.timestamp);
 
     const senderPublicKeyBuffer = Buffer.from(transaction.senderPublicKey, 'hex');
-    for (var i = 0; i < senderPublicKeyBuffer.length; i++) {
-      bb.writeByte(senderPublicKeyBuffer[i]);
+
+    for (const buf of senderPublicKeyBuffer) {
+      bb.writeByte(buf);
     }
 
     if (transaction.requesterPublicKey) {
       const requesterPublicKey = Buffer.from(transaction.requesterPublicKey, 'hex');
 
-      for (var i = 0; i < requesterPublicKey.length; i++) {
-        bb.writeByte(requesterPublicKey[i]);
+      for (const buf of requesterPublicKey) {
+        bb.writeByte(buf);
       }
     }
 
     if (transaction.recipientId) {
-      let recipient = transaction.recipientId.slice(1);
-      recipient = new bignum(recipient).toBuffer({size: 8});
+      const recipient = new BigNum(
+          transaction.recipientId.slice(1),
+      ).toBuffer({size: 8});
 
-      for (i = 0; i < 8; i++) {
+      for (let i = 0; i < 8; i++) {
         bb.writeByte(recipient[i] || 0);
       }
     } else {
-      for (i = 0; i < 8; i++) {
+      for (let i = 0; i < 8; i++) {
         bb.writeByte(0);
       }
     }
@@ -157,117 +222,120 @@ module.exports = {
     bb.writeLong(transaction.amount);
 
     if (assetSize > 0) {
-      for (var i = 0; i < assetSize; i++) {
-        bb.writeByte(assetBytes[i]);
+      for (const assetByte of assetBytes) {
+        bb.writeByte(assetByte);
       }
     }
 
     if (!skipSignature && transaction.signature) {
       const signatureBuffer = Buffer.from(transaction.signature, 'hex');
-      for (var i = 0; i < signatureBuffer.length; i++) {
-        bb.writeByte(signatureBuffer[i]);
+
+      for (const buf of signatureBuffer) {
+        bb.writeByte(buf);
       }
     }
 
     if (!skipSecondSignature && transaction.signSignature) {
       const signSignatureBuffer = Buffer.from(transaction.signSignature, 'hex');
-      for (var i = 0; i < signSignatureBuffer.length; i++) {
-        bb.writeByte(signSignatureBuffer[i]);
+
+      for (const buf of signSignatureBuffer) {
+        bb.writeByte(buf);
       }
     }
 
     bb.flip();
+
     const arrayBuffer = new Uint8Array(bb.toArrayBuffer());
     const buffer = [];
 
-    for (var i = 0; i < arrayBuffer.length; i++) {
+    for (let i = 0; i < arrayBuffer.length; i++) {
       buffer[i] = arrayBuffer[i];
     }
 
     return Buffer.from(buffer);
   },
-
-  transactionSign: function(trs, keypair) {
+  transactionSign(trs, keypair) {
     const hash = this.getHash(trs);
+
     return this.sign(hash, keypair).toString('hex');
   },
+  voteGetBytes(trs) {
+    const {votes} = trs.asset;
 
-  voteGetBytes: function(trs) {
-    let buf;
-    try {
-      buf = trs.asset.votes ? Buffer.from(trs.asset.votes.join(''), 'utf8') : null;
-    } catch (e) {
-      throw e;
-    }
+    const buf = votes ?
+      Buffer.from(votes.join(''), 'utf8') :
+      null;
+
     return buf;
   },
+  delegatesGetBytes(trs) {
+    const {username} = trs.asset.delegate;
 
-  delegatesGetBytes: function(trs) {
-    if (!trs.asset.delegate.username) {
+    const buf = username ?
+      Buffer.from(username, 'utf8') :
+      null;
+
+    return buf;
+  },
+  statesGetBytes(trs) {
+    const {value} = trs.asset.state;
+
+    if (!value) {
       return null;
     }
-    let buf;
 
-    try {
-      buf = Buffer.from(trs.asset.delegate.username, 'utf8');
-    } catch (e) {
-      throw e;
+    let buf = Buffer.from([]);
+
+    const {key, type} = trs.asset.state;
+
+    const stateBuf = Buffer.from(value);
+
+    buf = Buffer.concat([buf, stateBuf]);
+
+    if (key) {
+      const keyBuf = Buffer.from(key);
+      buf = Buffer.concat([buf, keyBuf]);
     }
-    return buf;
-  },
 
-  statesGetBytes: function(trs) {
-    if (!trs.asset.state.value) {
-      return null;
-    }
-    let buf;
+    const bb = new ByteBuffer(4 + 4, true);
 
-    try {
-      buf = Buffer.from([]);
-      const stateBuf = Buffer.from(trs.asset.state.value);
-      buf = Buffer.concat([buf, stateBuf]);
-      if (trs.asset.state.key) {
-        const keyBuf = Buffer.from(trs.asset.state.key);
-        buf = Buffer.concat([buf, keyBuf]);
-      }
+    bb.writeInt(type);
+    bb.flip();
 
-      const bb = new ByteBuffer(4 + 4, true);
-      bb.writeInt(trs.asset.state.type);
-      bb.flip();
-
-      buf = Buffer.concat([buf, bb.toBuffer()]);
-    } catch (e) {
-      throw e;
-    }
+    buf = Buffer.concat([buf, bb.toBuffer()]);
 
     return buf;
   },
-
   chatGetBytes: function(trs) {
-    let buf;
+    let buf = Buffer.from([]);
 
-    try {
-      buf = Buffer.from([]);
-      const messageBuf = Buffer.from(trs.asset.chat.message, 'hex');
-      buf = Buffer.concat([buf, messageBuf]);
+    const {message} = trs.asset.chat.message;
+    const messageBuf = Buffer.from(message, 'hex');
 
-      if (trs.asset.chat.own_message) {
-        const ownMessageBuf = Buffer.from(trs.asset.chat.own_message, 'hex');
-        buf = Buffer.concat([buf, ownMessageBuf]);
-      }
-      const bb = new ByteBuffer(4 + 4, true);
-      bb.writeInt(trs.asset.chat.type);
-      bb.flip();
-      buf = Buffer.concat([buf, Buffer.from(bb.toBuffer())]);
-    } catch (e) {
-      throw e;
+    buf = Buffer.concat([buf, messageBuf]);
+
+    const {own_message: ownMessage} = trs.asset.chat;
+
+    if (ownMessage) {
+      const ownMessageBuf = Buffer.from(ownMessage, 'hex');
+      buf = Buffer.concat([buf, ownMessageBuf]);
     }
+
+    const bb = new ByteBuffer(4 + 4, true);
+
+    bb.writeInt(trs.asset.chat.type);
+    bb.flip();
+
+    buf = Buffer.concat([buf, Buffer.from(bb.toBuffer())]);
 
     return buf;
   },
+  sign(hash, keypair) {
+    const sign = sodium.crypto_sign_detached(
+        hash,
+        Buffer.from(keypair.privateKey, 'hex'),
+    );
 
-  sign: function(hash, keypair) {
-    return sodium.crypto_sign_detached(hash, Buffer.from(keypair.privateKey, 'hex'));
+    return sign;
   },
-
 };
