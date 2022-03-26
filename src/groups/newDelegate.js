@@ -58,7 +58,7 @@ module.exports = (nodeManager) => {
 
         return nodeManager.changeNodes()
             .then(() => (
-              module.exports(nodeManager)(passPhrase, addressOrPublicKey, amount, isAmountInADM, maxRetries, ++retryNo)
+              module.exports(nodeManager)(passPhrase, username, maxRetries, ++retryNo)
             ));
       }
 

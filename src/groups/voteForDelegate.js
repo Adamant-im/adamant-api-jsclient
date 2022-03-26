@@ -18,6 +18,7 @@ module.exports = (nodeManager) => {
     * @param {string[]} votes PublicKeys, ADM addresses and delegate names for upvote and downvote.
     * It would be more efficient to pass publicKey, otherwise the api will make additional queries
     * @param {number} maxRetries How much times to retry request
+    * @param {number} retryNo Number of request already made
     * @return {Promise} Request results
   */
   return async (passPhrase, votes, maxRetries = DEFAULT_VOTE_FOR_DELEGATE_RETRIES, retryNo = 0) => {
@@ -108,7 +109,7 @@ module.exports = (nodeManager) => {
 
         return nodeManager.changeNodes()
             .then(() => (
-              module.exports(nodeManager)(passPhrase, addressOrPublicKey, amount, isAmountInADM, maxRetries, ++retryNo)
+              module.exports(nodeManager)(passPhrase, votes, maxRetries, ++retryNo)
             ));
       }
 

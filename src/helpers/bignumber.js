@@ -54,11 +54,15 @@ BigNumber.fromBuffer = function(buf, opts) {
 */
 BigNumber.prototype.toBuffer = function(opts) {
   if (typeof opts === 'string') {
-    if (opts !== 'mpint') return 'Unsupported Buffer representation';
+    if (opts !== 'mpint') {
+      return 'Unsupported Buffer representation';
+    }
 
     const abs = this.abs();
-    var buf = abs.toBuffer({size: 1, endian: 'big'});
-    var len = buf.length === 1 && buf[0] === 0 ? 0 : buf.length;
+    const buf = abs.toBuffer({size: 1, endian: 'big'});
+
+    let len = buf.length === 1 && buf[0] === 0 ? 0 : buf.length;
+
     if (buf[0] & 0x80) len++;
 
     const ret = Buffer.alloc(4 + len);
@@ -83,7 +87,9 @@ BigNumber.prototype.toBuffer = function(opts) {
     return ret;
   }
 
-  if (!opts) opts = {};
+  if (!opts) {
+    opts = {};
+  }
 
   const endian = {1: 'big', '-1': 'little'}[opts.endian] || opts.endian || 'big';
 
@@ -96,19 +102,17 @@ BigNumber.prototype.toBuffer = function(opts) {
 
   const size = opts.size === 'auto' ? Math.ceil(hex.length / 2) : (opts.size || 1);
 
-  var len = Math.ceil(hex.length / (2 * size)) * size;
-  var buf = Buffer.alloc(len);
+  const len = Math.ceil(hex.length / (2 * size)) * size;
+  const buf = Buffer.alloc(len);
 
   // Zero-pad the hex string so the chunks are all `size` long
   while (hex.length < 2 * len) hex = '0' + hex;
 
   const hx = hex
       .split(new RegExp('(.{' + (2 * size) + '})'))
-      .filter(function(s) {
-        return s.length > 0;
-      });
+      .filter((s) => s.length > 0);
 
-  hx.forEach(function(chunk, i) {
+  hx.forEach((chunk, i) => {
     for (let j = 0; j < size; j++) {
       const ix = i * size + (endian === 'big' ? j : size - j - 1);
       buf[ix] = parseInt(chunk.slice(j * 2, j * 2 + 2), 16);
