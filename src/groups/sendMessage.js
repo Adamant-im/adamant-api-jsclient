@@ -56,21 +56,20 @@ module.exports = (nodeManager) => {
         address = addressOrPublicKey;
       }
 
-      if (messageType === 'basic') {
-        messageType = 1;
-      }
-      if (messageType === 'rich') {
-        messageType = 2;
-      }
-      if (messageType === 'signal') {
-        messageType = 3;
-      }
+      const messageTypes = {
+        basic: 1,
+        rich: 2,
+        signal: 3,
+      };
+
+      messageType = messageTypes[messageType];
 
       if (!validator.validateMessageType(messageType)) {
         return validator.badParameter('messageType', messageType);
       }
 
       const messageValidation = validator.validateMessage(message, messageType);
+
       if (!messageValidation.result) {
         return validator.badParameter('message', message, messageValidation.error);
       }
@@ -103,12 +102,10 @@ module.exports = (nodeManager) => {
     }
 
     if (!publicKey) {
-      return new Promise((resolve, reject) => {
-        resolve({
-          success: false,
-          errorMessage: `Unable to get public key for ${addressOrPublicKey}. It is necessary for sending an encrypted message. Account may be uninitialized (https://medium.com/adamant-im/chats-and-uninitialized-accounts-in-adamant-5035438e2fcd), or network error`,
-        });
-      });
+      return {
+        success: false,
+        errorMessage: `Unable to get public key for ${addressOrPublicKey}. It is necessary for sending an encrypted message. Account may be uninitialized (https://medium.com/adamant-im/chats-and-uninitialized-accounts-in-adamant-5035438e2fcd), or network error`,
+      };
     }
 
     try {
@@ -136,12 +133,10 @@ module.exports = (nodeManager) => {
             return validator.formatRequestResults(error, false);
           });
     } catch (e) {
-      return new Promise((resolve, reject) => {
-        resolve({
-          success: false,
-          errorMessage: `Unable to encode message '${message}' with public key ${publicKey}, or unable to build a transaction. Exception: ` + e,
-        });
-      });
+      return {
+        success: false,
+        errorMessage: `Unable to encode message '${message}' with public key ${publicKey}, or unable to build a transaction. Exception: ` + e,
+      };
     }
   }; // sendMessage()
 };
