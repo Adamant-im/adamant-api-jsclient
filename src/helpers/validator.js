@@ -114,7 +114,7 @@ module.exports = {
 
     return constants.RE_ADM_DELEGATE_NAME.test(name);
   },
-  AdmToSats(amount) {
+  admToSats(amount) {
     return bigNumber(String(amount))
         .multipliedBy(constants.SAT)
         .integerValue()

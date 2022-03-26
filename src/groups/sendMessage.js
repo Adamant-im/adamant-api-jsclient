@@ -18,16 +18,20 @@ module.exports = (nodeManager) => {
     * Using public key is faster, as the library wouldn't request it from the network.
     * Though we cache public keys, and next request with address will be processed as fast as with public key.
     * @param {string} message Message plain text in case of basic message. Stringified JSON in case of rich or signal messages. The library will encrypt a message.
-    * Example of rich message for Ether in-chat transfer: `{"type":"eth_transaction","amount":"0.002","hash":"0xfa46d2b3c99878f1f9863fcbdb0bc27d220d7065c6528543cbb83ced84487deb","comments":"I like to send it, send it"}`
-    * @param {string, number} message_type Type of message: basic, rich, or signal
-    * @param {string, number} amount Amount to send with a message
+    * Example of rich message for Ether in-chat transfer:
+    * `{"type":"eth_transaction","amount":"0.002","hash":"0xfa46d2b3c99878f1f9863fcbdb0bc27d220d7065c6528543cbb83ced84487deb","comments":"I like to send it, send it"}`
+    * @param {string | number} messageType Type of message: basic, rich, or signal
+    * @param {string | number} amount Amount to send with a message
     * @param {boolean} isAmountInADM If amount specified in ADM, or in sats (10^-8 ADM)
     * @param {number} maxRetries How much times to retry request
-    * @returns {Promise} Request results
+    * @param {number} retryNo Number of request already made
+    * @return {Promise} Request results
   */
-  return async (passPhrase, addressOrPublicKey, message, message_type = 'basic', amount, isAmountInADM = true, maxRetries = DEFAULT_SEND_MESSAGE_RETRIES, retryNo = 0) => {
-    let keyPair; let data;
-    let address; let publicKey;
+  return async (passPhrase, addressOrPublicKey, message, messageType = 'basic', amount, isAmountInADM = true, maxRetries = DEFAULT_SEND_MESSAGE_RETRIES, retryNo = 0) => {
+    let keyPair;
+    let data;
+    let address;
+    let publicKey;
 
     try {
       if (!validator.validatePassPhrase(passPhrase)) {
@@ -52,21 +56,21 @@ module.exports = (nodeManager) => {
         address = addressOrPublicKey;
       }
 
-      if (message_type === 'basic') {
-        message_type = 1;
+      if (messageType === 'basic') {
+        messageType = 1;
       }
-      if (message_type === 'rich') {
-        message_type = 2;
+      if (messageType === 'rich') {
+        messageType = 2;
       }
-      if (message_type === 'signal') {
-        message_type = 3;
-      }
-
-      if (!validator.validateMessageType(message_type)) {
-        return validator.badParameter('message_type', message_type);
+      if (messageType === 'signal') {
+        messageType = 3;
       }
 
-      const messageValidation = validator.validateMessage(message, message_type);
+      if (!validator.validateMessageType(messageType)) {
+        return validator.badParameter('messageType', messageType);
+      }
+
+      const messageValidation = validator.validateMessage(message, messageType);
       if (!messageValidation.result) {
         return validator.badParameter('message', message, messageValidation.error);
       }
@@ -74,18 +78,20 @@ module.exports = (nodeManager) => {
       data = {
         keyPair,
         recipientId: address,
-        message_type,
+        messageType,
       };
 
       if (amount) {
+        let amountInSat = amount;
+
         if (isAmountInADM) {
-          amountInSat = validator.AdmToSats(amount);
-        } else {
-          amountInSat = amount;
+          amountInSat = validator.admToSats(amount);
         }
+
         if (!validator.validateIntegerAmount(amountInSat)) {
           return validator.badParameter('amount', amount);
         }
+
         data.amount = amountInSat;
       }
     } catch (e) {
@@ -123,7 +129,7 @@ module.exports = (nodeManager) => {
               logger.log(`${logMessage} Retrying…`);
               return nodeManager.changeNodes()
                   .then(function() {
-                    return module.exports(nodeManager)(passPhrase, addressOrPublicKey, message, message_type, tokensAmount, maxRetries, ++retryNo);
+                    return module.exports(nodeManager)(passPhrase, addressOrPublicKey, message, messageType, amount, isAmountInADM, maxRetries, ++retryNo);
                   });
             }
             logger.warn(`${logMessage} No more attempts, returning error.`);

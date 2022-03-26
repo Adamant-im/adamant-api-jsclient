@@ -14,10 +14,11 @@ module.exports = (nodeManager) => {
     * @param {string} passPhrase Senders's passPhrase. Sender's address will be derived from it.
     * @param {string} addressOrPublicKey Recipient's ADAMANT address or public key.
     * Address is preferred, as if we get public key, we should derive address from it.
-    * @param {string, number} amount Amount to send
+    * @param {string | number} amount Amount to send
     * @param {boolean} isAmountInADM If amount specified in ADM, or in sats (10^-8 ADM)
     * @param {number} maxRetries How much times to retry request
-    * @returns {Promise} Request results
+    * @param {number} retryNo Number of request already made
+    * @return {Promise} Request results
   */
   return (passPhrase, addressOrPublicKey, amount, isAmountInADM = true, maxRetries = DEFAULT_SEND_TOKENS_RETRIES, retryNo = 0) => {
     let transaction;
@@ -46,10 +47,10 @@ module.exports = (nodeManager) => {
         address = addressOrPublicKey;
       }
 
+      let amountInSat = amount;
+
       if (isAmountInADM) {
-        amountInSat = validator.AdmToSats(amount);
-      } else {
-        amountInSat = amount;
+        amountInSat = validator.admToSats(amount);
       }
 
       if (!validator.validateIntegerAmount(amountInSat)) {

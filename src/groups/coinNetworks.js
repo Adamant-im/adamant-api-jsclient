@@ -1,4 +1,4 @@
-coininfo = require('coininfo');
+const coininfo = require('coininfo');
 
 module.exports = {
   DOGE: coininfo.dogecoin.main.toBitcoinJS(),

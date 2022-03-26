@@ -15,6 +15,7 @@ module.exports = (nodeManager) => {
     * It must be unique in ADAMANT blockchain. It should not be similar to ADAMANT address.
     * Delegate name can only contain alphanumeric characters and symbols !@$&_.
     * @param {number} maxRetries How much times to retry request
+    * @param {number} retryNo Number of request already made
     * @return {Promise} Request results
   */
   return async (passPhrase, username, maxRetries = DEFAULT_NEW_DELEGATE_RETRIES, retryNo = 0) => {

@@ -22,7 +22,7 @@ module.exports = (msg, senderPublicKey, passPhrase, nonce) => {
   const DHPublicKey = ed2curve.convertPublicKey(senderPublicKey);
   const DHSecretKey = ed2curve.convertSecretKey(privateKey);
   const decrypted = nacl.box.open(msg, nonce, DHPublicKey, DHSecretKey);
-  return decrypted ? Utf8ArrayToStr(decrypted) : '';
+  return decrypted ? utf8ArrayToStr(decrypted) : '';
 };
 
 function hexToBytes(hexString = '') {
@@ -35,13 +35,14 @@ function hexToBytes(hexString = '') {
   return Uint8Array.from(bytes);
 }
 
-function Utf8ArrayToStr(array) {
-  let out; let i; let len; let c;
-  let char2; let char3;
+function utf8ArrayToStr(array) {
+  const len = array.length;
+  let out = '';
+  let i = 0;
+  let c;
+  let char2;
+  let char3;
 
-  out = '';
-  len = array.length;
-  i = 0;
   while (i < len) {
     c = array[i++];
     switch (c >> 4) {
