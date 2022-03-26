@@ -78,7 +78,7 @@ module.exports = (nodeManager) => {
       data = {
         keyPair,
         recipientId: address,
-        messageType,
+        message_type: messageType,
       };
 
       if (amount) {
