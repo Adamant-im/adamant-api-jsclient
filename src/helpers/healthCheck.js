@@ -1,95 +1,100 @@
+const dnsPromises = require('dns').promises;
+
 const axios = require('../helpers/axiosClient');
 const socket = require('./wsClient');
 const logger = require('./logger');
 const validator = require('./validator');
-const dnsPromises = require('dns').promises;
+
+const {RE_IP, RE_HTTP_URL} = require('./constants');
 
 const CHECK_NODES_INTERVAL = 60 * 5 * 1000; // Update active nodes every 5 minutes
 const HEIGHT_EPSILON = 5; // Used to group nodes by height and choose synced
 
 module.exports = (nodes, checkHealthAtStartup = true) => {
-  isCheckingNodes = false;
-  nodesList = nodes;
-  activeNode = nodesList[0]; // Note: it may be not synced; and before first health check a node can reply with obsolete data
-  liveNodes = [];
+  const isCheckingNodes = false;
+  const nodesList = nodes;
+  const activeNode = nodesList[0]; // Note: it may be not synced; and before first health check a node can reply with obsolete data
 
   /**
     * Updates active nodes. If nodes are already updating, returns Promise of previous call
+    * @param {boolean} isPlannedUpdate
     * @return {Promise} Call changeNodes().then to do something when update complete
     */
-  function changeNodes(isPlannedUpdate = false) {
+  async function changeNodes(isPlannedUpdate = false) {
     if (!isCheckingNodes) {
-      changeNodesPromise = new Promise(async (resolve) => {
-        if (!isPlannedUpdate) {
-          logger.warn('[ADAMANT js-api] Health check: Forcing to update active nodes…');
-        }
-        await checkNodes(isPlannedUpdate ? false : true);
-        resolve(true);
-      });
-    }
-    return changeNodesPromise;
-  }
+      if (!isPlannedUpdate) {
+        logger.warn('[ADAMANT js-api] Health check: Forcing to update active nodes…');
+      }
 
+      await checkNodes(!isPlannedUpdate);
+
+      return true;
+    }
+  }
 
   if (checkHealthAtStartup) {
     changeNodes(true);
-    setInterval(() => {
-      changeNodes(true);
-    }, CHECK_NODES_INTERVAL);
+
+    setInterval(
+        () => changeNodes(true),
+        CHECK_NODES_INTERVAL,
+    );
   }
 
   return {
-
     /**
      * @return {string} Current active node, f. e. http://88.198.156.44:36666
      */
-    node: () => {
-      return activeNode;
-    },
-
+    node: () => activeNode,
     changeNodes,
-
   };
 };
 
 /**
   * Requests every ADAMANT node for its status, makes a list of live nodes, and chooses one active
+  * @param {boolean} forceChangeActiveNode
   */
 async function checkNodes(forceChangeActiveNode) {
   this.isCheckingNodes = true;
   this.liveNodes = [];
 
   try {
-    for (const n of this.nodesList) {
+    for (const node of this.nodesList) {
       try {
         const start = unixTimestamp();
-        const req = await checkNode(n + '/api/node/status');
-        const url = n.replace(/^https?:\/\/(.*)$/, '$1').split(':')[0];
-        const ifIP = /(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}/.test(url);
+
+        const req = await checkNode(`${node}/api/node/status`);
+
+        const [url] = node.replace(RE_HTTP_URL, '$1').split(':');
+        const ifIP = RE_IP.test(url);
+
+        const ip = ifIP ? url : await getIP(url);
+        const ifHttps = node.startsWith('https');
 
         if (req.status) {
           this.liveNodes.push({
-            node: n,
-            ifHttps: n.startsWith('https'),
+            node,
             ifIP,
             url,
+            ip,
+            ifHttps,
             outOfSync: false,
             ping: unixTimestamp() - start,
             height: req.status.network.height,
             heightEpsilon: Math.round(req.status.network.height / HEIGHT_EPSILON),
-            ip: ifIP ? url : await getIP(url),
-            socketSupport: req.status.wsClient && req.status.wsClient.enabled,
-            wsPort: req.status.wsClient.port,
+            socketSupport: req.status.wsClient?.enabled,
+            wsPort: req.status.wsClient?.port,
           });
         } else {
-          logger.log(`[ADAMANT js-api] Health check: Node ${n} haven't returned its status`);
+          logger.log(`[ADAMANT js-api] Health check: Node ${node} haven't returned its status`);
         }
       } catch (e) {
-        logger.log(`[ADAMANT js-api] Health check: Error while checking node ${n}, ` + e);
+        logger.log(`[ADAMANT js-api] Health check: Error while checking node ${node}, ${e}`);
       }
     }
 
     const count = this.liveNodes.length;
+
     let outOfSyncCount = 0;
 
     if (!count) {
@@ -99,9 +104,10 @@ async function checkNodes(forceChangeActiveNode) {
       if (count === 1) {
         this.activeNode = this.liveNodes[0].node;
       } else if (count === 2) {
-        const h0 = this.liveNodes[0];
-        const h1 = this.liveNodes[1];
+        const [h0, h1] = this.liveNodes;
+
         this.activeNode = h0.height > h1.height ? h0.node : h1.node;
+
         // Mark node outOfSync if needed
         if (h0.heightEpsilon > h1.heightEpsilon) {
           this.liveNodes[1].outOfSync = true;
@@ -113,12 +119,15 @@ async function checkNodes(forceChangeActiveNode) {
       } else {
         let biggestGroup = [];
         // Removing lodash: const groups = _.groupBy(this.liveNodes, n => n.heightEpsilon);
-        const groups = this.liveNodes.reduce(function(grouped, node) {
+        const groups = this.liveNodes.reduce((grouped, node) => {
           const int = Math.floor(node.heightEpsilon); // Excessive, it is already rounded
-          if (!grouped.hasOwnProperty(int)) {
+
+          if (!Object.prototype.hasOwnProperty.call(grouped, int)) {
             grouped[int] = [];
           }
+
           grouped[int].push(node);
+
           return grouped;
         }, {});
 
@@ -132,28 +141,36 @@ async function checkNodes(forceChangeActiveNode) {
         this.liveNodes.forEach((node) => {
           node.outOfSync = !biggestGroup.includes(node);
         });
+
         outOfSyncCount = this.liveNodes.length - biggestGroup.length;
 
         biggestGroup.sort((a, b) => a.ping - b.ping);
         this.liveNodes.sort((a, b) => a.ping - b.ping);
 
         if (forceChangeActiveNode && biggestGroup.length > 1 && this.activeNode === biggestGroup[0].node) {
+          // Use random node from which are synced
           this.activeNode = biggestGroup[validator.getRandomIntInclusive(1, biggestGroup.length - 1)].node;
-        } // Use random node from which are synced
-        else {
+        } else {
+          // Use node with minimum ping among which are synced
           this.activeNode = biggestGroup[0].node;
-        } // Use node with minimum ping among which are synced
+        }
       }
+
       socket.reviseConnection(this.liveNodes);
+
       const unavailableCount = this.nodesList.length - this.liveNodes.length;
       const supportedCount = this.liveNodes.length - outOfSyncCount;
+
       let nodesInfoString = '';
+
       if (unavailableCount) {
         nodesInfoString += `, ${unavailableCount} nodes didn't respond`;
       }
+
       if (outOfSyncCount) {
         nodesInfoString += `, ${outOfSyncCount} nodes are not synced`;
       }
+
       logger.log(`[ADAMANT js-api] Health check: Found ${supportedCount} supported and synced nodes${nodesInfoString}. Active node is ${this.activeNode}.`);
     }
   } catch (e) {
@@ -166,15 +183,18 @@ async function checkNodes(forceChangeActiveNode) {
 async function getIP(url) {
   try {
     const addresses = await dnsPromises.resolve4(url);
+
     if (addresses && addresses[0] !== '0.0.0.0') {
       return addresses[0];
     }
-  } catch (e) { }
+  } catch (error) {
+    return;
+  }
 }
 
 /**
   * Requests status from a single ADAMANT node
-  * @param url {string} Node URL to request
+  * @param {string} url Node URL to request
   * @return {Promise} Node's status information
   */
 function checkNode(url) {
