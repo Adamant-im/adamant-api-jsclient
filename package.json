@@ -2,11 +2,11 @@
 	"name": "adamant-api",
 	"version": "1.5.0",
 	"description": "REST API for ADAMANT Blockchain",
-  "main": "src/index.js",
+	"main": "src/index.js",
 	"scripts": {
 		"test": "jest",
-    "lint": "eslint src",
-    "lint:fix": "eslint --fix src",
+		"lint": "eslint src",
+		"lint:fix": "eslint --fix src",
 		"prepare": "husky install"
 	},
 	"author": "ADAMANT Foundation <devs@adamant.im> (https://adamant.im)",
@@ -68,6 +68,7 @@
 		"eslint": "^8.9.0",
 		"eslint-config-google": "^0.14.0",
 		"eslint-plugin-jest": "^26.1.0",
-		"husky": "^7.0.4"
+		"husky": "^7.0.4",
+		"jest": "^27.5.1"
 	}
 }
