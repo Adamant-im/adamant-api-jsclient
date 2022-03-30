@@ -1,18 +1,15 @@
 const constants = require('./constants.js');
 
 module.exports = {
+  getEpochTime(time) {
+    const startTime = time ?? Date.now();
 
-  getEpochTime: function(time) {
-    if (time === undefined) {
-      time = Date.now();
-    }
-    const d = constants.epochTime;
-    const t = d.getTime();
-    return Math.floor((time - t) / 1000);
+    const {epochTime} = constants;
+    const epochTimeMs = epochTime.getTime();
+
+    return Math.floor((startTime - epochTimeMs) / 1000);
   },
-
-  getTime: function(time) {
+  getTime(time) {
     return this.getEpochTime(time);
   },
-
 };
