@@ -4,16 +4,14 @@ const ed2curve = require('ed2curve');
 
 module.exports = {
   bytesToHex(bytes) {
-    const hex = [];
+    let hex = '';
 
-    for (let i = 0; i < bytes.length; i++) {
-      hex.push(
-          (bytes[i] >>> 4).toString(16),
-          (bytes[i] & 0xF).toString(16),
-      );
+    for (const byte of bytes) {
+      hex += (byte >>> 4).toString(16);
+      hex += (byte & 0xF).toString(16);
     }
 
-    return hex.join('');
+    return hex;
   },
   hexToBytes(hex) {
     const bytes = [];
