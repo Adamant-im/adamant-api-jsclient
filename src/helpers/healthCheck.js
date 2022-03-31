@@ -13,8 +13,9 @@ const HEIGHT_EPSILON = 5; // Used to group nodes by height and choose synced
 module.exports = (nodes, checkHealthAtStartup = true) => {
   const nodesList = nodes;
   let isCheckingNodes = false;
-  let liveNodes = [];
-  let activeNode = nodesList[0]; // Note: it may be not synced; and before first health check a node can reply with obsolete data
+
+  // Note: it may be not synced; and before first health check a node can reply with obsolete data
+  let [activeNode] = nodesList;
 
   /**
     * Updates active nodes. If nodes are already updating, returns Promise of previous call
@@ -39,7 +40,8 @@ module.exports = (nodes, checkHealthAtStartup = true) => {
     */
   async function checkNodes(forceChangeActiveNode) {
     isCheckingNodes = true;
-    liveNodes = [];
+
+    const liveNodes = [];
 
     try {
       for (const node of nodesList) {
