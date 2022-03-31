@@ -1,41 +1,36 @@
 const logger = {
-
   errorLevel: 'log',
-  l: console,
+  logger: console,
 
   initLogger(errorLevel, log) {
     if (errorLevel) {
       this.errorLevel = errorLevel;
     }
+
     if (log) {
-      this.l = log;
+      this.logger = log;
     }
   },
-
   error(str) {
     if (['error', 'warn', 'info', 'log'].includes(this.errorLevel)) {
-      this.l.error(str);
+      this.logger.error(str);
     }
   },
-
   warn(str) {
     if (['warn', 'info', 'log'].includes(this.errorLevel)) {
-      this.l.warn(str);
+      this.logger.warn(str);
     }
   },
-
   info(str) {
     if (['info', 'log'].includes(this.errorLevel)) {
-      this.l.info(str);
+      this.logger.info(str);
     }
   },
-
   log(str) {
-    if (['log'].includes(this.errorLevel)) {
-      this.l.log(str);
+    if (this.errorLevel === 'log') {
+      this.logger.log(str);
     }
   },
-
 };
 
 module.exports = logger;
