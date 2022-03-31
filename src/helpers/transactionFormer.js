@@ -67,7 +67,6 @@ module.exports = {
     const transaction = {
       ...this.createBasicTransaction(details),
       recipientId: null,
-      amount: 0,
       asset: {
         state: {
           key: details.key,
@@ -125,7 +124,7 @@ module.exports = {
 
     return transaction;
   },
-  createVoteTransaction: function(data) {
+  createVoteTransaction(data) {
     const details = {
       ...data,
       transactionType: constants.transactionTypes.VOTE,
@@ -174,7 +173,7 @@ module.exports = {
 
     const getBytes = actions[type];
 
-    if (getBytes) {
+    if (typeof getBytes === 'function') {
       const assetBytes = getBytes(transaction);
 
       return {assetBytes, assetSize: assetBytes.length};
@@ -306,10 +305,10 @@ module.exports = {
 
     return buf;
   },
-  chatGetBytes: function(trs) {
+  chatGetBytes(trs) {
     let buf = Buffer.from([]);
 
-    const {message} = trs.asset.chat.message;
+    const {message} = trs.asset.chat;
     const messageBuf = Buffer.from(message, 'hex');
 
     buf = Buffer.concat([buf, messageBuf]);
