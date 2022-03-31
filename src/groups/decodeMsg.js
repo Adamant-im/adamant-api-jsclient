@@ -4,10 +4,13 @@ const keys = require('../helpers/keys');
 
 module.exports = (msg, senderPublicKey, passPhrase, nonce) => {
   const keypair = keys.createKeypairFromPassPhrase(passPhrase);
-  let privateKey = keypair.privateKey;
+
+  let {privateKey} = keypair;
+
   if (typeof msg === 'string') {
     msg = hexToBytes(msg);
   }
+
   if (typeof nonce === 'string') {
     nonce = hexToBytes(nonce);
   }
@@ -19,9 +22,11 @@ module.exports = (msg, senderPublicKey, passPhrase, nonce) => {
   if (typeof privateKey === 'string') {
     privateKey = hexToBytes(privateKey);
   }
+
   const DHPublicKey = ed2curve.convertPublicKey(senderPublicKey);
   const DHSecretKey = ed2curve.convertSecretKey(privateKey);
   const decrypted = nacl.box.open(msg, nonce, DHPublicKey, DHSecretKey);
+
   return decrypted ? utf8ArrayToStr(decrypted) : '';
 };
 
@@ -29,7 +34,7 @@ function hexToBytes(hexString = '') {
   const bytes = [];
 
   for (let c = 0; c < hexString.length; c += 2) {
-    bytes.push(parseInt(hexString.substr(c, 2), 16));
+    bytes.push(parseInt(hexString.substring(c, c + 2), 16));
   }
 
   return Uint8Array.from(bytes);
