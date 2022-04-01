@@ -3,3 +3,4 @@ logs/
 .vscode/
 test.js
 package-lock.json
+.editorconfig
