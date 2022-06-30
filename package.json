@@ -12,18 +12,18 @@
 	"author": "ADAMANT Foundation <devs@adamant.im> (https://adamant.im)",
 	"license": "GPL-3.0",
 	"dependencies": {
-		"@liskhq/lisk-cryptography": "3.2.0",
-		"axios": "^0.25.0",
+		"@liskhq/lisk-cryptography": "3.2.1",
+		"axios": "^0.27.2",
 		"bignumber.js": "^9.0.2",
 		"bitcoinjs-lib": "^5.2.0",
-		"bitcore-mnemonic": "^8.25.25",
+		"bitcore-mnemonic": "^8.25.30",
 		"bytebuffer": "^5.0.1",
-		"coininfo": "^5.1.0",
+		"coininfo": "^5.2.1",
 		"ed2curve": "^0.3.0",
-		"ethereumjs-util": "^7.1.4",
+		"ethereumjs-util": "^7.1.5",
 		"hdkey": "^2.0.1",
 		"pbkdf2": "^3.1.2",
-		"socket.io-client": "^2.4.0",
+		"socket.io-client": "^4.5.1",
 		"sodium-browserify-tweetnacl": "^0.2.6"
 	},
 	"publishConfig": {
@@ -63,12 +63,12 @@
 	},
 	"homepage": "https://github.com/Adamant-im/adamant-api-jsclient#readme",
 	"devDependencies": {
-		"@commitlint/cli": "^16.2.1",
-		"@commitlint/config-conventional": "^16.2.1",
-		"eslint": "^8.9.0",
+		"@commitlint/cli": "^17.0.3",
+		"@commitlint/config-conventional": "^17.0.3",
+		"eslint": "^8.18.0",
 		"eslint-config-google": "^0.14.0",
-		"eslint-plugin-jest": "^26.1.0",
-		"husky": "^7.0.4",
-		"jest": "^27.5.1"
+		"eslint-plugin-jest": "^26.5.3",
+		"husky": "^8.0.1",
+		"jest": "^28.1.2"
 	}
 }
