@@ -1,5 +1,6 @@
 module.exports = {
 
+  DEFAULT_SEND_MESSAGE_RETRIES: 4, // How much re-tries for send message requests by default. Total 4+1 tries
   epochTime: new Date(Date.UTC(2017, 8, 2, 17, 0, 0, 0)),
   fees: {
     send: 50000000,

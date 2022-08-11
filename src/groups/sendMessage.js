@@ -6,8 +6,7 @@ const encryptor = require('../helpers/encryptor');
 const transactionFormer = require('../helpers/transactionFormer');
 const validator = require('../helpers/validator');
 const getPublicKey = require('./getPublicKey');
-
-const DEFAULT_SEND_MESSAGE_RETRIES = 4; // How much re-tries for send message requests by default. Total 4+1 tries
+const { DEFAULT_SEND_MESSAGE_RETRIES } = require('./../helpers/constants');
 
 module.exports = (nodeManager) => {
   /**
