@@ -6,7 +6,7 @@ module.exports = (nodeManager) => {
   const sendMsg = sendMessage(nodeManager);
 
   return async (passPhrase, addressOrPublicKey, message, messageType = 'basic', amount, isAmountInADM = true, maxRetries = DEFAULT_SEND_MESSAGE_RETRIES, retryNo = 0) => {
-    return sendMsg(passPhrase, addressOrPublicKey, messageType, amount, isAmountInADM, maxRetries, retryNo).then((response) => {
+    return sendMsg(passPhrase, addressOrPublicKey, message, messageType, amount, isAmountInADM, maxRetries, retryNo).then((response) => {
       if (!response.success) {
         log.warn(`Failed to send ADM message '${message}' to ${addressOrPublicKey}. ${response.errorMessage}.`);
       }
