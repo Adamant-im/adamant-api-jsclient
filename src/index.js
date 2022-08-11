@@ -6,6 +6,7 @@ const newDelegate = require('./groups/newDelegate');
 const voteForDelegate = require('./groups/voteForDelegate');
 const sendTokens = require('./groups/sendTokens');
 const sendMessage = require('./groups/sendMessage');
+const sendMessageWithLog = require('./groups/sendMessageWithLog')
 const healthCheck = require('./helpers/healthCheck');
 
 const eth = require('./groups/eth');
@@ -34,6 +35,7 @@ module.exports = (params, customLogger) => {
     getPublicKey: getPublicKey(nodeManager),
     sendTokens: sendTokens(nodeManager),
     sendMessage: sendMessage(nodeManager),
+    sendMessageWithLog: sendMessageWithLog(nodeManager),
     newDelegate: newDelegate(nodeManager),
     voteForDelegate: voteForDelegate(nodeManager),
     decodeMsg,
