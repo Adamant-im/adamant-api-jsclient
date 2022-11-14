@@ -37,7 +37,7 @@ module.exports = {
 
     const node = this.socketAddress();
     logger.log(`[Socket] Supported nodes: ${this.activeSocketNodes.length}. Connecting to ${node}...`);
-    this.connection = ioClient.connect(node, {reconnection: false, timeout: 5000});
+    this.connection = ioClient(node, {reconnection: false, timeout: 5000});
 
     this.connection.on('connect', () => {
       this.connection.emit('address', this.admAddress);
