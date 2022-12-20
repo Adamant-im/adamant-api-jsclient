@@ -22,12 +22,16 @@ const constants = require('./helpers/constants.js');
 const transactionFormer = require('./helpers/transactionFormer');
 const keys = require('./helpers/keys');
 
-module.exports = (params, customLogger) => {
+module.exports = (params, customLogger, checkHealthAtStartupCallback) => {
   const log = customLogger || console;
 
   logger.initLogger(params.logLevel, log);
 
-  const nodeManager = healthCheck(params.node, params.checkHealthAtStartup);
+  const nodeManager = healthCheck(
+    params.node,
+    params.checkHealthAtStartup,
+    checkHealthAtStartupCallback,
+  );
 
   return {
     get: get(nodeManager),

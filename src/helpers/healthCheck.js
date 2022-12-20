@@ -10,7 +10,7 @@ const {RE_IP, RE_HTTP_URL} = require('./constants');
 const CHECK_NODES_INTERVAL = 60 * 5 * 1000; // Update active nodes every 5 minutes
 const HEIGHT_EPSILON = 5; // Used to group nodes by height and choose synced
 
-module.exports = (nodes, checkHealthAtStartup = true) => {
+module.exports = (nodes, checkHealthAtStartup = true, checkHealthAtStartupCallback) => {
   const nodesList = nodes;
   let isCheckingNodes = false;
 
@@ -38,7 +38,7 @@ module.exports = (nodes, checkHealthAtStartup = true) => {
     * Requests every ADAMANT node for its status, makes a list of live nodes, and chooses one active
     * @param {boolean} forceChangeActiveNode
     */
-  async function checkNodes(forceChangeActiveNode) {
+  async function checkNodes(forceChangeActiveNode, checkNodesCallback) {
     isCheckingNodes = true;
 
     const liveNodes = [];
@@ -163,15 +163,18 @@ module.exports = (nodes, checkHealthAtStartup = true) => {
     }
 
     isCheckingNodes = false;
+    checkNodesCallback?.();
   }
 
   if (checkHealthAtStartup) {
-    changeNodes(true);
+    changeNodes(true, checkHealthAtStartupCallback);
 
     setInterval(
         () => changeNodes(true),
         CHECK_NODES_INTERVAL,
     );
+  } else {
+    checkHealthAtStartupCallback?.();
   }
 
   return {
