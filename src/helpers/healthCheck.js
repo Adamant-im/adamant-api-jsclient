@@ -37,6 +37,7 @@ module.exports = (nodes, checkHealthAtStartup = true, checkHealthAtStartupCallba
   /**
     * Requests every ADAMANT node for its status, makes a list of live nodes, and chooses one active
     * @param {boolean} forceChangeActiveNode
+    * @param {function?} checkNodesCallback
     */
   async function checkNodes(forceChangeActiveNode, checkNodesCallback) {
     isCheckingNodes = true;

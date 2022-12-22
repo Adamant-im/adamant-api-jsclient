@@ -22,15 +22,23 @@ const constants = require('./helpers/constants.js');
 const transactionFormer = require('./helpers/transactionFormer');
 const keys = require('./helpers/keys');
 
+/**
+ * Create new API instance
+ * @param {{ node: string, checkHealthAtStartup: boolean, logLevel: string}} params
+ * @param {{ error: function, warn: function, info: function, log: function }?} customLogger
+ * @param {function?} checkHealthAtStartupCallback callback which is called after the first health check or
+ * just at startup when params.checkHealthAtStartup is passed
+ * @return {object} API methods and helpers
+ */
 module.exports = (params, customLogger, checkHealthAtStartupCallback) => {
   const log = customLogger || console;
 
   logger.initLogger(params.logLevel, log);
 
   const nodeManager = healthCheck(
-    params.node,
-    params.checkHealthAtStartup,
-    checkHealthAtStartupCallback,
+      params.node,
+      params.checkHealthAtStartup,
+      checkHealthAtStartupCallback,
   );
 
   return {
