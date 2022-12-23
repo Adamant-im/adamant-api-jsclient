@@ -1,17 +1,21 @@
 const bitcoin = require('bitcoinjs-lib');
+const {ECPairFactory} = require('ecpair');
+const tinysecp = require('tiny-secp256k1');
+
 const coinNetworks = require('./coinNetworks');
-const btc = { };
+const btc = {};
 
 /**
  * Generates a BTC account from the passphrase specified.
  * @param {string} passphrase ADAMANT account passphrase
- * @returns {object} network info, keyPair, privateKey, privateKeyWIF
+ * @return {object} network info, keyPair, privateKey, privateKeyWIF
  */
-
 btc.keys = (passphrase) => {
   const network = coinNetworks.BTC;
   const pwHash = bitcoin.crypto.sha256(Buffer.from(passphrase));
-  const keyPair = bitcoin.ECPair.fromPrivateKey(pwHash, {network});
+
+  const ECPairAPI = new ECPairFactory(tinysecp);
+  const keyPair = ECPairAPI.fromPrivateKey(pwHash, {network});
 
   return {
     network,
