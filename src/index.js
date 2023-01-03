@@ -48,6 +48,7 @@ module.exports = (params, customLogger, checkHealthAtStartupCallback) => {
     sendMessage: sendMessage(nodeManager),
     newDelegate: newDelegate(nodeManager),
     voteForDelegate: voteForDelegate(nodeManager),
+    setStartupCallback: nodeManager.setStartupCallback,
     decodeMsg,
     eth,
     dash,
