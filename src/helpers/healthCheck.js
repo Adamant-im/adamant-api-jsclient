@@ -13,6 +13,7 @@ const HEIGHT_EPSILON = 5; // Used to group nodes by height and choose synced
 module.exports = (nodes, checkHealthAtStartup = true, checkHealthAtStartupCallback) => {
   const nodesList = nodes;
   let isCheckingNodes = false;
+  let startupCallback = checkHealthAtStartupCallback;
 
   // Note: it may be not synced; and before first health check a node can reply with obsolete data
   let [activeNode] = nodesList;
@@ -20,15 +21,24 @@ module.exports = (nodes, checkHealthAtStartup = true, checkHealthAtStartupCallba
   /**
     * Updates active nodes. If nodes are already updating, returns Promise of previous call
     * @param {boolean} isPlannedUpdate
+    * @param {boolean} isFirstUpdate
     * @return {Promise} Call changeNodes().then to do something when update complete
     */
-  async function changeNodes(isPlannedUpdate = false) {
+  async function changeNodes(isPlannedUpdate = false, isFirstUpdate = false) {
     if (!isCheckingNodes) {
+      isCheckingNodes = true;
+
       if (!isPlannedUpdate) {
         logger.warn('[ADAMANT js-api] Health check: Forcing to update active nodes…');
       }
 
       await checkNodes(!isPlannedUpdate);
+
+      if (isFirstUpdate) {
+        startupCallback?.();
+      }
+
+      isCheckingNodes = false;
 
       return true;
     }
@@ -37,11 +47,8 @@ module.exports = (nodes, checkHealthAtStartup = true, checkHealthAtStartupCallba
   /**
     * Requests every ADAMANT node for its status, makes a list of live nodes, and chooses one active
     * @param {boolean} forceChangeActiveNode
-    * @param {function?} checkNodesCallback
     */
-  async function checkNodes(forceChangeActiveNode, checkNodesCallback) {
-    isCheckingNodes = true;
-
+  async function checkNodes(forceChangeActiveNode) {
     const liveNodes = [];
 
     try {
@@ -162,20 +169,25 @@ module.exports = (nodes, checkHealthAtStartup = true, checkHealthAtStartupCallba
     } catch (e) {
       logger.warn('[ADAMANT js-api] Health check: Error in checkNodes(), ' + e);
     }
+  }
 
-    isCheckingNodes = false;
-    checkNodesCallback?.();
+  function setStartupCallback(callback) {
+    if (!isCheckingNodes) {
+      callback();
+    } else {
+      startupCallback = callback;
+    }
   }
 
   if (checkHealthAtStartup) {
-    changeNodes(true, checkHealthAtStartupCallback);
+    changeNodes(true, true);
 
     setInterval(
         () => changeNodes(true),
         CHECK_NODES_INTERVAL,
     );
   } else {
-    checkHealthAtStartupCallback?.();
+    startupCallback?.();
   }
 
   return {
@@ -183,6 +195,7 @@ module.exports = (nodes, checkHealthAtStartup = true, checkHealthAtStartupCallba
      * @return {string} Current active node, f. e. http://88.198.156.44:36666
      */
     node: () => activeNode,
+    setStartupCallback,
     changeNodes,
   };
 };
