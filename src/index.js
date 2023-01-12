@@ -38,7 +38,7 @@ module.exports = (params, customLogger, checkHealthAtStartupCallback) => {
   const nodeManager = healthCheck(
       params.node,
       params.checkHealthAtStartup,
-      params.checkHealthTimeout,
+      params.checkNodeTimeout,
       checkHealthAtStartupCallback,
   );
 
