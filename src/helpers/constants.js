@@ -1,5 +1,4 @@
 module.exports = {
-
   epochTime: new Date(Date.UTC(2017, 8, 2, 17, 0, 0, 0)),
   fees: {
     send: 50000000,
@@ -27,6 +26,7 @@ module.exports = {
     STATE: 9,
   },
   maxVotesPerTransaction: 33,
+  HEALTH_CHECK_TIMEOUT: 4000, // 4 seconds
   SAT: 100000000,
   RE_HEX: /^[a-fA-F0-9]+$/,
   RE_BASE64: /^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)$/,
@@ -42,5 +42,4 @@ module.exports = {
 
   RE_HTTP_URL: /^https?:\/\/(.*)$/,
   RE_IP: /(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}/,
-
 };
