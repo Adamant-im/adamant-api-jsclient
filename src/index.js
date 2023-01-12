@@ -24,7 +24,7 @@ const keys = require('./helpers/keys');
 
 /**
  * Create new API instance
- * @param {{ node: string, checkHealthAtStartup: boolean, logLevel: string}} params
+ * @param {{ node: string, checkHealthAtStartup: boolean, logLevel: string, checkHealthTimeout: number}} params
  * @param {{ error: function, warn: function, info: function, log: function }?} customLogger
  * @param {function?} checkHealthAtStartupCallback callback which is called after the first health check or
  * just at startup when params.checkHealthAtStartup is passed
@@ -38,6 +38,7 @@ module.exports = (params, customLogger, checkHealthAtStartupCallback) => {
   const nodeManager = healthCheck(
       params.node,
       params.checkHealthAtStartup,
+      params.checkNodeTimeout,
       checkHealthAtStartupCallback,
   );
 
