@@ -5,12 +5,17 @@ const socket = require('./wsClient');
 const logger = require('./logger');
 const validator = require('./validator');
 
-const {RE_IP, RE_HTTP_URL} = require('./constants');
+const {RE_IP, RE_HTTP_URL, HEALTH_CHECK_TIMEOUT} = require('./constants');
 
 const CHECK_NODES_INTERVAL = 60 * 5 * 1000; // Update active nodes every 5 minutes
 const HEIGHT_EPSILON = 5; // Used to group nodes by height and choose synced
 
-module.exports = (nodes, checkHealthAtStartup = true, checkHealthAtStartupCallback) => {
+module.exports = (
+    nodes,
+    checkHealthAtStartup = true,
+    timeout = HEALTH_CHECK_TIMEOUT,
+    checkHealthAtStartupCallback,
+) => {
   const nodesList = nodes;
   let isCheckingNodes = false;
   let startupCallback = checkHealthAtStartupCallback;
@@ -56,7 +61,7 @@ module.exports = (nodes, checkHealthAtStartup = true, checkHealthAtStartupCallba
         try {
           const start = unixTimestamp();
 
-          const req = await checkNode(`${node}/api/node/status`);
+          const req = await checkNode(`${node}/api/node/status`, timeout);
 
           const [url] = node.replace(RE_HTTP_URL, '$1').split(':');
           const ifIP = RE_IP.test(url);
@@ -215,10 +220,11 @@ async function getIP(url) {
 /**
   * Requests status from a single ADAMANT node
   * @param {string} url Node URL to request
+  * @param {number} timeout Request timeout
   * @return {Promise} Node's status information
   */
-function checkNode(url) {
-  return axios.get(url)
+function checkNode(url, timeout) {
+  return axios.get(url, {timeout})
       .then((response) => ({status: response.data}))
       .catch((err) => false);
 }
