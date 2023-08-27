@@ -1,4 +1,4 @@
-const Mnemonic = require('bitcore-mnemonic');
+const {mnemonicToSeedSync} = require('bip39');
 const hdkey = require('hdkey');
 const HD_KEY_PATH = 'm/44\'/60\'/3\'/1/0';
 const {bufferToHex, privateToAddress} = require('ethereumjs-util');
@@ -11,8 +11,7 @@ const eth = { };
  */
 
 eth.keys = (passphrase) => {
-  const mnemonic = new Mnemonic(passphrase, Mnemonic.Words.ENGLISH);
-  const seed = mnemonic.toSeed();
+  const seed = mnemonicToSeedSync(passphrase);
   const privateKey = hdkey.fromMasterSeed(seed).derive(HD_KEY_PATH)._privateKey;
 
   return {
