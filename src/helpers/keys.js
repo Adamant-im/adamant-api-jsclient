@@ -1,12 +1,12 @@
 const sodium = require('sodium-browserify-tweetnacl');
 const crypto = require('crypto');
-const Mnemonic = require('bitcore-mnemonic');
+const bip39 = require('bip39');
 
 const bignum = require('./bignumber.js');
 
 module.exports = {
   createNewPassPhrase() {
-    return new Mnemonic(Mnemonic.Words.ENGLISH).toString();
+    return bip39.generateMnemonic();
   },
   makeKeypairFromHash(hash) {
     const keypair = sodium.crypto_sign_seed_keypair(hash);
@@ -17,12 +17,10 @@ module.exports = {
     };
   },
   createHashFromPassPhrase(passPhrase) {
-    const secretMnemonic = new Mnemonic(passPhrase, Mnemonic.Words.ENGLISH);
-
     return crypto
         .createHash('sha256')
         .update(
-            secretMnemonic.toSeed().toString('hex'),
+            bip39.mnemonicToSeedSync(passPhrase).toString('hex'),
             'hex',
         )
         .digest();
