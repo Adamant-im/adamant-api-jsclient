@@ -1,203 +1,203 @@
-const logger = require('../logger');
+const logger = require("../logger");
 
-describe('logger: log', () => {
-  const logLevel = 'log';
+describe("logger: log", () => {
+  const logLevel = "log";
 
-  test('Should log log level', (done) => {
+  test("Should log log level", (done) => {
     logger.initLogger(logLevel, {
       log(str) {
-        expect(str).toBe('log');
+        expect(str).toBe("log");
 
         done();
       },
     });
 
-    logger.log('log');
+    logger.log("log");
   });
 
-  test('Should log info level', (done) => {
+  test("Should log info level", (done) => {
     logger.initLogger(logLevel, {
       info(str) {
-        expect(str).toBe('info');
+        expect(str).toBe("info");
 
         done();
       },
     });
 
-    logger.info('info');
+    logger.info("info");
   });
 
-  test('Should log warn level', (done) => {
+  test("Should log warn level", (done) => {
     logger.initLogger(logLevel, {
       warn(str) {
-        expect(str).toBe('warn');
+        expect(str).toBe("warn");
 
         done();
       },
     });
 
-    logger.warn('warn');
+    logger.warn("warn");
   });
 
-  test('Should log error level', (done) => {
+  test("Should log error level", (done) => {
     logger.initLogger(logLevel, {
       error(str) {
-        expect(str).toBe('error');
+        expect(str).toBe("error");
 
         done();
       },
     });
 
-    logger.error('error');
+    logger.error("error");
   });
 });
 
-describe('logger: info', () => {
-  const logLevel = 'info';
+describe("logger: info", () => {
+  const logLevel = "info";
 
-  test('Should not log log level', (done) => {
+  test("Should not log log level", (done) => {
     logger.initLogger(logLevel, {
       log() {
-        done('Log level has been called');
+        done("Log level has been called");
       },
     });
 
-    logger.log('log');
+    logger.log("log");
     done();
   });
 
-  test('Should log info level', (done) => {
+  test("Should log info level", (done) => {
     logger.initLogger(logLevel, {
       info(str) {
-        expect(str).toBe('info');
+        expect(str).toBe("info");
 
         done();
       },
     });
 
-    logger.info('info');
+    logger.info("info");
   });
 
-  test('Should log warn level', (done) => {
+  test("Should log warn level", (done) => {
     logger.initLogger(logLevel, {
       warn(str) {
-        expect(str).toBe('warn');
+        expect(str).toBe("warn");
 
         done();
       },
     });
 
-    logger.warn('warn');
+    logger.warn("warn");
   });
 
-  test('Should log error level', (done) => {
+  test("Should log error level", (done) => {
     logger.initLogger(logLevel, {
       error(str) {
-        expect(str).toBe('error');
+        expect(str).toBe("error");
 
         done();
       },
     });
 
-    logger.error('error');
+    logger.error("error");
   });
 });
 
-describe('logger: warn', () => {
-  const logLevel = 'warn';
+describe("logger: warn", () => {
+  const logLevel = "warn";
 
-  test('Should not log log level', (done) => {
+  test("Should not log log level", (done) => {
     logger.initLogger(logLevel, {
       log() {
-        done('Log level has been called');
+        done("Log level has been called");
       },
     });
 
-    logger.log('log');
+    logger.log("log");
     done();
   });
 
-  test('Should not log info level', (done) => {
+  test("Should not log info level", (done) => {
     logger.initLogger(logLevel, {
       info() {
-        done('Info level has been called');
+        done("Info level has been called");
       },
     });
 
-    logger.info('info');
+    logger.info("info");
     done();
   });
 
-  test('Should log warn level', (done) => {
+  test("Should log warn level", (done) => {
     logger.initLogger(logLevel, {
       warn(str) {
-        expect(str).toBe('warn');
+        expect(str).toBe("warn");
 
         done();
       },
     });
 
-    logger.warn('warn');
+    logger.warn("warn");
   });
 
-  test('Should log error level', (done) => {
+  test("Should log error level", (done) => {
     logger.initLogger(logLevel, {
       error(str) {
-        expect(str).toBe('error');
+        expect(str).toBe("error");
 
         done();
       },
     });
 
-    logger.error('error');
+    logger.error("error");
   });
 });
 
-describe('logger: error', () => {
-  const logLevel = 'error';
+describe("logger: error", () => {
+  const logLevel = "error";
 
-  test('Should not log log level', (done) => {
+  test("Should not log log level", (done) => {
     logger.initLogger(logLevel, {
       log() {
-        done('Log level has been called');
+        done("Log level has been called");
       },
     });
 
-    logger.log('log');
+    logger.log("log");
     done();
   });
 
-  test('Should not log info level', (done) => {
+  test("Should not log info level", (done) => {
     logger.initLogger(logLevel, {
       info() {
-        done('Info level has been called');
+        done("Info level has been called");
       },
     });
 
-    logger.info('info');
+    logger.info("info");
     done();
   });
 
-  test('Should not log warn level', (done) => {
+  test("Should not log warn level", (done) => {
     logger.initLogger(logLevel, {
       warn() {
-        done('Warn level has been called');
+        done("Warn level has been called");
       },
     });
 
-    logger.warn('warn');
+    logger.warn("warn");
     done();
   });
 
-  test('Should log error level', (done) => {
+  test("Should log error level", (done) => {
     logger.initLogger(logLevel, {
       error(str) {
-        expect(str).toBe('error');
+        expect(str).toBe("error");
 
         done();
       },
     });
 
-    logger.error('error');
+    logger.error("error");
   });
 });
