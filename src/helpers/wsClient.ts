@@ -9,13 +9,13 @@ import {
   TokenTransferTransaction,
 } from "../api/generated";
 
-type WsType = "ws" | "wss";
+export type WsType = "ws" | "wss";
 
-type OnNewTransactionCallback = (
+export type OnNewTransactionCallback = (
   transaction: ChatMessageTransaction | TokenTransferTransaction,
 ) => void;
 
-interface WsOptions {
+export interface WsOptions {
   /**
    * ADM address to subscribe to notifications
    */

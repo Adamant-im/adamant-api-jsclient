@@ -6,7 +6,7 @@ import { parseUrl } from "./url";
 
 import { GetNodeStatusResponseDto } from "../api/generated";
 import { AdamantApiResult, getRandomIntInclusive } from "./validator";
-import { WebSocketClient } from "./wsClient";
+import { WebSocketClient, WsOptions } from "./wsClient";
 
 export interface NodeManagerOptions {
   nodes: string[];
@@ -73,6 +73,10 @@ export class NodeManager {
 
   public onReady(callback: () => void) {
     this.onReadyCallback = callback;
+  }
+
+  public initSocket(options: WsOptions) {
+    this.socket = new WebSocketClient(this.logger, options);
   }
 
   private ready() {
