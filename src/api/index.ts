@@ -229,18 +229,26 @@ export class AdamantApi {
     }
   }
 
+  /**
+   * Makes GET request to ADAMANT network.
+   *
+   * @details `endpoint` should be in `'accounts/getPublicKey'` format, excluding `'/api/'`
+   */
   async get<T>(endpoint: string, params?: any) {
     return this._request<T>("GET", endpoint, params);
   }
 
+  /**
+   * Makes POST request to ADAMANT network.
+   *
+   * @details `endpoint` should be in `'accounts/getPublicKey'` format, excluding `'/api/'`
+   */
   async post<T>(endpoint: string, options: any) {
     return this._request<T>("POST", endpoint, options);
   }
 
   /**
    * Get account Public Key
-   *
-   * @nav Account
    */
   async getPublicKey(address: AdamantAddress) {
     const cached = publicKeysCache[address];
@@ -269,11 +277,9 @@ export class AdamantApi {
   }
 
   /**
-   * registers new delegate within given username
+   * Register new delegate within given username
    *
-   * @param username new delegate's username
-   *
-   * @nav Delegates
+   * @param username The new delegate's username
    */
   async newDelegate(passPhrase: string, username: string) {
     if (!isPassPhrase(passPhrase)) {
@@ -296,6 +302,9 @@ export class AdamantApi {
     return this.post("delegates", transaction);
   }
 
+  /**
+   * Encrypt a message, creates Message transaction, signs it, and broadcasts to ADAMANT network.
+   */
   async sendMessage(
     passPhrase: string,
     addressOrPublicKey: string,
@@ -380,6 +389,9 @@ export class AdamantApi {
     });
   }
 
+  /**
+   * Send tokens to an account
+   */
   sendTokens(
     passPhrase: string,
     addressOrPublicKey: string,
@@ -432,7 +444,7 @@ export class AdamantApi {
   }
 
   /**
-   * Votes for specific delegates
+   * Vote for specific delegates
    *
    * @param votes Array with public keys. For upvote, add leading `+` to delegate's public key. For downvote, add leading `-` to delegate's public key.
    *
@@ -592,6 +604,8 @@ export class AdamantApi {
 
   /**
    * Search delegates by `username`
+   *
+   * @param q - username
    */
   async searchDelegates(q: string) {
     return this.get<SearchDelegateResponseDto>("delegates/search", { q });
