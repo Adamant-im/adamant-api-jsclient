@@ -19,11 +19,12 @@ declare module "coininfo" {
     };
   }
 
-  interface coininfo {
+  interface Coins {
     bitcoin: CoinInfo;
     dash: CoinInfo;
     dogecoin: CoinInfo;
   }
 
+  const coininfo: Coins
   export = coininfo;
 }

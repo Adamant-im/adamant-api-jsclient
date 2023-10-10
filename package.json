@@ -72,6 +72,7 @@
     "@types/bytebuffer": "^5.0.45",
     "@types/ed2curve": "^0.2.2",
     "@types/node": "^20.8.0",
+    "@types/pbkdf2": "^3.1.0",
     "eslint": "^8.48.0",
     "eslint-config-google": "^0.14.0",
     "eslint-plugin-jest": "^27.2.3",
