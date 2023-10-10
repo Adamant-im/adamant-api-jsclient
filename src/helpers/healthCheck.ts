@@ -10,10 +10,9 @@ import { WebSocketClient } from "./wsClient";
 
 export interface NodeManagerOptions {
   nodes: string[];
-  checkHealthAtStartup?: boolean;
   timeout?: number;
   socket?: WebSocketClient;
-  chechHealthAtStartup?: boolean;
+  checkHealthAtStartup?: boolean;
 }
 
 export interface ActiveNode {
@@ -48,15 +47,22 @@ export class NodeManager {
   constructor(logger: Logger, options: NodeManagerOptions) {
     this.options = {
       timeout: HEALTH_CHECK_TIMEOUT,
+      checkHealthAtStartup: true,
       ...options,
     };
 
+    const {
+      socket,
+      nodes,
+      checkHealthAtStartup
+    } = this.options
+
     this.logger = logger;
-    this.socket = options.socket;
+    this.socket = socket;
 
-    this.node = options.nodes[0];
+    this.node = nodes[0];
 
-    if (options.checkHealthAtStartup) {
+    if (checkHealthAtStartup) {
       this.updateNodes(true);
 
       setInterval(() => this.updateNodes(true), CHECK_NODES_INTERVAL);

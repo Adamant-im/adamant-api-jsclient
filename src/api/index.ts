@@ -1,5 +1,5 @@
 import axios, { AxiosError } from "axios";
-import { NodeManager } from "../helpers/healthCheck";
+import { NodeManager, NodeManagerOptions } from "../helpers/healthCheck";
 import { Logger, type CustomLogger, type LogLevel } from "../helpers/logger";
 import {
   AdamantApiResult,
@@ -147,7 +147,7 @@ export interface TransactionsOptions extends TransactionQueryParameters {
   returnAsset?: 1 | 0;
 }
 
-export interface AdamantApiOptions {
+export interface AdamantApiOptions extends NodeManagerOptions {
   nodes: string[];
 
   maxRetries?: number;
