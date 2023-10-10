@@ -161,23 +161,15 @@ const publicKeysCache: {
   [address: string]: string;
 } = {};
 
-export class AdamantApi {
+export class AdamantApi extends NodeManager {
   maxRetries: number;
 
-  logger: Logger;
-  nodeManager: NodeManager;
-
   constructor(options: AdamantApiOptions) {
-    this.maxRetries = options.maxRetries ?? DEFAULT_GET_REQUEST_RETRIES;
-
     const customLogger = new Logger(options.logLevel, options.logger);
 
-    this.logger = customLogger;
-    this.nodeManager = new NodeManager(customLogger, options);
-  }
+    super(customLogger, options)
 
-  public onReady(callback: () => void) {
-    this.nodeManager.onReady(callback);
+    this.maxRetries = options.maxRetries ?? DEFAULT_GET_REQUEST_RETRIES;
   }
 
   private async _request<T>(
@@ -186,9 +178,9 @@ export class AdamantApi {
     data: any,
     retryNo: number = 1,
   ): Promise<AdamantApiResult<T>> {
-    const { nodeManager, logger, maxRetries } = this;
+    const { logger, maxRetries } = this;
 
-    const url = `${nodeManager.node}/api/${endpoint}`;
+    const url = `${this.node}/api/${endpoint}`;
 
     try {
       const response = await axios<AdamantApiResult<T>>({
@@ -216,7 +208,7 @@ export class AdamantApi {
       if (retryNo <= maxRetries) {
         logger.log(`${logMessage} Retrying…`);
 
-        await nodeManager.updateNodes();
+        await this.updateNodes();
         return this._request<T>(method, endpoint, data, retryNo + 1);
       }
 

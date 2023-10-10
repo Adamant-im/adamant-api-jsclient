@@ -36,8 +36,8 @@ export class NodeManager {
 
   public node: string;
 
-  private logger: Logger;
-  private socket?: WebSocketClient;
+  protected logger: Logger;
+  protected socket?: WebSocketClient;
 
   private onReadyCallback?: () => void;
 
