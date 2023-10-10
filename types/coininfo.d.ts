@@ -1,5 +1,5 @@
 declare module "coininfo" {
-  interface Network {
+  export interface Network {
     messagePrefix: string;
     bech32: string;
     bip32: Bip32;
@@ -8,23 +8,23 @@ declare module "coininfo" {
     wif: number;
   }
 
-  interface Bip32 {
+  export interface Bip32 {
     public: number;
     private: number;
   }
 
-  interface CoinInfo {
+  export interface CoinInfo {
     main: {
       toBitcoinJS: () => Network;
     };
   }
 
-  interface Coins {
+  export interface Coins {
     bitcoin: CoinInfo;
     dash: CoinInfo;
     dogecoin: CoinInfo;
   }
 
   const coininfo: Coins
-  export = coininfo;
+  export default coininfo;
 }
