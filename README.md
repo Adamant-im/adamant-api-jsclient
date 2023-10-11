@@ -27,14 +27,7 @@ Health Check system pings all nodes in the list using [`/status`](https://github
 
 ## Usage
 
-Add current version of ADAMANT JavaScript API library in project's `package.json` in `dependencies` section:
-
-```json
-  "dependencies": {
-    "adamant-api": "^1.4.0",
-```
-
-Or install library from npm:
+Install library from npm:
 
 ```bash
 npm i adamant-api
@@ -43,7 +36,9 @@ npm i adamant-api
 Initialize the library:
 
 ```JS
-const nodesList = [
+const { AdamantApi } = require('adamant-api')
+
+const nodes = [
   "http://localhost:36666",
   "https://endless.adamant.im",
   "https://clown.adamant.im",
@@ -51,15 +46,18 @@ const nodesList = [
   "http://88.198.156.44:36666",
   "https://lake.adamant.im"
 ];
-const api = require('adamant-api')({ node: nodesList, logLevel: 'info' });
+
+const api = new AdamantApi({
+  nodes,
+});
 ```
 
 Request example:
 
 ```JS
-api.get('blocks').then(response => {
-  console.log(response.data)
-})
+const response = await api.getBlocks()
+
+console.log(response.data)
 ```
 
 ## Documentation
