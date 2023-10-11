@@ -22,8 +22,6 @@ export const DEFAULT_GET_REQUEST_RETRIES = 3;
 
 export const SAT = 100_000_000;
 
-export const EPOCH_TIME = new Date(Date.UTC(2017, 8, 2, 17, 0, 0, 0));
-
 export const fees = {
   send: 50000000,
   vote: 1000000000,

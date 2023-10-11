@@ -1,4 +1,4 @@
-import { EPOCH_TIME } from "./constants";
+export const EPOCH_TIME = new Date(Date.UTC(2017, 8, 2, 17, 0, 0, 0));
 
 export const getEpochTime = (timestamp?: number) => {
   const startTimestamp = timestamp ?? Date.now();
