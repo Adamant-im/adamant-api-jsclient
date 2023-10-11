@@ -47,8 +47,8 @@ export const createAddressFromPublicKey = (
 
   const temp = Buffer.alloc(8);
 
-  for (let i = 1; i <= 8; i++) {
-    temp[i] = publicKeyBuffer[8 - i];
+  for (let i = 0; i < 8; i++) {
+    temp[i] = publicKeyBuffer[7 - i];
   }
 
   return `U${bignum.fromBuffer(temp)}`;
