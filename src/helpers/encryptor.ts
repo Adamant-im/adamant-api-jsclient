@@ -101,21 +101,21 @@ export const decodeMessage = (
   const keypair = createKeypairFromPassPhrase(passPhrase);
 
   if (typeof message !== "string") {
-    throw new Error("decodeMessage message should a string");
+    throw new Error("decodeMessage message should be a string");
   }
 
-  if (typeof nonce === "string") {
-    throw new Error("decodeMessage: nonce should a string");
+  if (typeof nonce !== "string") {
+    throw new Error("decodeMessage: nonce should be a string");
   }
 
-  if (typeof senderPublicKey === "string") {
-    throw new Error("decodeMessage: senderPublicKey should a string");
+  if (typeof senderPublicKey !== "string") {
+    throw new Error("decodeMessage: senderPublicKey should be a string");
   }
 
   const DHPublicKey = ed2curve.convertPublicKey(hexToBytes(senderPublicKey));
 
   if (!DHPublicKey) {
-    throw new Error("encodeMessage: invalid key");
+    throw new Error("decodeMessage: invalid key");
   }
 
   const { privateKey } = keypair;

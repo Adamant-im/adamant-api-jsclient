@@ -1,6 +1,6 @@
 import sodium from "sodium-browserify-tweetnacl";
 import crypto from "crypto";
-import bip39 from "bip39";
+import { mnemonicToSeedSync, generateMnemonic } from "bip39";
 
 import * as bignum from "./bignumber";
 
@@ -9,7 +9,7 @@ export interface KeyPair {
   privateKey: Buffer;
 }
 
-export const createNewPassPhrase = () => bip39.generateMnemonic();
+export const createNewPassPhrase = () => generateMnemonic();
 
 export const makeKeypairFromHash = (hash: Buffer): KeyPair => {
   const keypair = sodium.crypto_sign_seed_keypair(hash);
@@ -23,7 +23,7 @@ export const makeKeypairFromHash = (hash: Buffer): KeyPair => {
 export const createHashFromPassPhrase = (passphrase: string) =>
   crypto
     .createHash("sha256")
-    .update(bip39.mnemonicToSeedSync(passphrase).toString("hex"), "hex")
+    .update(mnemonicToSeedSync(passphrase).toString("hex"), "hex")
     .digest();
 
 export const createKeypairFromPassPhrase = (passphrase: string) => {
