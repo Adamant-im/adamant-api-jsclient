@@ -427,7 +427,7 @@ export class AdamantApi extends NodeManager {
 
     const transaction = createSendTransaction(data);
 
-    return this.post('/api/transactions/process', {
+    return this.post('transactions/process', {
       transaction,
     });
   }
@@ -518,7 +518,7 @@ export class AdamantApi extends NodeManager {
 
     const transaction = createVoteTransaction(data);
 
-    return this.post('/api/accounts/delegates', transaction);
+    return this.post('accounts/delegates', transaction);
   }
 
   /**
