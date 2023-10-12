@@ -28,7 +28,6 @@ const admAddress = process.env.ADAMANT_ADDRESS as `U${string}`;
 const passPhrase = process.env.PASS_PHRASE!;
 
 api.initSocket({
-  wsType: 'wss',
   admAddress,
   onNewMessage(
     transaction:

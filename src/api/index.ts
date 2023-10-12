@@ -3,7 +3,6 @@ import { NodeManager, NodeManagerOptions } from "../helpers/healthCheck";
 import { Logger, type CustomLogger, type LogLevel } from "../helpers/logger";
 import {
   AdamantApiResult,
-  MessageType,
   admToSats,
   badParameter,
   isAdmAddress,
@@ -17,7 +16,7 @@ import {
   isPassPhrase,
   validateMessage,
 } from "../helpers/validator";
-import { DEFAULT_GET_REQUEST_RETRIES } from "../helpers/constants";
+import { DEFAULT_GET_REQUEST_RETRIES, MessageType } from "../helpers/constants";
 
 import type {
   GetAccountBalanceResponseDto,
@@ -191,28 +190,28 @@ export class AdamantApi extends NodeManager {
 
       return response.data;
     } catch (error) {
-      if (!(error instanceof AxiosError)) {
+      if (error instanceof AxiosError) {
+        const logMessage = `[ADAMANT js-api] Get-request: Request to ${url} failed with ${error
+          .response?.status} status code, ${error}${
+          error.response?.data
+            ? ". Message: " + error.response.data.toString().trim()
+            : ""
+        }. Try ${retryNo} of ${maxRetries}.`;
+
+        if (retryNo <= maxRetries) {
+          logger.log(`${logMessage} Retrying…`);
+
+          await this.updateNodes();
+          return this._request<T>(method, endpoint, data, retryNo + 1);
+        }
+
+        logger.warn(`${logMessage} No more attempts, returning error.`);
+
         return {
           success: false,
           errorMessage: `${error}`,
         };
       }
-
-      const logMessage = `[ADAMANT js-api] Get-request: Request to ${url} failed with ${error
-        .response?.status} status code, ${error}${
-        error.response?.data
-          ? ". Message: " + error.response.data.toString().trim()
-          : ""
-      }. Try ${retryNo} of ${maxRetries}.`;
-
-      if (retryNo <= maxRetries) {
-        logger.log(`${logMessage} Retrying…`);
-
-        await this.updateNodes();
-        return this._request<T>(method, endpoint, data, retryNo + 1);
-      }
-
-      logger.warn(`${logMessage} No more attempts, returning error.`);
 
       return {
         success: false,

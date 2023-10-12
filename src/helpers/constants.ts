@@ -11,6 +11,19 @@ export enum TransactionType {
   STATE,
 }
 
+export type MessageTypes = 1 | 2 | 3;
+
+/**
+ * Message type
+ *
+ * @see https://github.com/Adamant-im/adamant/wiki/Message-Types
+ */
+export enum MessageType {
+  Chat = 1,
+  Rich = 2,
+  Signal = 3,
+}
+
 export const MAX_VOTES_PER_TRANSACTION = 33;
 
 /**

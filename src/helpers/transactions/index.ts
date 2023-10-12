@@ -3,9 +3,8 @@ import { signTransaction } from "./hash";
 import { createAddressFromPublicKey } from "../keys";
 import { getEpochTime } from "../time";
 
-import { TransactionType } from "../constants";
+import { MessageType, TransactionType } from "../constants";
 import type { KeyPair } from "../keys";
-import { MessageType } from "../validator";
 
 export type AnyTransactionData = (
   | SendTransactionData

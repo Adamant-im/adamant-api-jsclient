@@ -5,8 +5,7 @@ import crypto from "crypto";
 import BigNumber from "bignumber.js";
 import { toBuffer } from "../bignumber";
 
-import { TransactionType } from "../constants";
-import { MessageType } from "../validator";
+import { MessageType, TransactionType } from "../constants";
 import { KeyPair } from "../keys";
 
 export interface BasicTransaction {

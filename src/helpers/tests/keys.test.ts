@@ -42,7 +42,6 @@ describe('createKeypairFromPassPhrase', () => {
 
 describe('createAddressFromPublicKey', () => {
   test('should return a string which matches the address pattern', () => {
-    console.log(mocked.publicKey)
     const address = keys.createAddressFromPublicKey(mocked.publicKey);
 
     expect(address).toBe(mocked.address);

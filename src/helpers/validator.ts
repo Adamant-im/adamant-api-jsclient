@@ -1,20 +1,5 @@
 import BigNumber from "bignumber.js";
-import { SAT } from "./constants";
-
-export type MessageTypes = 1 | 2 | 3;
-
-/**
- * Message type
- *
- * @see https://github.com/Adamant-im/adamant/wiki/Message-Types
- *
- * @nav Api/Types
- */
-export enum MessageType {
-  Chat = 1,
-  Rich = 2,
-  Signal = 3,
-}
+import { MessageType, MessageTypes, SAT } from "./constants";
 
 export const getRandomIntInclusive = (minimum: number, maximum: number) => {
   const min = Math.ceil(minimum);
