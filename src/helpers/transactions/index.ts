@@ -176,19 +176,20 @@ export const createVoteTransaction = (data: VoteTransactionData) => {
     transactionType: TransactionType.VOTE,
   };
 
+  const basicTransaction = createBasicTransaction<TransactionType.VOTE>(details);
+
   const transaction = {
-    ...createBasicTransaction<TransactionType.VOTE>(details),
+    ...basicTransaction,
+    recipientId: basicTransaction.senderId,
     asset: {
       votes: details.votes,
     },
   };
 
-  const recipientId = transaction.senderId;
   const signature = signTransaction(transaction, details.keyPair);
 
   return {
     ...transaction,
-    recipientId,
     signature,
   };
 };
