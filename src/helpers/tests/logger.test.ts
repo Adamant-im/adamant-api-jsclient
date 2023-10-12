@@ -1,16 +1,16 @@
-import { Logger, LogLevel } from '../logger';
+import {Logger, LogLevel} from '../logger';
 
 const mockLogger = {
   log() {},
   error() {},
   warn() {},
   info() {},
-}
+};
 
 describe('logger: log', () => {
   const logLevel = LogLevel.Log;
 
-  test('should log log level', (done) => {
+  test('should log log level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       log(str) {
@@ -22,7 +22,7 @@ describe('logger: log', () => {
     logger.log('log');
   });
 
-  test('should log info level', (done) => {
+  test('should log info level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       info(str) {
@@ -34,7 +34,7 @@ describe('logger: log', () => {
     logger.info('info');
   });
 
-  test('should log warn level', (done) => {
+  test('should log warn level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       warn(str) {
@@ -46,7 +46,7 @@ describe('logger: log', () => {
     logger.warn('warn');
   });
 
-  test('should log error level', (done) => {
+  test('should log error level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       error(str) {
@@ -62,7 +62,7 @@ describe('logger: log', () => {
 describe('logger: info', () => {
   const logLevel = LogLevel.Info;
 
-  test('should not log log level', (done) => {
+  test('should not log log level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       log() {
@@ -74,7 +74,7 @@ describe('logger: info', () => {
     done();
   });
 
-  test('should log info level', (done) => {
+  test('should log info level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       info(str) {
@@ -86,7 +86,7 @@ describe('logger: info', () => {
     logger.info('info');
   });
 
-  test('should log warn level', (done) => {
+  test('should log warn level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       warn(str) {
@@ -98,7 +98,7 @@ describe('logger: info', () => {
     logger.warn('warn');
   });
 
-  test('should log error level', (done) => {
+  test('should log error level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       error(str) {
@@ -114,7 +114,7 @@ describe('logger: info', () => {
 describe('logger: warn', () => {
   const logLevel = LogLevel.Warn;
 
-  test('should not log log level', (done) => {
+  test('should not log log level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       log() {
@@ -126,7 +126,7 @@ describe('logger: warn', () => {
     done();
   });
 
-  test('should not log info level', (done) => {
+  test('should not log info level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       info() {
@@ -138,7 +138,7 @@ describe('logger: warn', () => {
     done();
   });
 
-  test('should log warn level', (done) => {
+  test('should log warn level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       warn(str) {
@@ -150,7 +150,7 @@ describe('logger: warn', () => {
     logger.warn('warn');
   });
 
-  test('should log error level', (done) => {
+  test('should log error level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       error(str) {
@@ -166,7 +166,7 @@ describe('logger: warn', () => {
 describe('logger: error', () => {
   const logLevel = LogLevel.Error;
 
-  test('should not log log level', (done) => {
+  test('should not log log level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       error(str) {
@@ -179,7 +179,7 @@ describe('logger: error', () => {
     done();
   });
 
-  test('should not log info level', (done) => {
+  test('should not log info level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       info() {
@@ -191,7 +191,7 @@ describe('logger: error', () => {
     done();
   });
 
-  test('should not log warn level', (done) => {
+  test('should not log warn level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       warn() {
@@ -203,7 +203,7 @@ describe('logger: error', () => {
     done();
   });
 
-  test('should log error level', (done) => {
+  test('should log error level', done => {
     const logger = new Logger(logLevel, {
       ...mockLogger,
       error(str) {

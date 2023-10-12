@@ -1,4 +1,4 @@
-declare module "coininfo" {
+declare module 'coininfo' {
   export interface Network {
     messagePrefix: string;
     bech32: string;
@@ -25,6 +25,6 @@ declare module "coininfo" {
     dogecoin: CoinInfo;
   }
 
-  const coininfo: Coins
+  const coininfo: Coins;
   export default coininfo;
 }

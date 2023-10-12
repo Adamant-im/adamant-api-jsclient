@@ -1,6 +1,6 @@
-import axios, { AxiosError } from "axios";
-import { NodeManager, NodeManagerOptions } from "../helpers/healthCheck";
-import { Logger, type CustomLogger, type LogLevel } from "../helpers/logger";
+import axios, {AxiosError} from 'axios';
+import {NodeManager, NodeManagerOptions} from '../helpers/healthCheck';
+import {Logger, type CustomLogger, type LogLevel} from '../helpers/logger';
 import {
   AdamantApiResult,
   admToSats,
@@ -15,8 +15,8 @@ import {
   isMessageType,
   isPassPhrase,
   validateMessage,
-} from "../helpers/validator";
-import { DEFAULT_GET_REQUEST_RETRIES, MessageType } from "../helpers/constants";
+} from '../helpers/validator';
+import {DEFAULT_GET_REQUEST_RETRIES, MessageType} from '../helpers/constants';
 
 import type {
   GetAccountBalanceResponseDto,
@@ -55,22 +55,20 @@ import type {
   GetUnconfirmedTransactionByIdResponseDto,
   GetUnconfirmedTransactionsResponseDto,
   GetVotersResponseDto,
-  RegisterDelegateResponseDto,
-  RegisterVotesResponseDto,
   SearchDelegateResponseDto,
-} from "./generated";
+} from './generated';
 import {
   createAddressFromPublicKey,
   createKeypairFromPassPhrase,
-} from "../helpers/keys";
+} from '../helpers/keys';
 import {
   createChatTransaction,
   createDelegateTransaction,
   createSendTransaction,
   createVoteTransaction,
-} from "../helpers/transactions";
-import { encodeMessage } from "../helpers/encryptor";
-import { parseVote } from "./votes";
+} from '../helpers/transactions';
+import {encodeMessage} from '../helpers/encryptor';
+import {parseVote} from './votes';
 
 export type AdamantAddress = `U${string}`;
 
@@ -166,18 +164,18 @@ export class AdamantApi extends NodeManager {
   constructor(options: AdamantApiOptions) {
     const customLogger = new Logger(options.logLevel, options.logger);
 
-    super(customLogger, options)
+    super(customLogger, options);
 
     this.maxRetries = options.maxRetries ?? DEFAULT_GET_REQUEST_RETRIES;
   }
 
   private async _request<T>(
-    method: "GET" | "POST",
+    method: 'GET' | 'POST',
     endpoint: string,
-    data: any,
-    retryNo: number = 1,
+    data: unknown,
+    retryNo = 1
   ): Promise<AdamantApiResult<T>> {
-    const { logger, maxRetries } = this;
+    const {logger, maxRetries} = this;
 
     const url = `${this.node}/api/${endpoint}`;
 
@@ -194,8 +192,8 @@ export class AdamantApi extends NodeManager {
         const logMessage = `[ADAMANT js-api] Get-request: Request to ${url} failed with ${error
           .response?.status} status code, ${error}${
           error.response?.data
-            ? ". Message: " + error.response.data.toString().trim()
-            : ""
+            ? '. Message: ' + error.response.data.toString().trim()
+            : ''
         }. Try ${retryNo} of ${maxRetries}.`;
 
         if (retryNo <= maxRetries) {
@@ -225,8 +223,8 @@ export class AdamantApi extends NodeManager {
    *
    * @details `endpoint` should be in `'accounts/getPublicKey'` format, excluding `'/api/'`
    */
-  async get<T>(endpoint: string, params?: any) {
-    return this._request<T>("GET", endpoint, params);
+  async get<T>(endpoint: string, params?: unknown) {
+    return this._request<T>('GET', endpoint, params);
   }
 
   /**
@@ -234,8 +232,8 @@ export class AdamantApi extends NodeManager {
    *
    * @details `endpoint` should be in `'accounts/getPublicKey'` format, excluding `'/api/'`
    */
-  async post<T>(endpoint: string, options: any) {
-    return this._request<T>("POST", endpoint, options);
+  async post<T>(endpoint: string, options: unknown) {
+    return this._request<T>('POST', endpoint, options);
   }
 
   /**
@@ -248,23 +246,23 @@ export class AdamantApi extends NodeManager {
     }
 
     const response = await this.get<GetAccountPublicKeyResponseDto>(
-      "accounts/getPublicKey",
+      'accounts/getPublicKey',
       {
         address,
-      },
+      }
     );
 
     if (response.success) {
-      const { publicKey } = response;
+      const {publicKey} = response;
 
       publicKeysCache[address] = publicKey;
       return publicKey;
     }
 
     this.logger.warn(
-      `[ADAMANT js-api] Failed to get public key for ${address}. ${response.errorMessage}.`,
+      `[ADAMANT js-api] Failed to get public key for ${address}. ${response.errorMessage}.`
     );
-    return "";
+    return '';
   }
 
   /**
@@ -274,11 +272,11 @@ export class AdamantApi extends NodeManager {
    */
   async newDelegate(passPhrase: string, username: string) {
     if (!isPassPhrase(passPhrase)) {
-      return badParameter("passPhrase");
+      return badParameter('passPhrase');
     }
 
     if (!isDelegateName(username)) {
-      return badParameter("username");
+      return badParameter('username');
     }
 
     const keyPair = createKeypairFromPassPhrase(passPhrase);
@@ -290,7 +288,7 @@ export class AdamantApi extends NodeManager {
 
     const transaction = createDelegateTransaction(data);
 
-    return this.post("delegates", transaction);
+    return this.post('delegates', transaction);
   }
 
   /**
@@ -302,18 +300,18 @@ export class AdamantApi extends NodeManager {
     message: string,
     type = MessageType.Chat,
     amount?: number,
-    isAmountInADM?: boolean,
+    isAmountInADM?: boolean
   ) {
     if (!isPassPhrase(passPhrase)) {
-      return badParameter("passPhrase");
+      return badParameter('passPhrase');
     }
 
     let address: `U${string}`;
-    let publicKey: string = "";
+    let publicKey = '';
 
     if (!isAdmAddress(addressOrPublicKey)) {
       if (!isAdmPublicKey(addressOrPublicKey)) {
-        return badParameter("addressOrPublicKey", addressOrPublicKey);
+        return badParameter('addressOrPublicKey', addressOrPublicKey);
       }
 
       publicKey = addressOrPublicKey;
@@ -321,20 +319,20 @@ export class AdamantApi extends NodeManager {
       try {
         address = createAddressFromPublicKey(publicKey);
       } catch (error) {
-        return badParameter("addressOrPublicKey", addressOrPublicKey);
+        return badParameter('addressOrPublicKey', addressOrPublicKey);
       }
     } else {
       address = addressOrPublicKey;
     }
 
     if (!isMessageType(type)) {
-      return badParameter("type", type);
+      return badParameter('type', type);
     }
 
     const result = validateMessage(message, type);
 
     if (!result.success) {
-      return badParameter("message", message, result.error);
+      return badParameter('message', message, result.error);
     }
 
     let amountInSat: number | undefined;
@@ -347,7 +345,7 @@ export class AdamantApi extends NodeManager {
       }
 
       if (!isIntegerAmount(amountInSat)) {
-        return badParameter("amount", amount);
+        return badParameter('amount', amount);
       }
     }
 
@@ -375,7 +373,7 @@ export class AdamantApi extends NodeManager {
 
     const transaction = createChatTransaction(data);
 
-    return this.post("transactions/process", {
+    return this.post('transactions/process', {
       transaction,
     });
   }
@@ -387,10 +385,10 @@ export class AdamantApi extends NodeManager {
     passPhrase: string,
     addressOrPublicKey: string,
     amount: number,
-    isAmountInADM = true,
+    isAmountInADM = true
   ) {
     if (!isPassPhrase(passPhrase)) {
-      return badParameter("passPhrase");
+      return badParameter('passPhrase');
     }
 
     let address: `U${string}`;
@@ -399,13 +397,13 @@ export class AdamantApi extends NodeManager {
       address = addressOrPublicKey;
     } else {
       if (!isAdmPublicKey(addressOrPublicKey)) {
-        return badParameter("addressOrPublicKey", addressOrPublicKey);
+        return badParameter('addressOrPublicKey', addressOrPublicKey);
       }
 
       try {
         address = createAddressFromPublicKey(addressOrPublicKey);
       } catch (error) {
-        return badParameter("addressOrPublicKey", addressOrPublicKey);
+        return badParameter('addressOrPublicKey', addressOrPublicKey);
       }
     }
 
@@ -416,7 +414,7 @@ export class AdamantApi extends NodeManager {
     }
 
     if (!isIntegerAmount(amountInSat)) {
-      return badParameter("amount", amount);
+      return badParameter('amount', amount);
     }
 
     const keyPair = createKeypairFromPassPhrase(passPhrase);
@@ -429,7 +427,7 @@ export class AdamantApi extends NodeManager {
 
     const transaction = createSendTransaction(data);
 
-    return this.post("/api/transactions/process", {
+    return this.post('/api/transactions/process', {
       transaction,
     });
   }
@@ -449,7 +447,7 @@ export class AdamantApi extends NodeManager {
    */
   async voteForDelegate(passPhrase: string, votes: string[]) {
     if (!isPassPhrase(passPhrase)) {
-      return badParameter("passPhrase");
+      return badParameter('passPhrase');
     }
 
     const keyPair = createKeypairFromPassPhrase(passPhrase);
@@ -469,16 +467,16 @@ export class AdamantApi extends NodeManager {
       }
 
       if (isAdmVoteForAddress(vote)) {
-        const response = await this.getAccountInfo({ address: name });
+        const response = await this.getAccountInfo({address: name});
 
         if (!response.success) {
           this.logger.warn(
-            `[ADAMANT js-api] Failed to get public key for ${vote}. ${response.errorMessage}.`,
+            `[ADAMANT js-api] Failed to get public key for ${vote}. ${response.errorMessage}.`
           );
-          return badParameter("votes");
+          return badParameter('votes');
         }
 
-        const { publicKey } = response.account;
+        const {publicKey} = response.account;
 
         publicKeysCache[name] = publicKey;
         uniqueVotes[publicKey] = direction;
@@ -487,16 +485,16 @@ export class AdamantApi extends NodeManager {
       }
 
       if (isAdmVoteForDelegateName(name)) {
-        const response = await this.getDelegate({ username: name });
+        const response = await this.getDelegate({username: name});
 
         if (!response.success) {
           this.logger.warn(
-            `[ADAMANT js-api] Failed to get public key for ${vote}. ${response.errorMessage}.`,
+            `[ADAMANT js-api] Failed to get public key for ${vote}. ${response.errorMessage}.`
           );
-          return badParameter("votes");
+          return badParameter('votes');
         }
 
-        const { publicKey } = response.delegate;
+        const {publicKey} = response.delegate;
 
         publicKeysCache[name] = publicKey;
         uniqueVotes[publicKey] = direction;
@@ -505,7 +503,7 @@ export class AdamantApi extends NodeManager {
       }
 
       if (!isAdmVoteForPublicKey(name)) {
-        return badParameter("votes");
+        return badParameter('votes');
       }
 
       uniqueVotes[name] = direction;
@@ -514,29 +512,29 @@ export class AdamantApi extends NodeManager {
     const data = {
       keyPair,
       votes: Object.keys(uniqueVotes).map(
-        (name) => `${uniqueVotes[name]}${name}`,
+        name => `${uniqueVotes[name]}${name}`
       ),
     };
 
     const transaction = createVoteTransaction(data);
 
-    return this.post("/api/accounts/delegates", transaction);
+    return this.post('/api/accounts/delegates', transaction);
   }
 
   /**
    * Get account information by ADAMANT address or Public Key
    */
   async getAccountInfo(
-    options: AddressOrPublicKeyObject,
+    options: AddressOrPublicKeyObject
   ): Promise<AdamantApiResult<GetAccountInfoResponseDto>> {
-    return this.get("accounts", options);
+    return this.get('accounts', options);
   }
 
   /**
    * Get account balance
    */
   async getAccountBalance(address: string) {
-    return this.get<GetAccountBalanceResponseDto>("accounts/getBalance", {
+    return this.get<GetAccountBalanceResponseDto>('accounts/getBalance', {
       address,
     });
   }
@@ -545,14 +543,14 @@ export class AdamantApi extends NodeManager {
    * Get block information by ID
    */
   async getBlock(id: string) {
-    return this.get<GetBlockInfoResponseDto>("blocks/get", { id });
+    return this.get<GetBlockInfoResponseDto>('blocks/get', {id});
   }
 
   /**
    * Get list of blocks
    */
   async getBlocks(options?: GetBlocksOptions) {
-    return this.get<GetBlocksResponseDto>("blocks", options);
+    return this.get<GetBlocksResponseDto>('blocks', options);
   }
 
   /**
@@ -560,7 +558,7 @@ export class AdamantApi extends NodeManager {
    */
   async getChats(
     address: string,
-    options?: TransactionQuery<ChatroomsOptions>,
+    options?: TransactionQuery<ChatroomsOptions>
   ) {
     return this.get<GetChatRoomsResponseDto>(`chatrooms/${address}`, options);
   }
@@ -571,11 +569,11 @@ export class AdamantApi extends NodeManager {
   async getChatMessages(
     address1: string,
     address2: string,
-    query?: TransactionQuery<ChatroomsOptions>,
+    query?: TransactionQuery<ChatroomsOptions>
   ) {
     return this.get<GetChatMessagesResponseDto>(
       `chatrooms/${address1}/${address2}`,
-      query,
+      query
     );
   }
 
@@ -583,14 +581,14 @@ export class AdamantApi extends NodeManager {
    * Retrieves list of registered ADAMANT delegates
    */
   async getDelegates(options: GetDelegatesOptions) {
-    return this.get<GetDelegatesResponseDto>("delegates", options);
+    return this.get<GetDelegatesResponseDto>('delegates', options);
   }
 
   /**
    * Get delegate info by `username` or `publicKey`
    */
   async getDelegate(options: UsernameOrPublicKeyObject) {
-    return this.get<GetDelegateResponseDto>("delegates/get", options);
+    return this.get<GetDelegateResponseDto>('delegates/get', options);
   }
 
   /**
@@ -599,14 +597,14 @@ export class AdamantApi extends NodeManager {
    * @param q - username
    */
   async searchDelegates(q: string) {
-    return this.get<SearchDelegateResponseDto>("delegates/search", { q });
+    return this.get<SearchDelegateResponseDto>('delegates/search', {q});
   }
 
   /**
    * Get total count of delegates
    */
   async getDelegatesCount() {
-    return this.get<GetDelegatesCountResponseDto>("delegates/count");
+    return this.get<GetDelegatesCountResponseDto>('delegates/count');
   }
 
   /**
@@ -614,8 +612,8 @@ export class AdamantApi extends NodeManager {
    */
   async getDelegateStats(generatorPublicKey: string) {
     return this.get<GetDelegateStatsResponseDto>(
-      "delegates/forging/getForgedByAccount",
-      { generatorPublicKey },
+      'delegates/forging/getForgedByAccount',
+      {generatorPublicKey}
     );
   }
 
@@ -625,7 +623,7 @@ export class AdamantApi extends NodeManager {
    * @param limit count to retrieve
    */
   async getNextForgers(limit?: number) {
-    return this.get<GetNextForgersResponseDto>("delegates/getNextForgers", {
+    return this.get<GetNextForgersResponseDto>('delegates/getNextForgers', {
       limit,
     });
   }
@@ -636,7 +634,7 @@ export class AdamantApi extends NodeManager {
    * @param publicKey representing delegate's publicKey
    */
   async getVoters(publicKey: string) {
-    return this.get<GetVotersResponseDto>("delegates/voters", { publicKey });
+    return this.get<GetVotersResponseDto>('delegates/voters', {publicKey});
   }
 
   /**
@@ -645,7 +643,7 @@ export class AdamantApi extends NodeManager {
    * @param address address of the account to get votes
    */
   async getVoteData(address: string) {
-    return this.get<GetAccountVotesResponseDto>("accounts/delegates", {
+    return this.get<GetAccountVotesResponseDto>('accounts/delegates', {
       address,
     });
   }
@@ -654,56 +652,56 @@ export class AdamantApi extends NodeManager {
    * Gets list of connected peer nodes
    */
   async getPeers() {
-    return this.get<GetPeersResponseDto>("peers");
+    return this.get<GetPeersResponseDto>('peers');
   }
 
   /**
    * Gets loading status
    */
   async getLoadingStatus() {
-    return this.get<GetLoadingStatusResponseDto>("loader/status");
+    return this.get<GetLoadingStatusResponseDto>('loader/status');
   }
 
   /**
    * Gets information on node's sync process with other peers
    */
   async getSyncStatus() {
-    return this.get<GetSyncStatusResponseDto>("loader/status/sync");
+    return this.get<GetSyncStatusResponseDto>('loader/status/sync');
   }
 
   /**
    * Checks if the connected node is alive
    */
   async getPingStatus() {
-    return this.get<GetPingStatusResponseDto>("loader/status/ping");
+    return this.get<GetPingStatusResponseDto>('loader/status/ping');
   }
 
   /**
    * Gets node's software information
    */
   async getNodeVersion() {
-    return this.get<GetNodeVersionResponseDto>("peers/version");
+    return this.get<GetNodeVersionResponseDto>('peers/version');
   }
 
   /**
    * Broadhash is established as an aggregated rolling hash of the past five blocks present in the database.
    */
   async getBroadhash() {
-    return this.get<GetBroadhashResponseDto>("blocks/getBroadhash");
+    return this.get<GetBroadhashResponseDto>('blocks/getBroadhash');
   }
 
   /**
    * Returns time when blockchain epoch starts. Value `2017-09-02T17:00:00.000Z` is for mainnet.
    */
   async getEpoch() {
-    return this.get<GetEpochResponseDto>("blocks/getEpoch");
+    return this.get<GetEpochResponseDto>('blocks/getEpoch');
   }
 
   /**
    * Returns current node's blockchain height
    */
   async getHeight() {
-    return this.get<GetHeightResponseDto>("blocks/getHeight");
+    return this.get<GetHeightResponseDto>('blocks/getHeight');
   }
 
   /**
@@ -711,28 +709,28 @@ export class AdamantApi extends NodeManager {
    * Integer amount of 1/10^8 ADM tokens (1 ADM = 100000000).
    */
   async getFee() {
-    return this.get<GetTokenTransferFeeResponseDto>("blocks/getFee");
+    return this.get<GetTokenTransferFeeResponseDto>('blocks/getFee');
   }
 
   /**
    * Returns current fee values for different transaction types
    */
   async getFees() {
-    return this.get<GetTransactionTypesFeesResponseDto>("blocks/getFees");
+    return this.get<GetTransactionTypesFeesResponseDto>('blocks/getFees');
   }
 
   /**
    * The nethash describes e.g. the Mainnet or the Testnet, that the node is connecting to.
    */
   async getNethash() {
-    return this.get<GetNethashResponseDto>("blocks/getNethash");
+    return this.get<GetNethashResponseDto>('blocks/getNethash');
   }
 
   /**
    * Return current slot height, which determines reward a delegate will get for forging a block.
    */
   async getMilestone() {
-    return this.get<GetMilestoneResponseDto>("blocks/getMilestone");
+    return this.get<GetMilestoneResponseDto>('blocks/getMilestone');
   }
 
   /**
@@ -740,7 +738,7 @@ export class AdamantApi extends NodeManager {
    * Integer amount of 1/10^8 ADM tokens (1 ADM = 100000000). Depends on the slot height.
    */
   async getReward() {
-    return this.get<GetRewardResponseDto>("blocks/getReward");
+    return this.get<GetRewardResponseDto>('blocks/getReward');
   }
 
   /**
@@ -748,28 +746,28 @@ export class AdamantApi extends NodeManager {
    * Total supply increases with every new forged block.
    */
   async getSupply() {
-    return this.get<GetTokensTotalSupplyResponseDto>("blocks/getSupply");
+    return this.get<GetTokensTotalSupplyResponseDto>('blocks/getSupply');
   }
 
   /**
    * Returns blockchain network information in a single request
    */
   async getStatus() {
-    return this.get<GetNetworkInfoResponseDto>("blocks/getStatus");
+    return this.get<GetNetworkInfoResponseDto>('blocks/getStatus');
   }
 
   /**
    * Returns both ADAMANT blockchain network information and Node information in a single request.
    */
   async getNodeStatus() {
-    return this.get<GetNodeStatusResponseDto>("node/status");
+    return this.get<GetNodeStatusResponseDto>('node/status');
   }
 
   /**
    * Returns list of transactions
    */
   async getTransactions(options?: TransactionQuery<TransactionsOptions>) {
-    return this.get<GetTransactionsResponseDto>("transactions", options);
+    return this.get<GetTransactionsResponseDto>('transactions', options);
   }
 
   /**
@@ -777,9 +775,9 @@ export class AdamantApi extends NodeManager {
    */
   async getTransaction(
     id: number,
-    options?: TransactionQuery<TransactionsOptions>,
+    options?: TransactionQuery<TransactionsOptions>
   ) {
-    return this.get<GetTransactionByIdResponseDto>("transactions/get", {
+    return this.get<GetTransactionByIdResponseDto>('transactions/get', {
       id,
       ...options,
     });
@@ -791,14 +789,14 @@ export class AdamantApi extends NodeManager {
    * @nav Transactions
    */
   async getTransactionsCount() {
-    return this.get<GetTransactionsCountResponseDto>("transactions/count");
+    return this.get<GetTransactionsCountResponseDto>('transactions/count');
   }
 
   /**
    * Get queued transactions count
    */
   async getQueuedTransactions() {
-    return this.get<GetQueuedTransactionsResponseDto>("transactions/queued");
+    return this.get<GetQueuedTransactionsResponseDto>('transactions/queued');
   }
 
   /**
@@ -806,8 +804,8 @@ export class AdamantApi extends NodeManager {
    */
   async getQueuedTransaction(id: number) {
     return this.get<GetQueuedTransactionsResponseDto>(
-      "transactions/queued/get",
-      { id },
+      'transactions/queued/get',
+      {id}
     );
   }
 
@@ -816,7 +814,7 @@ export class AdamantApi extends NodeManager {
    */
   async getUnconfirmedTransactions() {
     return this.get<GetUnconfirmedTransactionsResponseDto>(
-      "transactions/unconfirmed",
+      'transactions/unconfirmed'
     );
   }
 
@@ -825,11 +823,11 @@ export class AdamantApi extends NodeManager {
    */
   async getUnconfirmedTransaction(id: number) {
     return this.get<GetUnconfirmedTransactionByIdResponseDto>(
-      "transactions/unconfirmed/get",
-      { id },
+      'transactions/unconfirmed/get',
+      {id}
     );
   }
 }
 
-export * from "./generated";
-export * from "./votes";
+export * from './generated';
+export * from './votes';

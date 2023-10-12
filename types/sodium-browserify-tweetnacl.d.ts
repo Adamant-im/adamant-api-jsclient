@@ -1,4 +1,4 @@
-declare module "sodium-browserify-tweetnacl" {
+declare module 'sodium-browserify-tweetnacl' {
   namespace sodium {
     export function crypto_sign_seed_keypair(seed: Buffer): {
       publicKey: Buffer;
@@ -7,7 +7,7 @@ declare module "sodium-browserify-tweetnacl" {
 
     export function crypto_sign_detached(
       hash: Buffer,
-      privateKey: Buffer,
+      privateKey: Buffer
     ): Buffer;
 
     export function randombytes(nonce: Buffer): void;

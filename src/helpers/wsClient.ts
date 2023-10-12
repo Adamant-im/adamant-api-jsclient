@@ -1,18 +1,18 @@
-import { io, type Socket } from "socket.io-client";
+import {io, type Socket} from 'socket.io-client';
 
-import type { ActiveNode } from "./healthCheck";
-import { Logger } from "./logger";
-import { getRandomIntInclusive } from "./validator";
-import { TransactionType } from "./constants";
+import type {ActiveNode} from './healthCheck';
+import {Logger} from './logger';
+import {getRandomIntInclusive} from './validator';
+import {TransactionType} from './constants';
 import {
   ChatMessageTransaction,
   TokenTransferTransaction,
-} from "../api/generated";
+} from '../api/generated';
 
-export type WsType = "ws" | "wss";
+export type WsType = 'ws' | 'wss';
 
 export type OnNewTransactionCallback = (
-  transaction: ChatMessageTransaction | TokenTransferTransaction,
+  transaction: ChatMessageTransaction | TokenTransferTransaction
 ) => void;
 
 export interface WsOptions {
@@ -71,14 +71,14 @@ export class WebSocketClient {
       return;
     }
 
-    const { wsType } = this.options;
+    const {wsType} = this.options;
 
     this.nodes = nodes.filter(
-      (node) =>
+      node =>
         node.socketSupport &&
         !node.outOfSync &&
         // Remove nodes without IP if 'ws' connection type
-        (wsType !== "ws" || !node.isHttps || node.ip),
+        (wsType !== 'ws' || !node.isHttps || node.ip)
     );
 
     this.setConnection();
@@ -88,48 +88,48 @@ export class WebSocketClient {
    * Chooses node and sets up connection.
    */
   setConnection() {
-    const { logger } = this;
+    const {logger} = this;
 
     const supportedCount = this.nodes.length;
     if (!supportedCount) {
-      logger.warn(`[Socket] No supported socket nodes at the moment.`);
+      logger.warn('[Socket] No supported socket nodes at the moment.');
       return;
     }
 
     const node = this.chooseNode();
     logger.log(
-      `[Socket] Supported nodes: ${supportedCount}. Connecting to ${node}...`,
+      `[Socket] Supported nodes: ${supportedCount}. Connecting to ${node}...`
     );
     const connection = io(node, {
       reconnection: false,
       timeout: 5000,
     });
 
-    connection.on("connect", () => {
-      const { admAddress } = this.options;
+    connection.on('connect', () => {
+      const {admAddress} = this.options;
 
-      connection.emit("address", admAddress);
+      connection.emit('address', admAddress);
       logger.info(
-        `[Socket] Connected to ${node} and subscribed to incoming transactions for ${admAddress}`,
+        `[Socket] Connected to ${node} and subscribed to incoming transactions for ${admAddress}`
       );
     });
 
-    connection.on("disconnect", (reason) =>
-      logger.warn(`[Socket] Disconnected. Reason: ${reason}`),
+    connection.on('disconnect', reason =>
+      logger.warn(`[Socket] Disconnected. Reason: ${reason}`)
     );
 
-    connection.on("connect_error", (error) =>
-      logger.warn(`[Socket] Connection error: ${error}`),
+    connection.on('connect_error', error =>
+      logger.warn(`[Socket] Connection error: ${error}`)
     );
 
-    connection.on("newTrans", (transaction) => {
+    connection.on('newTrans', transaction => {
       if (transaction.recipientId !== this.options.admAddress) {
         return;
       }
 
       if (
         ![TransactionType.CHAT_MESSAGE, TransactionType.SEND].includes(
-          transaction.type,
+          transaction.type
         )
       ) {
         return;
@@ -147,13 +147,13 @@ export class WebSocketClient {
    * @returns WebSocket url
    */
   chooseNode(): string {
-    const { wsType, useFastest } = this.options;
+    const {wsType, useFastest} = this.options;
 
     const node = useFastest ? this.fastestNode() : this.randomNode();
 
     let baseURL: string;
 
-    if (wsType === "ws") {
+    if (wsType === 'ws') {
       const host = node.ip ? node.ip : node.baseURL;
 
       baseURL = `${host}:${node.wsPort}`;

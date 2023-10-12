@@ -1,17 +1,17 @@
-import BigNumber from "bignumber.js";
+import BigNumber from 'bignumber.js';
 
-type Endian = 1 | -1 | "big" | "little";
+type Endian = 1 | -1 | 'big' | 'little';
 
 interface TransformBufferOptions {
   endian?: Endian;
-  size?: number | "auto";
+  size?: number | 'auto';
 }
 
 const endianMap = {
-  1: "big" as Endian,
-  "-1": "little" as Endian,
-  big: "big" as Endian,
-  little: "little" as Endian,
+  1: 'big' as Endian,
+  '-1': 'little' as Endian,
+  big: 'big' as Endian,
+  little: 'little' as Endian,
 };
 
 export const fromBuffer = (buf: Buffer, opts: TransformBufferOptions = {}) => {
@@ -23,14 +23,14 @@ export const fromBuffer = (buf: Buffer, opts: TransformBufferOptions = {}) => {
 
   const hex = bufferToHexArray(buf, size, endian);
 
-  return new BigNumber(hex.join(""), 16);
+  return new BigNumber(hex.join(''), 16);
 };
 
 export const toBuffer = (
   bignumber: BigNumber,
-  opts: TransformBufferOptions | "mpint" = {},
+  opts: TransformBufferOptions | 'mpint' = {}
 ) => {
-  if (typeof opts === "string") {
+  if (typeof opts === 'string') {
     return toMpintBuffer(bignumber);
   }
 
@@ -44,7 +44,7 @@ export const toBuffer = (
 
 export function resolveEndian(opts: TransformBufferOptions): Endian {
   if (!opts.endian) {
-    return "big";
+    return 'big';
   }
 
   return endianMap[opts.endian];
@@ -52,15 +52,15 @@ export function resolveEndian(opts: TransformBufferOptions): Endian {
 
 export function resolveSize(
   opts: TransformBufferOptions,
-  defaultSize: number,
+  defaultSize: number
 ): number {
-  return opts.size === "auto" ? Math.ceil(defaultSize) : opts.size || 1;
+  return opts.size === 'auto' ? Math.ceil(defaultSize) : opts.size || 1;
 }
 
 export function validateBufferLength(buf: Buffer, size: number) {
   if (buf.length % size !== 0) {
     throw new RangeError(
-      `Buffer length (${buf.length}) must be a multiple of size (${size})`,
+      `Buffer length (${buf.length}) must be a multiple of size (${size})`
     );
   }
 }
@@ -68,26 +68,26 @@ export function validateBufferLength(buf: Buffer, size: number) {
 export function bufferToHexArray(
   buf: Buffer,
   size: number,
-  endian: Endian,
+  endian: Endian
 ): string[] {
   const hex: string[] = [];
 
   for (let i = 0; i < buf.length; i += size) {
     const chunk: string[] = [];
     for (let j = 0; j < size; j++) {
-      const chunkIndex = endian === "big" ? j : size - j - 1;
-      chunk.push(buf[i + chunkIndex].toString(16).padStart(2, "0"));
+      const chunkIndex = endian === 'big' ? j : size - j - 1;
+      chunk.push(buf[i + chunkIndex].toString(16).padStart(2, '0'));
     }
-    hex.push(chunk.join(""));
+    hex.push(chunk.join(''));
   }
 
   return hex;
 }
 
 export function bignumberToHex(bignumber: BigNumber): string {
-  let hex = bignumber.toString(16);
-  if (hex.charAt(0) === "-") {
-    throw new Error("Converting negative numbers to Buffers not supported yet");
+  const hex = bignumber.toString(16);
+  if (hex.charAt(0) === '-') {
+    throw new Error('Converting negative numbers to Buffers not supported yet');
   }
   return hex;
 }
@@ -97,16 +97,16 @@ export function hexToBuffer(hex: string, size: number, endian: Endian): Buffer {
   const buf = Buffer.alloc(len);
 
   while (hex.length < 2 * len) {
-    hex = "0" + hex;
+    hex = '0' + hex;
   }
 
   const hx = hex
-    .split(new RegExp("(.{" + 2 * size + "})"))
-    .filter((s) => s.length > 0);
+    .split(new RegExp('(.{' + 2 * size + '})'))
+    .filter(s => s.length > 0);
 
   hx.forEach((chunk, i) => {
     for (let j = 0; j < size; j++) {
-      const ix = i * size + (endian === "big" ? j : size - j - 1);
+      const ix = i * size + (endian === 'big' ? j : size - j - 1);
       buf[ix] = parseInt(chunk.slice(j * 2, j * 2 + 2), 16);
     }
   });
@@ -115,7 +115,7 @@ export function hexToBuffer(hex: string, size: number, endian: Endian): Buffer {
 }
 
 function toMpintBuffer(bignumber: BigNumber): Buffer {
-  const buf = toBuffer(bignumber.abs(), { size: 1, endian: "big" });
+  const buf = toBuffer(bignumber.abs(), {size: 1, endian: 'big'});
 
   let len = buf.length === 1 && buf[0] === 0 ? 0 : buf.length;
 

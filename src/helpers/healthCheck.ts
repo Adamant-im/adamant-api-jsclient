@@ -1,12 +1,12 @@
-import axios from "axios";
-import { HEALTH_CHECK_TIMEOUT } from "./constants";
-import { Logger } from "./logger";
-import { unixTimestamp } from "./time";
-import { parseUrl } from "./url";
+import axios from 'axios';
+import {HEALTH_CHECK_TIMEOUT} from './constants';
+import {Logger} from './logger';
+import {unixTimestamp} from './time';
+import {parseUrl} from './url';
 
-import { GetNodeStatusResponseDto } from "../api/generated";
-import { AdamantApiResult, getRandomIntInclusive } from "./validator";
-import { WebSocketClient, WsOptions } from "./wsClient";
+import {GetNodeStatusResponseDto} from '../api/generated';
+import {AdamantApiResult, getRandomIntInclusive} from './validator';
+import {WebSocketClient, WsOptions} from './wsClient';
 
 export interface NodeManagerOptions {
   nodes: string[];
@@ -51,11 +51,7 @@ export class NodeManager {
       ...options,
     };
 
-    const {
-      socket,
-      nodes,
-      checkHealthAtStartup
-    } = this.options
+    const {socket, nodes, checkHealthAtStartup} = this.options;
 
     this.logger = logger;
     this.socket = socket;
@@ -97,7 +93,7 @@ export class NodeManager {
     if (!isPlannedUpdate) {
       // should we use `debug` module instead?
       this.logger.warn(
-        "[ADAMANT js-api] Health check: Forcing to update active nodes…",
+        '[ADAMANT js-api] Health check: Forcing to update active nodes…'
       );
     }
 
@@ -113,12 +109,12 @@ export class NodeManager {
   }
 
   async chooseNode(activeNodes: ActiveNode[], forceChangeActiveNode?: boolean) {
-    const { logger, socket } = this;
+    const {logger, socket} = this;
 
-    const { length: activeNodesCount } = activeNodes;
+    const {length: activeNodesCount} = activeNodes;
     if (!activeNodesCount) {
       logger.error(
-        `[ADAMANT js-api] Health check: All of ${activeNodesCount} nodes are unavailable. Check internet connection and nodes list in config.`,
+        `[ADAMANT js-api] Health check: All of ${activeNodesCount} nodes are unavailable. Check internet connection and nodes list in config.`
       );
       return;
     }
@@ -143,8 +139,8 @@ export class NodeManager {
     } else {
       // Removing lodash: const groups = _.groupBy(liveNodes, n => n.heightEpsilon);
       const groups = activeNodes.reduce(
-        (grouped: { [heightEpsilon: number]: ActiveNode[] }, node) => {
-          const { heightEpsilon } = node;
+        (grouped: {[heightEpsilon: number]: ActiveNode[]}, node) => {
+          const {heightEpsilon} = node;
 
           if (!grouped[heightEpsilon]) {
             grouped[heightEpsilon] = [];
@@ -154,7 +150,7 @@ export class NodeManager {
 
           return grouped;
         },
-        {},
+        {}
       );
 
       let biggestGroup: ActiveNode[] = [];
@@ -196,12 +192,12 @@ export class NodeManager {
 
     socket?.reviseConnection(activeNodes);
 
-    const { nodes } = this.options;
+    const {nodes} = this.options;
 
     const unavailableCount = nodes.length - activeNodesCount;
     const supportedCount = activeNodesCount - outOfSyncCount;
 
-    let nodesInfoString = "";
+    let nodesInfoString = '';
 
     if (unavailableCount) {
       nodesInfoString += `, ${unavailableCount} nodes didn't respond`;
@@ -212,13 +208,13 @@ export class NodeManager {
     }
 
     this.logger.log(
-      `[ADAMANT js-api] Health check: Found ${supportedCount} supported and synced nodes${nodesInfoString}. Active node is ${this.node}.`,
+      `[ADAMANT js-api] Health check: Found ${supportedCount} supported and synced nodes${nodesInfoString}. Active node is ${this.node}.`
     );
   }
 
   async getNodeStatus(node: string) {
     try {
-      const { timeout } = this.options;
+      const {timeout} = this.options;
 
       const response = await axios.get<
         AdamantApiResult<GetNodeStatusResponseDto>
@@ -228,12 +224,12 @@ export class NodeManager {
 
       return response.data;
     } catch (error) {
-      return { success: false } as { success: false };
+      return {success: false} as {success: false};
     }
   }
 
   async checkNodes() {
-    const { nodes } = this.options;
+    const {nodes} = this.options;
 
     const activeNodes: ActiveNode[] = [];
 
@@ -246,17 +242,17 @@ export class NodeManager {
 
       if (!response.success) {
         this.logger.log(
-          `[ADAMANT js-api] Health check: Node ${node} haven't returned its status`,
+          `[ADAMANT js-api] Health check: Node ${node} haven't returned its status`
         );
         continue;
       }
 
-      const { wsClient, network } = response;
+      const {wsClient, network} = response;
 
       const socketSupport = wsClient.enabled;
       const wsPort = wsClient.port;
 
-      const { height } = network;
+      const {height} = network;
 
       activeNodes.push({
         ...(await parseUrl(node)),

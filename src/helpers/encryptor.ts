@@ -1,10 +1,10 @@
-import sodium from "sodium-browserify-tweetnacl";
-import nacl from "tweetnacl";
-import ed2curve from "ed2curve";
-import { KeyPair, createKeypairFromPassPhrase } from "./keys";
+import sodium from 'sodium-browserify-tweetnacl';
+import nacl from 'tweetnacl';
+import ed2curve from 'ed2curve';
+import {KeyPair, createKeypairFromPassPhrase} from './keys';
 
 export const bytesToHex = (bytes: Uint8Array) => {
-  let hex = "";
+  let hex = '';
 
   for (const byte of bytes) {
     hex += (byte >>> 4).toString(16);
@@ -26,7 +26,7 @@ export const hexToBytes = (hex: string) => {
 
 export const utf8ArrayToStr = (array: Uint8Array) => {
   const len = array.length;
-  let out = "";
+  let out = '';
   let i = 0;
   let c: number;
   let char2: number;
@@ -57,7 +57,7 @@ export const utf8ArrayToStr = (array: Uint8Array) => {
         char2 = array[i++];
         char3 = array[i++];
         out += String.fromCharCode(
-          ((c & 0x0f) << 12) | ((char2 & 0x3f) << 6) | ((char3 & 0x3f) << 0),
+          ((c & 0x0f) << 12) | ((char2 & 0x3f) << 6) | ((char3 & 0x3f) << 0)
         );
         break;
     }
@@ -69,7 +69,7 @@ export const utf8ArrayToStr = (array: Uint8Array) => {
 export const encodeMessage = (
   msg: string,
   keypair: KeyPair,
-  recipientPublicKey: string,
+  recipientPublicKey: string
 ) => {
   const nonce = Buffer.allocUnsafe(24);
   sodium.randombytes(nonce);
@@ -77,11 +77,11 @@ export const encodeMessage = (
   const plainText = Buffer.from(msg.toString());
   const DHSecretKey = ed2curve.convertSecretKey(keypair.privateKey);
   const DHPublicKey = ed2curve.convertPublicKey(
-    new Uint8Array(hexToBytes(recipientPublicKey)),
+    new Uint8Array(hexToBytes(recipientPublicKey))
   );
 
   if (!DHPublicKey) {
-    throw new Error("encodeMessage: invalid key");
+    throw new Error('encodeMessage: invalid key');
   }
 
   const encrypted = nacl.box(plainText, nonce, DHPublicKey, DHSecretKey);
@@ -96,37 +96,37 @@ export const decodeMessage = (
   message: string,
   senderPublicKey: string,
   passPhrase: string,
-  nonce: string,
+  nonce: string
 ) => {
   const keypair = createKeypairFromPassPhrase(passPhrase);
 
-  if (typeof message !== "string") {
-    throw new Error("decodeMessage message should be a string");
+  if (typeof message !== 'string') {
+    throw new Error('decodeMessage message should be a string');
   }
 
-  if (typeof nonce !== "string") {
-    throw new Error("decodeMessage: nonce should be a string");
+  if (typeof nonce !== 'string') {
+    throw new Error('decodeMessage: nonce should be a string');
   }
 
-  if (typeof senderPublicKey !== "string") {
-    throw new Error("decodeMessage: senderPublicKey should be a string");
+  if (typeof senderPublicKey !== 'string') {
+    throw new Error('decodeMessage: senderPublicKey should be a string');
   }
 
   const DHPublicKey = ed2curve.convertPublicKey(hexToBytes(senderPublicKey));
 
   if (!DHPublicKey) {
-    throw new Error("decodeMessage: invalid key");
+    throw new Error('decodeMessage: invalid key');
   }
 
-  const { privateKey } = keypair;
+  const {privateKey} = keypair;
   const DHSecretKey = ed2curve.convertSecretKey(privateKey);
 
   const decrypted = nacl.box.open(
     hexToBytes(message),
     hexToBytes(nonce),
     DHPublicKey,
-    DHSecretKey,
+    DHSecretKey
   );
 
-  return decrypted ? utf8ArrayToStr(decrypted) : "";
+  return decrypted ? utf8ArrayToStr(decrypted) : '';
 };

@@ -1,32 +1,38 @@
-import { TransactionType } from '../constants';
-import { createChatTransaction, createDelegateTransaction, createSendTransaction, createStateTransaction, createVoteTransaction } from '../transactions/index'
-import { mocked } from './mock-data/address'
+import {TransactionType} from '../constants';
+import {
+  createChatTransaction,
+  createDelegateTransaction,
+  createSendTransaction,
+  createStateTransaction,
+  createVoteTransaction,
+} from '../transactions/index';
+import {mocked} from './mock-data/address';
 
 beforeAll(() => {
-  jest.useFakeTimers()
-  jest.setSystemTime(new Date("2021-02-18"));
+  jest.useFakeTimers();
+  jest.setSystemTime(new Date('2021-02-18'));
 });
 
 /**
  * Expected timestamp accross all the created transactions.
  */
-const timestamp = 109234800
+const timestamp = 109234800;
 
 const keyPair = {
   publicKey: mocked.publicKey,
   privateKey: mocked.privateKey,
-}
+};
 
-const { address: senderId } = mocked
-const senderPublicKey = mocked.publicKey.toString('hex')
+const {address: senderId} = mocked;
+const senderPublicKey = mocked.publicKey.toString('hex');
 
 describe('createSendTransaction', () => {
-  const type = TransactionType.SEND
+  const type = TransactionType.SEND;
 
-  const { recipientId, amount } = mocked
+  const {recipientId, amount} = mocked;
 
   test('should create simple send transaction', () => {
-    const transaction = createSendTransaction({ recipientId, amount, keyPair })
+    const transaction = createSendTransaction({recipientId, amount, keyPair});
 
     const expectedSignature =
       'd15cf87edecf808454ac0b7f4d80fc07b72dabe43f7e8ee721f4a208831b18278c9635deb1217610c720c8800daf45b2e4d2dd8ae817111a57b67017424f9502';
@@ -39,7 +45,7 @@ describe('createSendTransaction', () => {
       senderPublicKey,
       timestamp,
       asset: {},
-      signature: expectedSignature
+      signature: expectedSignature,
     });
   });
 });
@@ -49,11 +55,11 @@ describe('createVoteTransaction', () => {
 
   test('should create simple vote transaction', () => {
     const votes = [
-      "+b3d0c0b99f64d0960324089eb678e90d8bcbb3dd8c73ee748e026f8b9a5b5468",
-      "-9ef1f6212ae871716cfa2d04e3dc5339e8fe75f89818be21ee1d75004983e2a8"
+      '+b3d0c0b99f64d0960324089eb678e90d8bcbb3dd8c73ee748e026f8b9a5b5468',
+      '-9ef1f6212ae871716cfa2d04e3dc5339e8fe75f89818be21ee1d75004983e2a8',
     ];
 
-    const transaction = createVoteTransaction({ keyPair, votes });
+    const transaction = createVoteTransaction({keyPair, votes});
 
     const expectedSignature =
       '53101dc124c0be5d6cafc2116a661884594499ea3fae37c09f4a6514ee4a60523113420e62a5ff001394461f5b72f5fa288cfe314fc05adedf2d367f3d2bd901';
@@ -65,10 +71,10 @@ describe('createVoteTransaction', () => {
       senderPublicKey,
       senderId,
       asset: {
-        votes
+        votes,
       },
       recipientId: senderId,
-      signature: expectedSignature
+      signature: expectedSignature,
     });
   });
 });
@@ -98,10 +104,10 @@ describe('createDelegateTransaction', () => {
       asset: {
         delegate: {
           username,
-          publicKey: senderPublicKey
+          publicKey: senderPublicKey,
         },
       },
-      signature: expectedSignature
+      signature: expectedSignature,
     });
   });
 });
@@ -110,7 +116,7 @@ describe('Create chat transaction', () => {
   const type = TransactionType.CHAT_MESSAGE;
 
   test('should create simple chat transaction', () => {
-    const { recipientId, amount } = mocked
+    const {recipientId, amount} = mocked;
 
     const data = {
       keyPair,
@@ -154,7 +160,7 @@ describe('Create state transaction', () => {
       value: 'value',
     };
 
-    const transaction = createStateTransaction({ ...data, keyPair });
+    const transaction = createStateTransaction({...data, keyPair});
 
     const expectedSignature =
       '8d1bf8673b83eef10324414b0793ee26942e9379a9c38b1578a7c4df68cd922dd8a007bd6c03b5a0b6e28b0ecc4be8154fb72435d783a54dc35ac4614d095a09';

@@ -1,6 +1,6 @@
 export enum VoteDirection {
-  Positive = "+",
-  Negative = "-",
+  Positive = '+',
+  Negative = '-',
 }
 
 export const parseVote = (vote: string) => {

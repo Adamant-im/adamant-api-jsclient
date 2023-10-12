@@ -1,4 +1,4 @@
-import { getEpochTime, EPOCH_TIME } from '../time';
+import {getEpochTime, EPOCH_TIME} from '../time';
 
 describe('getTime', () => {
   test('should return 0 for epoch time', () => {

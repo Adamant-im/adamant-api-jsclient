@@ -1,11 +1,11 @@
-import { mnemonicToSeedSync } from "bip39";
-import hdkey from "hdkey";
-import { bufferToHex, privateToAddress } from "ethereumjs-util";
+import {mnemonicToSeedSync} from 'bip39';
+import hdkey from 'hdkey';
+import {bufferToHex, privateToAddress} from 'ethereumjs-util';
 
 const HD_KEY_PATH = "m/44'/60'/3'/1/0";
 
-export namespace eth {
-  export const keys = (passPhrase: string) => {
+export const eth = {
+  keys: (passPhrase: string) => {
     const seed = mnemonicToSeedSync(passPhrase);
     const privateKey = hdkey
       .fromMasterSeed(seed)
@@ -15,5 +15,5 @@ export namespace eth {
       address: bufferToHex(privateToAddress(privateKey)),
       privateKey: bufferToHex(privateKey),
     };
-  };
-}
+  },
+};

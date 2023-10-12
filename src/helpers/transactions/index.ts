@@ -1,10 +1,10 @@
-import { signTransaction } from "./hash";
+import {signTransaction} from './hash';
 
-import { createAddressFromPublicKey } from "../keys";
-import { getEpochTime } from "../time";
+import {createAddressFromPublicKey} from '../keys';
+import {getEpochTime} from '../time';
 
-import { MessageType, TransactionType } from "../constants";
-import type { KeyPair } from "../keys";
+import {MessageType, TransactionType} from '../constants';
+import type {KeyPair} from '../keys';
 
 export type AnyTransactionData = (
   | SendTransactionData
@@ -56,13 +56,13 @@ interface BasicTransaction<T extends TransactionType> {
 }
 
 export const createBasicTransaction = <T extends TransactionType>(
-  data: AnyTransactionData,
+  data: AnyTransactionData
 ): BasicTransaction<T> => {
   const transaction = {
     type: data.transactionType as T,
     timestamp: getEpochTime(),
     amount: 0,
-    senderPublicKey: data.keyPair.publicKey.toString("hex"),
+    senderPublicKey: data.keyPair.publicKey.toString('hex'),
     senderId: createAddressFromPublicKey(data.keyPair.publicKey),
     asset: {},
   };
@@ -104,7 +104,7 @@ export const createStateTransaction = (data: StateTransactionData) => {
       state: {
         key: details.key,
         value: details.value,
-        type: 0 as 0,
+        type: 0 as const,
       },
     },
   };
@@ -156,7 +156,7 @@ export const createDelegateTransaction = (data: DelegateTransactionData) => {
     asset: {
       delegate: {
         username: details.username,
-        publicKey: details.keyPair.publicKey.toString("hex"),
+        publicKey: details.keyPair.publicKey.toString('hex'),
       },
     },
   };
@@ -175,7 +175,8 @@ export const createVoteTransaction = (data: VoteTransactionData) => {
     transactionType: TransactionType.VOTE,
   };
 
-  const basicTransaction = createBasicTransaction<TransactionType.VOTE>(details);
+  const basicTransaction =
+    createBasicTransaction<TransactionType.VOTE>(details);
 
   const transaction = {
     ...basicTransaction,

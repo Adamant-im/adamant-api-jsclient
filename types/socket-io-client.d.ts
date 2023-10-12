@@ -6,8 +6,8 @@
  *
  * @see https://github.com/socketio/engine.io-parser/issues/136
  */
-import { TransformStream as TS } from "node:stream/web";
+import {TransformStream as TS} from 'node:stream/web';
 
 declare global {
-  type TransformStream<I = any, O = any> = TS<I, O>;
+  type TransformStream<I = unknown, O = unknown> = TS<I, O>;
 }

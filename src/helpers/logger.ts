@@ -6,27 +6,23 @@ export enum LogLevel {
 }
 
 export type CustomLogger = Record<
-  "error" | "warn" | "info" | "log",
+  'error' | 'warn' | 'info' | 'log',
   (str: string) => void
 >;
 
-export const logLevels = [
-  'error',
-  'warn',
-  'info',
-  'log'
-] as const
+export const logLevels = ['error', 'warn', 'info', 'log'] as const;
 
-export type LogLevelName = typeof logLevels[number]
+export type LogLevelName = (typeof logLevels)[number];
 
 export class Logger {
   logger: CustomLogger;
   level: LogLevel;
 
-  constructor(level: LogLevel | LogLevelName = LogLevel.Log, logger: CustomLogger = console) {
-    this.level = typeof level === 'number'
-      ? level
-      : logLevels.indexOf(level);
+  constructor(
+    level: LogLevel | LogLevelName = LogLevel.Log,
+    logger: CustomLogger = console
+  ) {
+    this.level = typeof level === 'number' ? level : logLevels.indexOf(level);
     this.logger = logger;
   }
 
