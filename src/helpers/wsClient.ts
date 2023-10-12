@@ -24,7 +24,7 @@ export interface WsOptions {
   /**
    * Websocket type: `'wss'` or `'ws'`. `'wss'` is recommended.
    */
-  wsType: WsType;
+  wsType?: WsType;
 
   /**
    * Must connect to node with minimum ping. Not recommended. Default is `false`.
@@ -55,7 +55,10 @@ export class WebSocketClient {
 
   constructor(logger: Logger, options: WsOptions) {
     this.logger = logger;
-    this.options = options;
+    this.options = {
+      wsType: 'ws',
+      ...options,
+    };
 
     this.nodes = [];
     this.onNewMessageCallback = options.onNewMessage;
