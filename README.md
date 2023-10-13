@@ -35,7 +35,7 @@ npm i adamant-api
 
 Initialize the library:
 
-```JS
+```js
 const { AdamantApi } = require('adamant-api')
 
 const nodes = [
@@ -54,7 +54,7 @@ const api = new AdamantApi({
 
 Request example:
 
-```JS
+```js
 const response = await api.getBlocks()
 
 console.log(response.data)
