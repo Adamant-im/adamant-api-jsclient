@@ -37,7 +37,10 @@
   },
   "license": "GPL-3.0",
   "author": "ADAMANT Foundation <devs@adamant.im> (https://adamant.im)",
-  "main": "src/index.js",
+  "main": "dist/index.js",
+  "src": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "files": ["dist/"],
   "scripts": {
     "test": "jest",
     "lint": "gts lint",
