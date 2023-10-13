@@ -68,7 +68,7 @@ import {
   createVoteTransaction,
 } from '../helpers/transactions';
 import {encodeMessage} from '../helpers/encryptor';
-import {parseVote} from './votes';
+import {VoteDirection, parseVote} from './votes';
 
 export type AdamantAddress = `U${string}`;
 
@@ -453,7 +453,7 @@ export class AdamantApi extends NodeManager {
     const keyPair = createKeypairFromPassPhrase(passPhrase);
 
     const uniqueVotes: {
-      [publicKey: string]: string;
+      [publicKey: string]: VoteDirection;
     } = {};
 
     for (const vote of votes) {
