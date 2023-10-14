@@ -1,5 +1,6 @@
 import BigNumber from 'bignumber.js';
 import {MessageType, MessageTypes, SAT} from './constants';
+import type {AdamantAddress} from '../api';
 
 export const getRandomIntInclusive = (minimum: number, maximum: number) => {
   const min = Math.ceil(minimum);
@@ -36,7 +37,7 @@ export const isEndpoint = (endpoint: unknown): endpoint is string =>
 
 const RE_ADM_ADDRESS = /^U([0-9]{6,})$/;
 
-export const isAdmAddress = (address: unknown): address is `U${string}` =>
+export const isAdmAddress = (address: unknown): address is AdamantAddress =>
   typeof address === 'string' && RE_ADM_ADDRESS.test(address);
 
 const RE_HEX = /^[a-fA-F0-9]+$/;

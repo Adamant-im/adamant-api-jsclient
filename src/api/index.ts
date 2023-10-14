@@ -306,7 +306,7 @@ export class AdamantApi extends NodeManager {
       return badParameter('passphrase');
     }
 
-    let address: `U${string}`;
+    let address: AdamantAddress;
     let publicKey = '';
 
     if (!isAdmAddress(addressOrPublicKey)) {
@@ -391,7 +391,7 @@ export class AdamantApi extends NodeManager {
       return badParameter('passphrase');
     }
 
-    let address: `U${string}`;
+    let address: AdamantAddress;
 
     if (isAdmAddress(addressOrPublicKey)) {
       address = addressOrPublicKey;

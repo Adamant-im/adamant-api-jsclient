@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import {mnemonicToSeedSync, generateMnemonic} from 'bip39';
 
 import * as bignum from './bignumber';
+import type {AdamantAddress} from '../api';
 
 export interface KeyPair {
   publicKey: Buffer;
@@ -34,7 +35,7 @@ export const createKeypairFromPassphrase = (passphrase: string) => {
 
 export const createAddressFromPublicKey = (
   publicKey: Buffer | string
-): `U${string}` => {
+): AdamantAddress => {
   const hash = crypto.createHash('sha256');
 
   if (typeof publicKey === 'string') {

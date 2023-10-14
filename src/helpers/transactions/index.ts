@@ -5,6 +5,7 @@ import {getEpochTime} from '../time';
 
 import {MessageType, TransactionType} from '../constants';
 import type {KeyPair} from '../keys';
+import type {AdamantAddress} from '../../api';
 
 export type AnyTransactionData = (
   | SendTransactionData
@@ -26,7 +27,7 @@ export interface SendTransactionData extends BasicTransactionData {
 }
 
 export interface ChatTransactionData extends BasicTransactionData {
-  recipientId: `U${string}`;
+  recipientId: AdamantAddress;
   message_type: MessageType;
   amount: number | undefined;
   message: string;
@@ -51,7 +52,7 @@ interface BasicTransaction<T extends TransactionType> {
   timestamp: number;
   amount: number;
   senderPublicKey: string;
-  senderId: `U${string}`;
+  senderId: AdamantAddress;
   asset: {};
 }
 

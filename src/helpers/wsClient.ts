@@ -4,10 +4,11 @@ import type {ActiveNode} from './healthCheck';
 import {Logger} from './logger';
 import {getRandomIntInclusive} from './validator';
 import {TransactionType} from './constants';
-import {
+import type {
   ChatMessageTransaction,
   TokenTransferTransaction,
 } from '../api/generated';
+import type {AdamantAddress} from '../api';
 
 export type WsType = 'ws' | 'wss';
 
@@ -19,7 +20,7 @@ export interface WsOptions {
   /**
    * ADM address to subscribe to notifications
    */
-  admAddress: `U${string}`;
+  admAddress: AdamantAddress;
 
   /**
    * Websocket type: `'wss'` or `'ws'`. `'wss'` is recommended.

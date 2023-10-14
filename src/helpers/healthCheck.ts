@@ -91,7 +91,6 @@ export class NodeManager {
     this.isCheckingNodes = true;
 
     if (!isPlannedUpdate) {
-      // should we use `debug` module instead?
       this.logger.warn(
         '[ADAMANT js-api] Health check: Forcing to update active nodes…'
       );

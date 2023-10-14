@@ -7,11 +7,15 @@ interface TransformBufferOptions {
   size?: number | 'auto';
 }
 
-const endianMap = {
-  1: 'big' as Endian,
-  '-1': 'little' as Endian,
-  big: 'big' as Endian,
-  little: 'little' as Endian,
+type EndianMap = {
+  [K in Endian]: 'big' | 'little';
+};
+
+const endianMap: EndianMap = {
+  1: 'big',
+  '-1': 'little',
+  big: 'big',
+  little: 'little',
 };
 
 export const fromBuffer = (buf: Buffer, opts: TransformBufferOptions = {}) => {
