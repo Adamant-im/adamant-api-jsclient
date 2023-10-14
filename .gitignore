@@ -1,6 +1,7 @@
 dist
 node_modules/
 logs/
+.idea/
 .vscode/
 test.js
 .editorconfig
