@@ -75,7 +75,7 @@ export const isMessageType = (
 ): messageType is MessageTypes => [1, 2, 3].includes(messageType);
 
 export const validateMessage = (
-  message: string,
+  message: unknown,
   messageType: MessageType = MessageType.Chat
 ) => {
   if (typeof message !== 'string') {

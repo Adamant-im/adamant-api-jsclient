@@ -312,11 +312,11 @@ describe('isAdmVoteForDelegateName', () => {
 
 describe('validateMessage', () => {
   test('should return false for a number message', () => {
-    expect(validator.validateMessage(3 as any).success).toBe(false);
+    expect(validator.validateMessage(3).success).toBe(false);
   });
 
   test('should return false for an object message', () => {
-    expect(validator.validateMessage({} as any).success).toBe(false);
+    expect(validator.validateMessage({}).success).toBe(false);
   });
 
   test('should return true for an empty string message', () => {
