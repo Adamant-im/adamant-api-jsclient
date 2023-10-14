@@ -13,7 +13,7 @@ import {
   isDelegateName,
   isIntegerAmount,
   isMessageType,
-  isPassPhrase,
+  isPassphrase,
   validateMessage,
 } from '../helpers/validator';
 import {DEFAULT_GET_REQUEST_RETRIES, MessageType} from '../helpers/constants';
@@ -59,7 +59,7 @@ import type {
 } from './generated';
 import {
   createAddressFromPublicKey,
-  createKeypairFromPassPhrase,
+  createKeypairFromPassphrase,
 } from '../helpers/keys';
 import {
   createChatTransaction,
@@ -270,16 +270,16 @@ export class AdamantApi extends NodeManager {
    *
    * @param username The new delegate's username
    */
-  async newDelegate(passPhrase: string, username: string) {
-    if (!isPassPhrase(passPhrase)) {
-      return badParameter('passPhrase');
+  async newDelegate(passphrase: string, username: string) {
+    if (!isPassphrase(passphrase)) {
+      return badParameter('passphrase');
     }
 
     if (!isDelegateName(username)) {
       return badParameter('username');
     }
 
-    const keyPair = createKeypairFromPassPhrase(passPhrase);
+    const keyPair = createKeypairFromPassphrase(passphrase);
 
     const data = {
       keyPair,
@@ -295,15 +295,15 @@ export class AdamantApi extends NodeManager {
    * Encrypt a message, creates Message transaction, signs it, and broadcasts to ADAMANT network.
    */
   async sendMessage(
-    passPhrase: string,
+    passphrase: string,
     addressOrPublicKey: string,
     message: string,
     type = MessageType.Chat,
     amount?: number,
     isAmountInADM?: boolean
   ) {
-    if (!isPassPhrase(passPhrase)) {
-      return badParameter('passPhrase');
+    if (!isPassphrase(passphrase)) {
+      return badParameter('passphrase');
     }
 
     let address: `U${string}`;
@@ -360,7 +360,7 @@ export class AdamantApi extends NodeManager {
       };
     }
 
-    const keyPair = createKeypairFromPassPhrase(passPhrase);
+    const keyPair = createKeypairFromPassphrase(passphrase);
     const encryptedMessage = encodeMessage(message, keyPair, publicKey);
 
     const data = {
@@ -382,13 +382,13 @@ export class AdamantApi extends NodeManager {
    * Send tokens to an account
    */
   sendTokens(
-    passPhrase: string,
+    passphrase: string,
     addressOrPublicKey: string,
     amount: number,
     isAmountInADM = true
   ) {
-    if (!isPassPhrase(passPhrase)) {
-      return badParameter('passPhrase');
+    if (!isPassphrase(passphrase)) {
+      return badParameter('passphrase');
     }
 
     let address: `U${string}`;
@@ -417,7 +417,7 @@ export class AdamantApi extends NodeManager {
       return badParameter('amount', amount);
     }
 
-    const keyPair = createKeypairFromPassPhrase(passPhrase);
+    const keyPair = createKeypairFromPassphrase(passphrase);
 
     const data = {
       keyPair,
@@ -445,12 +445,12 @@ export class AdamantApi extends NodeManager {
    * ])
    * ```
    */
-  async voteForDelegate(passPhrase: string, votes: string[]) {
-    if (!isPassPhrase(passPhrase)) {
-      return badParameter('passPhrase');
+  async voteForDelegate(passphrase: string, votes: string[]) {
+    if (!isPassphrase(passphrase)) {
+      return badParameter('passphrase');
     }
 
-    const keyPair = createKeypairFromPassPhrase(passPhrase);
+    const keyPair = createKeypairFromPassphrase(passphrase);
 
     const uniqueVotes: {
       [publicKey: string]: VoteDirection;

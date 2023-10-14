@@ -1,6 +1,6 @@
 export const mocked = {
   address: 'U6687642817984673870' as const,
-  passPhrase:
+  passphrase:
     'wrap track hamster grocery casual talk theory half artist toast art essence',
   publicKey: Buffer.from(
     '7db9b51bc75fed7b8e631e2efaad38305b12c6b3d3d9f6af3498fdcb7b35c284',

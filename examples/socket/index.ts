@@ -25,7 +25,7 @@ const admAddress = process.env.ADAMANT_ADDRESS as `U${string}`;
 /**
  * Pass phrase to decode messages
  */
-const passPhrase = process.env.PASS_PHRASE!;
+const passphrase = process.env.PASSPHRASE!;
 
 api.initSocket({
   admAddress,
@@ -39,7 +39,7 @@ api.initSocket({
       const decoded = decodeMessage(
         chat.message,
         transaction.senderPublicKey,
-        passPhrase,
+        passphrase,
         chat.own_message
       );
 

@@ -9,7 +9,7 @@ export interface KeyPair {
   privateKey: Buffer;
 }
 
-export const createNewPassPhrase = () => generateMnemonic();
+export const createNewPassphrase = () => generateMnemonic();
 
 export const makeKeypairFromHash = (hash: Buffer): KeyPair => {
   const keypair = sodium.crypto_sign_seed_keypair(hash);
@@ -20,14 +20,14 @@ export const makeKeypairFromHash = (hash: Buffer): KeyPair => {
   };
 };
 
-export const createHashFromPassPhrase = (passphrase: string) =>
+export const createHashFromPassphrase = (passphrase: string) =>
   crypto
     .createHash('sha256')
     .update(mnemonicToSeedSync(passphrase).toString('hex'), 'hex')
     .digest();
 
-export const createKeypairFromPassPhrase = (passphrase: string) => {
-  const hash = createHashFromPassPhrase(passphrase);
+export const createKeypairFromPassphrase = (passphrase: string) => {
+  const hash = createHashFromPassphrase(passphrase);
 
   return makeKeypairFromHash(hash);
 };

@@ -1,7 +1,7 @@
 import sodium from 'sodium-browserify-tweetnacl';
 import nacl from 'tweetnacl';
 import ed2curve from 'ed2curve';
-import {KeyPair, createKeypairFromPassPhrase} from './keys';
+import {KeyPair, createKeypairFromPassphrase} from './keys';
 
 export const bytesToHex = (bytes: Uint8Array) => {
   let hex = '';
@@ -95,10 +95,10 @@ export const encodeMessage = (
 export const decodeMessage = (
   message: string,
   senderPublicKey: string,
-  passPhrase: string,
+  passphrase: string,
   nonce: string
 ) => {
-  const keypair = createKeypairFromPassPhrase(passPhrase);
+  const keypair = createKeypairFromPassphrase(passphrase);
 
   if (typeof message !== 'string') {
     throw new Error('decodeMessage message should be a string');

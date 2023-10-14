@@ -9,8 +9,8 @@ const RE_BTC_ADDRESS = /^(bc1|[13])[a-km-zA-HJ-NP-Z02-9]{25,39}$/;
 const network = coininfo.bitcoin.main.toBitcoinJS();
 
 export const btc = {
-  keys: (passPhrase: string) => {
-    const pwHash = bitcoin.crypto.sha256(Buffer.from(passPhrase));
+  keys: (passphrase: string) => {
+    const pwHash = bitcoin.crypto.sha256(Buffer.from(passphrase));
 
     const ECPairAPI = ECPairFactory(tinysecp);
     const keyPair = ECPairAPI.fromPrivateKey(pwHash, {network});

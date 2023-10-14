@@ -1,12 +1,12 @@
 import * as keys from '../keys';
 import {mocked} from './mock-data/address';
 
-describe('createNewPassPhrase', () => {
+describe('createNewPassphrase', () => {
   test('should return string that contains more than 11 words', () => {
-    const passPhrase = keys.createNewPassPhrase();
+    const passphrase = keys.createNewPassphrase();
 
-    expect(typeof passPhrase).toBe('string');
-    expect(passPhrase.split(' ').length).toBeGreaterThanOrEqual(12);
+    expect(typeof passphrase).toBe('string');
+    expect(passphrase.split(' ').length).toBeGreaterThanOrEqual(12);
   });
 });
 
@@ -19,20 +19,20 @@ describe('makeKeypairFromHash', () => {
   });
 });
 
-describe('createHashFromPassPhrase', () => {
+describe('createHashFromPassphrase', () => {
   test('should create exact hash from the pass phrase', () => {
-    const passPhrase =
+    const passphrase =
       'wrap track hamster grocery casual talk theory half artist toast art essence';
 
-    const hash = keys.createHashFromPassPhrase(passPhrase);
+    const hash = keys.createHashFromPassphrase(passphrase);
 
     expect(hash).toStrictEqual(mocked.hash);
   });
 });
 
-describe('createKeypairFromPassPhrase', () => {
+describe('createKeypairFromPassphrase', () => {
   test('should create keypair with exact publicKey/privateKey values from pass phrase', () => {
-    const keypair = keys.createKeypairFromPassPhrase(mocked.passPhrase);
+    const keypair = keys.createKeypairFromPassphrase(mocked.passphrase);
 
     expect(keypair.publicKey).toStrictEqual(mocked.publicKey);
     expect(keypair.privateKey).toStrictEqual(mocked.privateKey);

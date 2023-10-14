@@ -9,8 +9,8 @@ const RE_DASH_ADDRESS = /^[7X][1-9A-HJ-NP-Za-km-z]{33,}$/;
 const network = coininfo.dash.main.toBitcoinJS();
 
 export const dash = {
-  keys: (passPhrase: string) => {
-    const pwHash = bitcoin.crypto.sha256(Buffer.from(passPhrase));
+  keys: (passphrase: string) => {
+    const pwHash = bitcoin.crypto.sha256(Buffer.from(passphrase));
 
     const ECPairAPI = ECPairFactory(tinysecp);
     const keyPair = ECPairAPI.fromPrivateKey(pwHash, {network});

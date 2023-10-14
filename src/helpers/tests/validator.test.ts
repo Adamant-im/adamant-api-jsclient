@@ -38,29 +38,29 @@ describe('isNumeric', () => {
   });
 });
 
-describe('isPassPhrase', () => {
+describe('isPassphrase', () => {
   test('should return false for a number', () => {
-    expect(validator.isPassPhrase(3)).toBe(false);
+    expect(validator.isPassphrase(3)).toBe(false);
   });
 
   test('should return false for an object', () => {
-    expect(validator.isPassPhrase({})).toBe(false);
+    expect(validator.isPassphrase({})).toBe(false);
   });
 
   test('should return false for undefined', () => {
-    expect(validator.isPassPhrase(undefined)).toBe(false);
+    expect(validator.isPassphrase(undefined)).toBe(false);
   });
 
   test('should return false for NaN', () => {
-    expect(validator.isPassPhrase(NaN)).toBe(false);
+    expect(validator.isPassphrase(NaN)).toBe(false);
   });
 
   test('should return false for a too short string', () => {
-    expect(validator.isPassPhrase('short')).toBe(false);
+    expect(validator.isPassphrase('short')).toBe(false);
   });
 
   test('should return true for a 12 word string', () => {
-    expect(validator.isPassPhrase('word '.repeat(12))).toBe(true);
+    expect(validator.isPassphrase('word '.repeat(12))).toBe(true);
   });
 });
 

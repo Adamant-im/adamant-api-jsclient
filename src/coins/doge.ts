@@ -9,8 +9,8 @@ const RE_DOGE_ADDRESS = /^[A|D|9][A-Z0-9]([0-9a-zA-Z]{9,})$/;
 const network = coininfo.dogecoin.main.toBitcoinJS();
 
 export const doge = {
-  keys: (passPhrase: string) => {
-    const pwHash = bitcoin.crypto.sha256(Buffer.from(passPhrase));
+  keys: (passphrase: string) => {
+    const pwHash = bitcoin.crypto.sha256(Buffer.from(passphrase));
 
     const ECPairAPI = ECPairFactory(tinysecp);
     const keyPair = ECPairAPI.fromPrivateKey(pwHash, {network});

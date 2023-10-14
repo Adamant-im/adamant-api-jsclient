@@ -18,9 +18,9 @@ const network = {
 };
 
 export const lsk = {
-  keys: (passPhrase: string) => {
+  keys: (passphrase: string) => {
     const liskSeed = pbkdf2.pbkdf2Sync(
-      passPhrase,
+      passphrase,
       LiskHashSettings.SALT,
       LiskHashSettings.ITERATIONS,
       LiskHashSettings.KEYLEN,

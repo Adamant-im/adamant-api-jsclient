@@ -28,7 +28,7 @@ export const parseJsonSafe = (json: string) => {
   }
 };
 
-export const isPassPhrase = (passphrase: unknown): passphrase is string =>
+export const isPassphrase = (passphrase: unknown): passphrase is string =>
   typeof passphrase === 'string' && passphrase.length > 30;
 
 export const isEndpoint = (endpoint: unknown): endpoint is string =>
