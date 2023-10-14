@@ -74,7 +74,6 @@
     "@commitlint/cli": "^17.7.2",
     "@commitlint/config-conventional": "^17.7.0",
     "@types/bytebuffer": "^5.0.45",
-    "@types/bitcoinjs-lib": "^5.0.0",
     "@types/hdkey": "^2.0.1",
     "@types/ed2curve": "^0.2.2",
     "@types/jest": "^29.5.5",
@@ -88,7 +87,7 @@
     "prettier": "^3.0.3",
     "ts-jest": "^29.1.1",
     "gts": "^5.2.0",
-    "typescript": "~5.2.2"
+    "typescript": "~5.1.6"
   },
   "publishConfig": {
     "access": "public"
