@@ -32,7 +32,7 @@ Before submitting your contribution, please make sure to take a moment and read 
 
 ## Development Setup
 
-You will need [Node.js](https://nodejs.org) **version 16+** and [pnpm](https://pnpm.io/).
+You will need [Node.js](https://nodejs.org) **version 18+** and [pnpm](https://pnpm.io/).
 
 After cloning the repo, run:
 
