@@ -35,9 +35,9 @@ export class NodeManager {
   options: NodeManagerOptions;
 
   public node: string;
+  public socket?: WebSocketClient;
 
   protected logger: Logger;
-  protected socket?: WebSocketClient;
 
   private onReadyCallback?: () => void;
 
@@ -72,7 +72,7 @@ export class NodeManager {
   }
 
   public initSocket(options: WsOptions) {
-    this.socket = new WebSocketClient(this.logger, options);
+    this.socket = new WebSocketClient({logger: this.logger, ...options});
   }
 
   private ready() {

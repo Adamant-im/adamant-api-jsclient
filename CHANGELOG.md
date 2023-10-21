@@ -54,7 +54,7 @@
 
 - **Socket Initialization**
 
-  Use `api.initSocket()` instead of `api.socket.initSocket()`:
+  Use `api.initSocket()` instead of `api.socket.initSocket()` and `api.socket.on()` instead of `api.socket.initSocket({ onNewMessage() {} })`:
 
   ```ts
   // before
@@ -66,33 +66,36 @@
   })
 
   // after
-  api.initSocket({
-    admAddress: 'U1234..',
-    onNewMessage(
-      transaction:
-        | ChatMessageTransaction
-        | TokenTransferTransaction
-    ) {
-      // ...
-    }
+  api.initSocket({ admAddress: 'U1234..' })
+
+  api.socket.on((transaction: AnyTransaction) => {
+    // ...
   })
   ```
 
   or specify `socket` option when initializing API:
 
-  ```js
-  // socket.js
-  import { WebSocketClient } from 'adamant-api'
+  ```ts
+  // socket.ts
+  import { WebSocketClient, TransactionType } from 'adamant-api'
 
-  export const socket = new WebSocketClient(
-    // same options as for api.initSocket()
-  );
+  const socket = new WebSocketClient({ admAddress: 'U1234..' })
+
+  socket.on([TransactionType.CHAT_MESSAGE, TransactionType.SEND], (transaction) => {
+    // handle chat messages and transfer tokens transactions
+  })
+
+  socket.on(TransactionType.VOTE, (transaction) => {
+    // handle vote for delegate transaction
+  })
+
+  export { socket }
   ```
 
-  ```js
-  // api.js
+  ```ts
+  // api.ts
   import { AdamantApi } from 'adamant-api'
-  import { socket } from './socket.js'
+  import { socket } from './socket'
 
   export const api = new AdamantApi({
     socket,

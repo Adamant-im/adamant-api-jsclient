@@ -5,16 +5,17 @@ import {Logger} from './logger';
 import {getRandomIntInclusive} from './validator';
 import {TransactionType} from './constants';
 import type {
+  AnyTransaction,
   ChatMessageTransaction,
+  KVSTransaction,
+  RegisterDelegateTransaction,
   TokenTransferTransaction,
+  VoteForDelegateTransaction,
 } from '../api/generated';
 import type {AdamantAddress} from '../api';
+import {BasicTransaction} from './transactions/hash';
 
 export type WsType = 'ws' | 'wss';
-
-export type OnNewTransactionCallback = (
-  transaction: ChatMessageTransaction | TokenTransferTransaction
-) => void;
 
 export interface WsOptions {
   /**
@@ -32,8 +33,31 @@ export interface WsOptions {
    */
   useFastest?: boolean;
 
-  onNewMessage: OnNewTransactionCallback;
+  logger?: Logger;
 }
+
+type ErrorHandler = (error: unknown) => void;
+
+type TransactionMap = {
+  [TransactionType.SEND]: TokenTransferTransaction;
+  [TransactionType.DELEGATE]: RegisterDelegateTransaction;
+  [TransactionType.VOTE]: VoteForDelegateTransaction;
+  [TransactionType.CHAT_MESSAGE]: ChatMessageTransaction;
+  [TransactionType.STATE]: KVSTransaction;
+};
+
+type EventType = keyof TransactionMap;
+
+type TransactionHandler<T extends BasicTransaction> = (transaction: T) => void;
+
+type SingleTransactionHandler =
+  | TransactionHandler<TokenTransferTransaction>
+  | TransactionHandler<RegisterDelegateTransaction>
+  | TransactionHandler<VoteForDelegateTransaction>
+  | TransactionHandler<ChatMessageTransaction>
+  | TransactionHandler<KVSTransaction>;
+
+type AnyTransactionHandler = TransactionHandler<AnyTransaction>;
 
 export class WebSocketClient {
   /**
@@ -52,17 +76,26 @@ export class WebSocketClient {
   private nodes: ActiveNode[];
 
   private logger: Logger;
-  private onNewMessageCallback: OnNewTransactionCallback;
 
-  constructor(logger: Logger, options: WsOptions) {
-    this.logger = logger;
+  private errorHandler: ErrorHandler = () => void 0;
+  private eventHandlers: {
+    [T in EventType]: ((transaction: TransactionMap[T]) => void)[];
+  } = {
+    [TransactionType.SEND]: [],
+    [TransactionType.DELEGATE]: [],
+    [TransactionType.VOTE]: [],
+    [TransactionType.CHAT_MESSAGE]: [],
+    [TransactionType.STATE]: [],
+  };
+
+  constructor(options: WsOptions) {
+    this.logger = options.logger || new Logger();
     this.options = {
       wsType: 'ws',
       ...options,
     };
 
     this.nodes = [];
-    this.onNewMessageCallback = options.onNewMessage;
   }
 
   /**
@@ -126,23 +159,130 @@ export class WebSocketClient {
       logger.warn(`[Socket] Connection error: ${error}`)
     );
 
-    connection.on('newTrans', transaction => {
+    connection.on('newTrans', (transaction: AnyTransaction) => {
       if (transaction.recipientId !== this.options.admAddress) {
         return;
       }
 
-      if (
-        ![TransactionType.CHAT_MESSAGE, TransactionType.SEND].includes(
-          transaction.type
-        )
-      ) {
-        return;
-      }
-
-      this.onNewMessageCallback(transaction);
+      this.handle(transaction);
     });
 
     this.connection = connection;
+  }
+
+  /**
+   * Sets an error handler for all event handlers.
+   *
+   * @example
+   * ```js
+   * socket.onMessage(() => throw new Error('catch me'))
+   *
+   * socket.catch((error) => {
+   *   console.log(error) // Error: catch me
+   * })
+   * ```
+   */
+  public catch(callback: ErrorHandler) {
+    this.errorHandler = callback;
+  }
+
+  /**
+   * Removes the handler from all types.
+   */
+  public off(handler: SingleTransactionHandler) {
+    for (const [, handlers] of Object.entries(this.eventHandlers)) {
+      const index = (handlers as SingleTransactionHandler[]).indexOf(handler);
+      if (index !== -1) {
+        handlers.splice(index, 1);
+      }
+    }
+
+    return this;
+  }
+
+  /**
+   * Adds an event listener handler for all transaction types.
+   */
+  public on(handler: AnyTransactionHandler): this;
+  /**
+   * Adds an event listener handler for the specific transaction types.
+   */
+  public on<T extends EventType>(
+    types: T | T[],
+    handler: TransactionHandler<TransactionMap[T]>
+  ): this;
+  public on<T extends EventType>(
+    typesOrHandler: T | T[] | AnyTransactionHandler,
+    handler?: TransactionHandler<TransactionMap[T]>
+  ) {
+    if (handler === undefined) {
+      if (typeof typesOrHandler === 'function') {
+        for (const trigger of Object.keys(this.eventHandlers)) {
+          this.eventHandlers[+trigger as EventType].push(typesOrHandler);
+        }
+      }
+    } else {
+      const triggers = Array.isArray(typesOrHandler)
+        ? typesOrHandler
+        : [typesOrHandler];
+
+      for (const trigger of triggers) {
+        this.eventHandlers[trigger as T].push(handler);
+      }
+    }
+
+    return this;
+  }
+
+  /**
+   * Wrapper function for .on(TransactionType.CHAT_MESSAGE, handler)
+   */
+  public onMessage(handler: TransactionHandler<ChatMessageTransaction>) {
+    return this.on(TransactionType.CHAT_MESSAGE, handler);
+  }
+
+  /**
+   * Registers an event handler for Token Transfer transactions.
+   */
+  public onTransfer(handler: TransactionHandler<TokenTransferTransaction>) {
+    return this.on(TransactionType.SEND, handler);
+  }
+
+  /**
+   * Registers an event handler for Register Delegate transactions.
+   */
+  public onNewDelegate(
+    handler: TransactionHandler<RegisterDelegateTransaction>
+  ) {
+    return this.on(TransactionType.DELEGATE, handler);
+  }
+
+  /**
+   * Registers an event handler for Vote for Delegate transactions.
+   */
+  public onVoteForDelegate(
+    handler: TransactionHandler<VoteForDelegateTransaction>
+  ) {
+    return this.on(TransactionType.VOTE, handler);
+  }
+
+  /**
+   * Registers an event handler for Key-Value Store (KVS) transactions.
+   */
+  public onKVS(handler: TransactionHandler<KVSTransaction>) {
+    return this.on(TransactionType.STATE, handler);
+  }
+
+  private async handle<T extends EventType>(transaction: AnyTransaction) {
+    const handlers = this.eventHandlers[transaction.type as T];
+
+    for (const handler of handlers) {
+      try {
+        await handler(transaction as TransactionMap[T]);
+      } catch (error) {
+        this.errorHandler(error);
+      }
+    }
   }
 
   /**
