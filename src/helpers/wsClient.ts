@@ -13,7 +13,6 @@ import type {
   VoteForDelegateTransaction,
 } from '../api/generated';
 import type {AdamantAddress} from '../api';
-import {BasicTransaction} from './transactions/hash';
 
 export type WsType = 'ws' | 'wss';
 
@@ -48,7 +47,7 @@ type TransactionMap = {
 
 type EventType = keyof TransactionMap;
 
-type TransactionHandler<T extends BasicTransaction> = (transaction: T) => void;
+type TransactionHandler<T extends AnyTransaction> = (transaction: T) => void;
 
 type SingleTransactionHandler =
   | TransactionHandler<TokenTransferTransaction>
@@ -77,9 +76,9 @@ export class WebSocketClient {
 
   private logger: Logger;
 
-  private errorHandler: ErrorHandler = () => void 0;
+  private errorHandler: ErrorHandler;
   private eventHandlers: {
-    [T in EventType]: ((transaction: TransactionMap[T]) => void)[];
+    [T in EventType]: TransactionHandler<TransactionMap[T]>[];
   } = {
     [TransactionType.SEND]: [],
     [TransactionType.DELEGATE]: [],
@@ -96,6 +95,10 @@ export class WebSocketClient {
     };
 
     this.nodes = [];
+
+    this.errorHandler = (error: unknown) => {
+      this.logger.error(`${error}`);
+    };
   }
 
   /**
@@ -184,13 +187,14 @@ export class WebSocketClient {
    */
   public catch(callback: ErrorHandler) {
     this.errorHandler = callback;
+    return this;
   }
 
   /**
    * Removes the handler from all types.
    */
   public off(handler: SingleTransactionHandler) {
-    for (const [, handlers] of Object.entries(this.eventHandlers)) {
+    for (const handlers of Object.values(this.eventHandlers)) {
       const index = (handlers as SingleTransactionHandler[]).indexOf(handler);
       if (index !== -1) {
         handlers.splice(index, 1);
@@ -235,7 +239,7 @@ export class WebSocketClient {
   }
 
   /**
-   * Wrapper function for .on(TransactionType.CHAT_MESSAGE, handler)
+   * Registers an event handler for Chatn Message transactions.
    */
   public onMessage(handler: TransactionHandler<ChatMessageTransaction>) {
     return this.on(TransactionType.CHAT_MESSAGE, handler);
