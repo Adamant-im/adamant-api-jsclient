@@ -54,7 +54,9 @@
 
 - **Socket Initialization**
 
-  Use `api.initSocket()` instead of `api.socket.initSocket()` and `api.socket.on()` instead of `api.socket.initSocket({ onNewMessage() {} })`:
+  Replace `api.socket.initSocket()` with `api.initSocket()`.
+
+  Use `api.socket.on()` instead of `.initSocket({ onNewMessage() {} })`.
 
   ```ts
   // before
