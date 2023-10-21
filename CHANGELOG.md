@@ -18,16 +18,16 @@
 
   ```js
   // before
-  const block = await api.get('blocks/get', { id })
+  const block = await api.get('blocks/get', { id });
 
   // after
-  const block = await api.getBlock(id)
+  const block = await api.getBlock(id);
   ```
 
   and `post()` method:
 
   ```js
-  await api.post('transactions/process', { transaction })
+  await api.post('transactions/process', { transaction });
   ```
 
 ## Fixed
@@ -47,9 +47,9 @@
   Now you will create new instances of `adamant-api` using keyword `new`:
 
   ```js
-  import { AdamantApi } from 'adamant-api'
+  import { AdamantApi } from 'adamant-api';
 
-  const api = new AdamantApi({ nodes: [/* ... */] })
+  const api = new AdamantApi({ nodes: [/* ... */] });
   ```
 
 - **Socket Initialization**
@@ -62,45 +62,45 @@
     admAddress: 'U1234..',
     onNewMessage(transaction) {
       // ...
-    }
-  })
+    },
+  });
 
   // after
-  api.initSocket({ admAddress: 'U1234..' })
+  api.initSocket({ admAddress: 'U1234..' });
 
   api.socket.on((transaction: AnyTransaction) => {
     // ...
-  })
+  });
   ```
 
   or specify `socket` option when initializing API:
 
   ```ts
   // socket.ts
-  import { WebSocketClient, TransactionType } from 'adamant-api'
+  import { WebSocketClient, TransactionType } from 'adamant-api';
 
-  const socket = new WebSocketClient({ admAddress: 'U1234..' })
+  const socket = new WebSocketClient({ admAddress: 'U1234..' });
 
   socket.on([TransactionType.CHAT_MESSAGE, TransactionType.SEND], (transaction) => {
     // handle chat messages and transfer tokens transactions
-  })
+  });
 
   socket.on(TransactionType.VOTE, (transaction) => {
     // handle vote for delegate transaction
-  })
+  });
 
-  export { socket }
+  export { socket };
   ```
 
   ```ts
   // api.ts
-  import { AdamantApi } from 'adamant-api'
-  import { socket } from './socket'
+  import { AdamantApi } from 'adamant-api';
+  import { socket } from './socket';
 
   export const api = new AdamantApi({
     socket,
-    nodes: [/* ... */]
-  })
+    nodes: [/* ... */],
+  });
   ```
 
 ### Removeed
