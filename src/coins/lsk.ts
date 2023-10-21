@@ -1,4 +1,4 @@
-import cryptography from '@liskhq/lisk-cryptography';
+import * as cryptography from '@liskhq/lisk-cryptography';
 import sodium from 'sodium-browserify-tweetnacl';
 import pbkdf2 from 'pbkdf2';
 import {bytesToHex} from '../helpers/encryptor';
