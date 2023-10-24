@@ -5,3 +5,4 @@ logs/
 .vscode/
 test.js
 .editorconfig
+.DS_Store
