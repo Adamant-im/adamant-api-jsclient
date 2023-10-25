@@ -1,6 +1,6 @@
-import bitcoin from 'bitcoinjs-lib';
+import * as bitcoin from 'bitcoinjs-lib';
 import {ECPairFactory} from 'ecpair';
-import tinysecp from 'tiny-secp256k1';
+import * as tinysecp from 'tiny-secp256k1';
 
 import coininfo from 'coininfo';
 
