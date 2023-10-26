@@ -1,0 +1,112 @@
+# Changelog
+
+## [Unreleased]
+
+## [2.0.0] - 2023-10-12
+
+### Added
+
+- **TypeScript support**
+
+  The project was fully rewritten in TypeScript, which means it supports typings now.
+
+  _See [examples](./examples/) directory._
+
+- **More API methods**
+
+  Added more API methods:
+
+  ```js
+  // before
+  const block = await api.get('blocks/get', { id });
+
+  // after
+  const block = await api.getBlock(id);
+  ```
+
+  and `post()` method:
+
+  ```js
+  await api.post('transactions/process', { transaction });
+  ```
+
+## Fixed
+
+- **Creating multiple instances**
+
+  Previously, it was not possible to create multiple instances due to the storage of Logger and "Node Manager" data in the modules.
+
+- **Importing module several times**
+
+  Fixed a bug where importing adamant-api-jsclient caused issues when it was also imported as a dependency.
+
+### Changed
+
+- **API Initialization**
+
+  Now you will create new instances of `adamant-api` using keyword `new`:
+
+  ```js
+  import { AdamantApi } from 'adamant-api';
+
+  const api = new AdamantApi({ nodes: [/* ... */] });
+  ```
+
+- **Socket Initialization**
+
+  Replace `api.socket.initSocket()` with `api.initSocket()`.
+
+  Use `api.socket.on()` instead of `.initSocket({ onNewMessage() {} })`.
+
+  ```ts
+  // before
+  api.socket.initSocket({
+    admAddress: 'U1234..',
+    onNewMessage(transaction) {
+      // ...
+    },
+  });
+
+  // after
+  api.initSocket({ admAddress: 'U1234..' });
+
+  api.socket.on((transaction: AnyTransaction) => {
+    // ...
+  });
+  ```
+
+  or specify `socket` option when initializing API:
+
+  ```ts
+  // socket.ts
+  import { WebSocketClient, TransactionType } from 'adamant-api';
+
+  const socket = new WebSocketClient({ admAddress: 'U1234..' });
+
+  socket.on([TransactionType.CHAT_MESSAGE, TransactionType.SEND], (transaction) => {
+    // handle chat messages and transfer tokens transactions
+  });
+
+  socket.on(TransactionType.VOTE, (transaction) => {
+    // handle vote for delegate transaction
+  });
+
+  export { socket };
+  ```
+
+  ```ts
+  // api.ts
+  import { AdamantApi } from 'adamant-api';
+  import { socket } from './socket';
+
+  export const api = new AdamantApi({
+    socket,
+    nodes: [/* ... */],
+  });
+  ```
+
+### Removeed
+
+- `createTransaction()`
+
+  Use `createSendTransaction`, `createStateTransaction`, `createChatTransaction`, `createDelegateTransaction`, `createVoteTransaction` methods instead.
