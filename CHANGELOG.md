@@ -1,7 +1,5 @@
 # Changelog
 
-## [Unreleased]
-
 ## [2.0.0] - 2023-10-12
 
 ### Added
@@ -30,7 +28,7 @@
   await api.post('transactions/process', { transaction });
   ```
 
-## Fixed
+### Fixed
 
 - **Creating multiple instances**
 
