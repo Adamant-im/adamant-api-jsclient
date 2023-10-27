@@ -6,7 +6,7 @@ export const getTransactionId = (transaction: SignedTransaction) => {
     throw new Error('Transaction Signature is required');
   }
 
-  const hash = getHash(transaction);
+  const hash = getHash(transaction, {skipSignature: false});
 
   const temp = Buffer.alloc(8);
   for (let i = 0; i < 8; i++) {

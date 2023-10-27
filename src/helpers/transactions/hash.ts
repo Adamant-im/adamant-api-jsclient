@@ -81,8 +81,14 @@ export type SignedTransaction = SomeTransaction & {
   signature: string;
 };
 
-export function getHash(trs: PossiblySignedTransaction) {
-  const hash = crypto.createHash('sha256').update(getBytes(trs)).digest();
+export function getHash(
+  trs: PossiblySignedTransaction,
+  options = {skipSignature: true}
+) {
+  const hash = crypto
+    .createHash('sha256')
+    .update(getBytes(trs, options.skipSignature))
+    .digest();
 
   return hash;
 }
@@ -106,7 +112,10 @@ export function getAssetBytes(transaction: PossiblySignedTransaction) {
   return {assetBytes, assetSize: assetBytes?.length || 0};
 }
 
-export function getBytes(transaction: PossiblySignedTransaction) {
+export function getBytes(
+  transaction: PossiblySignedTransaction,
+  skipSignature = true
+) {
   const result = getAssetBytes(transaction);
 
   if (!result) {
@@ -147,7 +156,7 @@ export function getBytes(transaction: PossiblySignedTransaction) {
     }
   }
 
-  if (transaction.signature) {
+  if (!skipSignature && transaction.signature) {
     const signatureBuffer = Buffer.from(transaction.signature, 'hex');
     for (let i = 0; i < signatureBuffer.length; i++) {
       bb.writeByte(signatureBuffer[i]);
