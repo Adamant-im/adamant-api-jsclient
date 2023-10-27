@@ -169,7 +169,7 @@ export class AdamantApi extends NodeManager {
     this.maxRetries = options.maxRetries ?? DEFAULT_GET_REQUEST_RETRIES;
   }
 
-  private async _request<T>(
+  private async request<T>(
     method: 'GET' | 'POST',
     endpoint: string,
     data: unknown,
@@ -183,7 +183,13 @@ export class AdamantApi extends NodeManager {
       const response = await axios<AdamantApiResult<T>>({
         method,
         url,
-        data,
+        ...(method === 'POST'
+          ? {
+              data,
+            }
+          : {
+              params: data,
+            }),
       });
 
       return response.data;
@@ -200,7 +206,7 @@ export class AdamantApi extends NodeManager {
           logger.log(`${logMessage} Retrying…`);
 
           await this.updateNodes();
-          return this._request<T>(method, endpoint, data, retryNo + 1);
+          return this.request<T>(method, endpoint, data, retryNo + 1);
         }
 
         logger.warn(`${logMessage} No more attempts, returning error.`);
@@ -224,7 +230,7 @@ export class AdamantApi extends NodeManager {
    * @details `endpoint` should be in `'accounts/getPublicKey'` format, excluding `'/api/'`
    */
   async get<T>(endpoint: string, params?: unknown) {
-    return this._request<T>('GET', endpoint, params);
+    return this.request<T>('GET', endpoint, params);
   }
 
   /**
@@ -233,7 +239,7 @@ export class AdamantApi extends NodeManager {
    * @details `endpoint` should be in `'accounts/getPublicKey'` format, excluding `'/api/'`
    */
   async post<T>(endpoint: string, options: unknown) {
-    return this._request<T>('POST', endpoint, options);
+    return this.request<T>('POST', endpoint, options);
   }
 
   /**
