@@ -66,20 +66,34 @@ export interface VoteTransaction extends BasicTransaction {
   };
 }
 
-export type AnyTransaction =
+export type SomeTransaction =
   | VoteTransaction
   | DelegateTransaction
   | ChatTransaction
   | StateTransaction
   | SendTransaction;
 
-export function getHash(trs: AnyTransaction) {
-  const hash = crypto.createHash('sha256').update(getBytes(trs)).digest();
+export type PossiblySignedTransaction = SomeTransaction & {
+  signature?: string;
+};
+
+export type SignedTransaction = SomeTransaction & {
+  signature: string;
+};
+
+export function getHash(
+  trs: PossiblySignedTransaction,
+  options = {skipSignature: true}
+) {
+  const hash = crypto
+    .createHash('sha256')
+    .update(getBytes(trs, options.skipSignature))
+    .digest();
 
   return hash;
 }
 
-export function getAssetBytes(transaction: AnyTransaction) {
+export function getAssetBytes(transaction: PossiblySignedTransaction) {
   const {type} = transaction;
   const {VOTE, DELEGATE, CHAT_MESSAGE, STATE} = TransactionType;
 
@@ -98,7 +112,10 @@ export function getAssetBytes(transaction: AnyTransaction) {
   return {assetBytes, assetSize: assetBytes?.length || 0};
 }
 
-export function getBytes(transaction: AnyTransaction) {
+export function getBytes(
+  transaction: PossiblySignedTransaction,
+  skipSignature = true
+) {
   const result = getAssetBytes(transaction);
 
   if (!result) {
@@ -139,6 +156,13 @@ export function getBytes(transaction: AnyTransaction) {
     }
   }
 
+  if (!skipSignature && transaction.signature) {
+    const signatureBuffer = Buffer.from(transaction.signature, 'hex');
+    for (let i = 0; i < signatureBuffer.length; i++) {
+      bb.writeByte(signatureBuffer[i]);
+    }
+  }
+
   bb.flip();
 
   const arrayBuffer = new Uint8Array(bb.toArrayBuffer());
@@ -151,7 +175,7 @@ export function getBytes(transaction: AnyTransaction) {
   return Buffer.from(buffer);
 }
 
-export function signTransaction(trs: AnyTransaction, keypair: KeyPair) {
+export function signTransaction(trs: SomeTransaction, keypair: KeyPair) {
   const hash = getHash(trs);
 
   return sign(hash, keypair).toString('hex');
