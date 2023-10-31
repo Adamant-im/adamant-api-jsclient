@@ -1,4 +1,4 @@
-import {getTransactionId} from '../../dist';
+import {getTransactionId} from 'adamant-api';
 
 const id = getTransactionId({
   type: 8,
