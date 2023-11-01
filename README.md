@@ -4,20 +4,20 @@ ADAMANT JavaScript API is a library intended to interact with ADAMANT blockchain
 
 Features:
 
-* High reliability
-* GET-requests to the blockchain
-* Sending tokens
-* Sending messages
-* Creating a delegate
-* Voting for delegates
-* Caching public keys
-* Encrypting and decrypting of messages
-* Forming and signing transactions
-* Working with ADM key pairs
-* Generating crypto wallets (addresses and keys), bound to ADM account
-* Working with ADAMANT epoch time
-* Support for WebSocket connections
-* Logging warnings, errors, info
+- High reliability
+- GET-requests to the blockchain
+- Sending tokens
+- Sending messages
+- Creating a delegate
+- Voting for delegates
+- Caching public keys
+- Encrypting and decrypting of messages
+- Forming and signing transactions
+- Working with ADM key pairs
+- Generating crypto wallets (addresses and keys), bound to ADM account
+- Working with ADAMANT epoch time
+- Support for WebSocket connections
+- Logging warnings, errors, info
 
 ## Reliability
 
@@ -27,23 +27,18 @@ Health Check system pings all nodes in the list using [`/status`](https://github
 
 ## Usage
 
-Add current version of ADAMANT JavaScript API library in project's `package.json` in `dependencies` section:
+Install library from npm:
 
-``` json
-  "dependencies": {
-    "adamant-api": "^1.4.0",
-```
-
-Or install library from npm:
-
-``` bash
+```bash
 npm i adamant-api
 ```
 
 Initialize the library:
 
-``` JS
-const nodesList = [
+```js
+const { AdamantApi } = require('adamant-api')
+
+const nodes = [
   "http://localhost:36666",
   "https://endless.adamant.im",
   "https://clown.adamant.im",
@@ -51,15 +46,18 @@ const nodesList = [
   "http://88.198.156.44:36666",
   "https://lake.adamant.im"
 ];
-const api = require('adamant-api')({ node: nodesList, logLevel: 'info' });
+
+const api = new AdamantApi({
+  nodes,
+});
 ```
 
 Request example:
 
-``` JS
-api.get('blocks').then(response => {
-  console.log(response.data)
-})
+```js
+const response = await api.getBlocks()
+
+console.log(response.data)
 ```
 
 ## Documentation

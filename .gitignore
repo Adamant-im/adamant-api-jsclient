@@ -1,6 +1,8 @@
+dist
 node_modules/
 logs/
+.idea/
 .vscode/
 test.js
-package-lock.json
 .editorconfig
+.DS_Store
