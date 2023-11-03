@@ -1,6 +1,6 @@
 {
   "name": "adamant-api",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "JavaScript API library for the ADAMANT Blockchain",
   "keywords": [
     "adm",

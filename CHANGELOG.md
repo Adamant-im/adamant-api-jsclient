@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.1] - 2023-10-12
+
+### Fixed
+
+- Fixed typing for `AdamantApiOptions` by adding `LogLevelName` as possible value for `logLevel` property.
+
+  For example, you can now use `'log'` instead of `LogLevel.Log` in TypeScript:
+
+  ```ts
+  const api = new AdamantApi({ /* ... */ logLevel: 'log' })
+  ```
+
 ## [2.0.0] - 2023-10-12
 
 ### Added

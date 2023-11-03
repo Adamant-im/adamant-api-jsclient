@@ -71,8 +71,12 @@ export class NodeManager {
     this.onReadyCallback = callback;
   }
 
-  public initSocket(options: WsOptions) {
-    this.socket = new WebSocketClient({logger: this.logger, ...options});
+  public initSocket(options: WebSocketClient | WsOptions) {
+    if (options instanceof WebSocketClient) {
+      this.socket = options;
+    } else {
+      this.socket = new WebSocketClient({logger: this.logger, ...options});
+    }
   }
 
   private ready() {
