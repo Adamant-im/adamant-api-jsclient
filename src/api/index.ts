@@ -1,6 +1,11 @@
 import axios, {AxiosError} from 'axios';
 import {NodeManager, NodeManagerOptions} from '../helpers/healthCheck';
-import {Logger, type CustomLogger, type LogLevel} from '../helpers/logger';
+import {
+  Logger,
+  type CustomLogger,
+  type LogLevel,
+  type LogLevelName,
+} from '../helpers/logger';
 import {
   AdamantApiResult,
   admToSats,
@@ -151,7 +156,7 @@ export interface AdamantApiOptions extends NodeManagerOptions {
   timeout?: number;
 
   logger?: CustomLogger;
-  logLevel?: LogLevel;
+  logLevel?: LogLevel | LogLevelName;
 }
 
 const publicKeysCache: {
