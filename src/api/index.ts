@@ -4,7 +4,7 @@ import {
   Logger,
   type CustomLogger,
   type LogLevel,
-  LogLevelName,
+  type LogLevelName,
 } from '../helpers/logger';
 import {
   AdamantApiResult,
