@@ -40,7 +40,10 @@
   "main": "dist/index.js",
   "src": "src/index.ts",
   "types": "dist/index.d.ts",
-  "files": ["dist/"],
+  "files": [
+    "dist/",
+    "types/"
+  ],
   "scripts": {
     "test": "jest",
     "lint": "gts lint",
