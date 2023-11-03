@@ -28,6 +28,18 @@
   await api.post('transactions/process', { transaction });
   ```
 
+
+- **getTransactionId()** method
+
+  Pass signed transaction with signature to get a transaction id as a string:
+
+  ```js
+  import {getTransactionId} from 'adamant-api'
+  const id = getTransactionId(signedTransaction)
+  ```
+
+  _See [documentation](https://github.com/Adamant-im/adamant-api-jsclient/wiki/Calculating-transaction-id) for more information._
+
 ### Fixed
 
 - **Creating multiple instances**
