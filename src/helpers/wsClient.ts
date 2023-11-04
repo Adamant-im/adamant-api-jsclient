@@ -47,16 +47,18 @@ type TransactionMap = {
 
 type EventType = keyof TransactionMap;
 
-type TransactionHandler<T extends AnyTransaction> = (transaction: T) => void;
+export type TransactionHandler<T extends AnyTransaction> = (
+  transaction: T
+) => void;
 
-type SingleTransactionHandler =
+export type SingleTransactionHandler =
   | TransactionHandler<TokenTransferTransaction>
   | TransactionHandler<RegisterDelegateTransaction>
   | TransactionHandler<VoteForDelegateTransaction>
   | TransactionHandler<ChatMessageTransaction>
   | TransactionHandler<KVSTransaction>;
 
-type AnyTransactionHandler = TransactionHandler<AnyTransaction>;
+export type AnyTransactionHandler = TransactionHandler<AnyTransaction>;
 
 export class WebSocketClient {
   /**
