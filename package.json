@@ -41,7 +41,8 @@
   "src": "src/index.ts",
   "types": "dist/index.d.ts",
   "files": [
-    "dist/"
+    "dist/",
+    "types/"
   ],
   "scripts": {
     "test": "jest",
