@@ -1,6 +1,20 @@
 # Changelog
 
-## [2.0.1] - 2023-10-12
+## [2.0.1] - 2023-11-06
+
+### Added
+
+- `api.initSocket()` now accepts an instance of `WebSocketClient` as an argument:
+
+  ```js
+  const socket = new WebSocketClient({ /* ... */ })
+
+  api.initSocket(socket)
+  // instead of
+  api.socket = socket
+  ```
+
+- Export transaction handlers TypeScript utils: `SingleTransactionHandler`, `AnyTransactionHandler`, `TransactionHandler<T extends AnyTransaction>`
 
 ### Fixed
 
@@ -10,6 +24,13 @@
 
   ```ts
   const api = new AdamantApi({ /* ... */ logLevel: 'log' })
+  ```
+
+- Added missing declaration modules to npm that led to the error:
+
+  ```
+  Could not find a declaration file for module 'coininfo'.
+  /// <reference path="../../types/coininfo.d.ts" />
   ```
 
 ## [2.0.0] - 2023-10-12
