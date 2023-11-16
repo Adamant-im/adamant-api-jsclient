@@ -100,10 +100,13 @@ export const encodeMessage = (
 export const decodeMessage = (
   message: string,
   senderPublicKey: Uint8Array | string,
-  passphrase: string,
+  keyPairOrPassphrase: string | KeyPair,
   nonce: string
 ) => {
-  const keypair = createKeypairFromPassphrase(passphrase);
+  const keypair =
+    typeof keyPairOrPassphrase === 'string'
+      ? createKeypairFromPassphrase(keyPairOrPassphrase)
+      : keyPairOrPassphrase;
 
   if (typeof message !== 'string') {
     throw new Error('decodeMessage message should be a string');
