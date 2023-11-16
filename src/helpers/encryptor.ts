@@ -99,7 +99,7 @@ export const encodeMessage = (
 
 export const decodeMessage = (
   message: string,
-  senderPublicKey: string,
+  senderPublicKey: Uint8Array | string,
   passphrase: string,
   nonce: string
 ) => {
@@ -113,11 +113,17 @@ export const decodeMessage = (
     throw new Error('decodeMessage: nonce should be a string');
   }
 
-  if (typeof senderPublicKey !== 'string') {
-    throw new Error('decodeMessage: senderPublicKey should be a string');
+  let publicKey = senderPublicKey;
+
+  if (typeof publicKey === 'string') {
+    publicKey = hexToBytes(publicKey);
+  } else if (!(publicKey instanceof Uint8Array)) {
+    throw new Error(
+      'decodeMessage: senderPublicKey should be a string or an instance of Uint8Array'
+    );
   }
 
-  const DHPublicKey = ed2curve.convertPublicKey(hexToBytes(senderPublicKey));
+  const DHPublicKey = ed2curve.convertPublicKey(publicKey);
 
   if (!DHPublicKey) {
     throw new Error('decodeMessage: invalid key');
