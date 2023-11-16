@@ -69,16 +69,21 @@ export const utf8ArrayToStr = (array: Uint8Array) => {
 export const encodeMessage = (
   msg: string,
   keypair: KeyPair,
-  recipientPublicKey: string
+  recipientPublicKey: Uint8Array | string
 ) => {
   const nonce = Buffer.allocUnsafe(24);
   sodium.randombytes(nonce);
 
   const plainText = Buffer.from(msg.toString());
   const DHSecretKey = ed2curve.convertSecretKey(keypair.privateKey);
-  const DHPublicKey = ed2curve.convertPublicKey(
-    new Uint8Array(hexToBytes(recipientPublicKey))
-  );
+
+  let publicKey = recipientPublicKey;
+
+  if (typeof publicKey === 'string') {
+    publicKey = hexToBytes(publicKey);
+  }
+
+  const DHPublicKey = ed2curve.convertPublicKey(publicKey);
 
   if (!DHPublicKey) {
     throw new Error('encodeMessage: invalid key');
