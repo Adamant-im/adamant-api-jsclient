@@ -108,6 +108,11 @@ export const decodeMessage = (
       ? createKeypairFromPassphrase(keyPairOrPassphrase)
       : keyPairOrPassphrase;
 
+  const publicKey =
+    typeof senderPublicKey === 'string'
+      ? hexToBytes(senderPublicKey)
+      : senderPublicKey;
+
   if (typeof message !== 'string') {
     throw new Error('decodeMessage message should be a string');
   }
@@ -116,11 +121,7 @@ export const decodeMessage = (
     throw new Error('decodeMessage: nonce should be a string');
   }
 
-  let publicKey = senderPublicKey;
-
-  if (typeof publicKey === 'string') {
-    publicKey = hexToBytes(publicKey);
-  } else if (!(publicKey instanceof Uint8Array)) {
+  if (!(publicKey instanceof Uint8Array)) {
     throw new Error(
       'decodeMessage: senderPublicKey should be a string or an instance of Uint8Array'
     );
