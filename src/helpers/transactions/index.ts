@@ -29,7 +29,7 @@ export interface SendTransactionData extends BasicTransactionData {
 export interface ChatTransactionData extends BasicTransactionData {
   recipientId: AdamantAddress;
   message_type: MessageType;
-  amount: number | undefined;
+  amount?: number;
   message: string;
   own_message: string;
 }
