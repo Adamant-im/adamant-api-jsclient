@@ -14,11 +14,29 @@
   api.socket = socket
   ```
 
-- Export transaction handlers TypeScript utils: `SingleTransactionHandler`, `AnyTransactionHandler`, `TransactionHandler<T extends AnyTransaction>`
+- Improved the `encodeMessage()` and `decodeMessage()` functions to accept public keys as Uint8Array or Buffer
+
+  ```js
+  import {encodeMessage, createKeypairFromPassphrase} from 'adamant-api'
+
+  const {publicKey} = createKeypairFromPassphrase('...')
+  const message = encodeMessage(,, publicKey) // No need to convert public key to string
+  ```
+
+- `decodeMessage()` allows passing a key pair instead of a passphrase:
+
+  ```js
+  import {decodeMessage, createKeypairFromPassphrase} from 'adamant-api'
+
+  const keyPair = createKeypairFromPassphrase('...')
+  const message = decodeMessage(,, keyPair,) // <- It won't create a key pair from passphrase again
+  ```
+
+- TypeScript: Export transaction handlers TypeScript utils: `SingleTransactionHandler`, `AnyTransactionHandler`, `TransactionHandler<T extends AnyTransaction>`
 
 ### Fixed
 
-- Fixed typing for `AdamantApiOptions` by adding `LogLevelName` as possible value for `logLevel` property.
+- TypeScript: Fixed typing for `AdamantApiOptions` by adding `LogLevelName` as possible value for `logLevel` property.
 
   For example, you can now use `'log'` instead of `LogLevel.Log` in TypeScript:
 
@@ -26,11 +44,18 @@
   const api = new AdamantApi({ /* ... */ logLevel: 'log' })
   ```
 
-- Added missing declaration modules to npm that led to the error:
+- TypeScript: Added missing declaration modules to npm that led to the error:
 
   ```
   Could not find a declaration file for module 'coininfo'.
   /// <reference path="../../types/coininfo.d.ts" />
+  ```
+
+- TypeScript: `amount` property in `ChatTransactionData` (`createChatTransaction()` argument) is now truly optional:
+
+  ```diff
+  -  amount: number | undefined;
+  +  amount?: number;
   ```
 
 ## [2.0.0] - 2023-10-12
