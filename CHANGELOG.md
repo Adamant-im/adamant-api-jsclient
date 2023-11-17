@@ -143,7 +143,7 @@
   });
   ```
 
-  or specify `socket` option when initializing API:
+  Or specify `socket` option when initializing API:
 
   ```ts
   // socket.ts
@@ -173,7 +173,7 @@
   });
   ```
 
-### Removeed
+### Removed
 
 - `createTransaction()`
 
