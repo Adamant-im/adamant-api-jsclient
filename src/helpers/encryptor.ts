@@ -69,16 +69,21 @@ export const utf8ArrayToStr = (array: Uint8Array) => {
 export const encodeMessage = (
   msg: string,
   keypair: KeyPair,
-  recipientPublicKey: string
+  recipientPublicKey: Uint8Array | string
 ) => {
   const nonce = Buffer.allocUnsafe(24);
   sodium.randombytes(nonce);
 
   const plainText = Buffer.from(msg.toString());
   const DHSecretKey = ed2curve.convertSecretKey(keypair.privateKey);
-  const DHPublicKey = ed2curve.convertPublicKey(
-    new Uint8Array(hexToBytes(recipientPublicKey))
-  );
+
+  let publicKey = recipientPublicKey;
+
+  if (typeof publicKey === 'string') {
+    publicKey = hexToBytes(publicKey);
+  }
+
+  const DHPublicKey = ed2curve.convertPublicKey(publicKey);
 
   if (!DHPublicKey) {
     throw new Error('encodeMessage: invalid key');
@@ -94,11 +99,19 @@ export const encodeMessage = (
 
 export const decodeMessage = (
   message: string,
-  senderPublicKey: string,
-  passphrase: string,
+  senderPublicKey: Uint8Array | string,
+  keyPairOrPassphrase: string | KeyPair,
   nonce: string
 ) => {
-  const keypair = createKeypairFromPassphrase(passphrase);
+  const keypair =
+    typeof keyPairOrPassphrase === 'string'
+      ? createKeypairFromPassphrase(keyPairOrPassphrase)
+      : keyPairOrPassphrase;
+
+  const publicKey =
+    typeof senderPublicKey === 'string'
+      ? hexToBytes(senderPublicKey)
+      : senderPublicKey;
 
   if (typeof message !== 'string') {
     throw new Error('decodeMessage message should be a string');
@@ -108,11 +121,13 @@ export const decodeMessage = (
     throw new Error('decodeMessage: nonce should be a string');
   }
 
-  if (typeof senderPublicKey !== 'string') {
-    throw new Error('decodeMessage: senderPublicKey should be a string');
+  if (!(publicKey instanceof Uint8Array)) {
+    throw new Error(
+      'decodeMessage: senderPublicKey should be a string or an instance of Uint8Array'
+    );
   }
 
-  const DHPublicKey = ed2curve.convertPublicKey(hexToBytes(senderPublicKey));
+  const DHPublicKey = ed2curve.convertPublicKey(publicKey);
 
   if (!DHPublicKey) {
     throw new Error('decodeMessage: invalid key');
