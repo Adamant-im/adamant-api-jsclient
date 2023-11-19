@@ -1,5 +1,63 @@
 # Changelog
 
+## [2.1.0] - 2023-11-17
+
+### Added
+
+- `api.initSocket()` now accepts an instance of `WebSocketClient` as an argument:
+
+  ```js
+  const socket = new WebSocketClient({ /* ... */ })
+
+  api.initSocket(socket)
+  // instead of
+  api.socket = socket
+  ```
+
+- Improved the `encodeMessage()` and `decodeMessage()` functions to accept public keys as Uint8Array or Buffer
+
+  ```js
+  import {encodeMessage, createKeypairFromPassphrase} from 'adamant-api'
+
+  const {publicKey} = createKeypairFromPassphrase('...')
+  const message = encodeMessage(,, publicKey) // No need to convert public key to string
+  ```
+
+- `decodeMessage()` allows passing a key pair instead of a passphrase:
+
+  ```js
+  import {decodeMessage, createKeypairFromPassphrase} from 'adamant-api'
+
+  const keyPair = createKeypairFromPassphrase('...')
+  const message = decodeMessage(,, keyPair,) // <- It won't create a key pair from passphrase again
+  ```
+
+- TypeScript: Export transaction handlers TypeScript utils: `SingleTransactionHandler`, `AnyTransactionHandler`, `TransactionHandler<T extends AnyTransaction>`
+
+### Fixed
+
+- TypeScript: Fixed typing for `AdamantApiOptions` by adding `LogLevelName` as possible value for `logLevel` property.
+
+  For example, you can now use `'log'` instead of `LogLevel.Log` in TypeScript:
+
+  ```ts
+  const api = new AdamantApi({ /* ... */ logLevel: 'log' })
+  ```
+
+- TypeScript: Added missing declaration modules to npm that led to the error:
+
+  ```
+  Could not find a declaration file for module 'coininfo'.
+  /// <reference path="../../types/coininfo.d.ts" />
+  ```
+
+- TypeScript: `amount` property in `ChatTransactionData` (`createChatTransaction()` argument) is now truly optional:
+
+  ```diff
+  -  amount: number | undefined;
+  +  amount?: number;
+  ```
+
 ## [2.0.0] - 2023-10-12
 
 ### Added
@@ -27,6 +85,18 @@
   ```js
   await api.post('transactions/process', { transaction });
   ```
+
+
+- **getTransactionId()** method
+
+  Pass signed transaction with signature to get a transaction id as a string:
+
+  ```js
+  import {getTransactionId} from 'adamant-api'
+  const id = getTransactionId(signedTransaction)
+  ```
+
+  _See [documentation](https://github.com/Adamant-im/adamant-api-jsclient/wiki/Calculating-transaction-id) for more information._
 
 ### Fixed
 
@@ -73,7 +143,7 @@
   });
   ```
 
-  or specify `socket` option when initializing API:
+  Or specify `socket` option when initializing API:
 
   ```ts
   // socket.ts
@@ -103,7 +173,7 @@
   });
   ```
 
-### Removeed
+### Removed
 
 - `createTransaction()`
 

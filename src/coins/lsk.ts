@@ -1,4 +1,4 @@
-import * as cryptography from '@liskhq/lisk-cryptography';
+import {address as cryptography} from '@liskhq/lisk-cryptography';
 import sodium from 'sodium-browserify-tweetnacl';
 import pbkdf2 from 'pbkdf2';
 import {bytesToHex} from '../helpers/encryptor';
@@ -27,7 +27,7 @@ export const lsk = {
       LiskHashSettings.DIGEST
     );
     const keyPair = sodium.crypto_sign_seed_keypair(liskSeed);
-    const address = cryptography.getBase32AddressFromPublicKey(
+    const address = cryptography.getLisk32AddressFromPublicKey(
       keyPair.publicKey
     );
     const addressHexBinary = cryptography.getAddressFromPublicKey(
