@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.2.0] - 2023-12-01
+
+## Added
+
+- Export validator utils:
+
+  ```ts
+  function isPassphrase(passphrase: unknown): passphrase is string;
+  function isAdmAddress(address: unknown): address is AdamantAddress;
+  function isAdmPublicKey(publicKey: unknown): publicKey is string;
+  function isAdmVoteForPublicKey(publicKey: unknown): publicKey is string;
+  function isAdmVoteForAddress(address: unknown): boolean;
+  function isAdmVoteForDelegateName(delegateName: unknown): delegateName is string;
+  function validateMessage(
+    message: string,
+    messageType: MessageType = MessageType.Chat
+  ): { success: false, error: string } | { success: true };
+  function isDelegateName(name: unknown): name is string;
+  function admToSats(amount: number): number;
+  ```
+
 ## [2.1.0] - 2023-11-17
 
 ### Added
