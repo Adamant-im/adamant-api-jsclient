@@ -785,7 +785,7 @@ export class AdamantApi extends NodeManager {
    * Get transaction by ID
    */
   async getTransaction(
-    id: number,
+    id: string,
     options?: TransactionQuery<TransactionsOptions>
   ) {
     return this.get<GetTransactionByIdResponseDto>('transactions/get', {
@@ -813,7 +813,7 @@ export class AdamantApi extends NodeManager {
   /**
    * Get queued transaction by ID
    */
-  async getQueuedTransaction(id: number) {
+  async getQueuedTransaction(id: string) {
     return this.get<GetQueuedTransactionsResponseDto>(
       'transactions/queued/get',
       {id}
@@ -832,7 +832,7 @@ export class AdamantApi extends NodeManager {
   /**
    * Get unconfirmed transaction by ID
    */
-  async getUnconfirmedTransaction(id: number) {
+  async getUnconfirmedTransaction(id: string) {
     return this.get<GetUnconfirmedTransactionByIdResponseDto>(
       'transactions/unconfirmed/get',
       {id}
