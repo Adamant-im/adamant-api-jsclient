@@ -73,7 +73,11 @@ import {
   createVoteTransaction,
 } from '../helpers/transactions';
 import {encodeMessage} from '../helpers/encryptor';
-import {VoteDirection, parseVote} from './votes';
+import {
+  type VoteDirection,
+  transformTransactionQuery,
+  parseVote,
+} from './utils';
 
 export type AdamantAddress = `U${string}`;
 
@@ -99,9 +103,9 @@ export type AddressOrPublicKeyObject = AddressObject | PublicKeyObject;
  */
 export type UsernameOrPublicKeyObject = UsernameObject | PublicKeyObject;
 
-export type TransactionQuery<T extends {}> = T & {
-  or: T;
-  and: T;
+export type TransactionQuery<T extends {}> = Partial<T> & {
+  or?: Partial<T>;
+  and?: Partial<T>;
 };
 
 export interface GetBlocksOptions {
@@ -571,7 +575,10 @@ export class AdamantApi extends NodeManager {
     address: string,
     options?: TransactionQuery<ChatroomsOptions>
   ) {
-    return this.get<GetChatRoomsResponseDto>(`chatrooms/${address}`, options);
+    return this.get<GetChatRoomsResponseDto>(
+      `chatrooms/${address}`,
+      transformTransactionQuery(options)
+    );
   }
 
   /**
@@ -584,7 +591,7 @@ export class AdamantApi extends NodeManager {
   ) {
     return this.get<GetChatMessagesResponseDto>(
       `chatrooms/${address1}/${address2}`,
-      query
+      transformTransactionQuery(query)
     );
   }
 
@@ -778,7 +785,10 @@ export class AdamantApi extends NodeManager {
    * Returns list of transactions
    */
   async getTransactions(options?: TransactionQuery<TransactionsOptions>) {
-    return this.get<GetTransactionsResponseDto>('transactions', options);
+    return this.get<GetTransactionsResponseDto>(
+      'transactions',
+      transformTransactionQuery(options)
+    );
   }
 
   /**
@@ -790,7 +800,7 @@ export class AdamantApi extends NodeManager {
   ) {
     return this.get<GetTransactionByIdResponseDto>('transactions/get', {
       id,
-      ...options,
+      ...transformTransactionQuery(options),
     });
   }
 
@@ -841,4 +851,4 @@ export class AdamantApi extends NodeManager {
 }
 
 export * from './generated';
-export * from './votes';
+export * from './utils';
