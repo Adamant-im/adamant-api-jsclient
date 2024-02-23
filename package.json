@@ -47,7 +47,6 @@
   "scripts": {
     "test": "jest",
     "lint": "gts lint",
-    "preinstall": "npx only-allow pnpm",
     "prepare": "husky install",
     "clean": "gts clean",
     "compile": "tsc",
