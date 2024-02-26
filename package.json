@@ -1,6 +1,6 @@
 {
   "name": "adamant-api",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "JavaScript API library for the ADAMANT Blockchain",
   "keywords": [
     "adm",
@@ -47,7 +47,6 @@
   "scripts": {
     "test": "jest",
     "lint": "gts lint",
-    "preinstall": "npx only-allow pnpm",
     "prepare": "husky install",
     "clean": "gts clean",
     "compile": "tsc",
