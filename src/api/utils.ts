@@ -10,7 +10,7 @@ export const parseVote = (vote: string): [string, VoteDirection] => {
   return [name, direction as VoteDirection];
 };
 
-export const transformTransactionQuery = <T extends Record<string, never>>(
+export const transformTransactionQuery = <T extends object>(
   obj?: TransactionQuery<T>
 ) => {
   if (!obj) {
