@@ -103,7 +103,7 @@ export type AddressOrPublicKeyObject = AddressObject | PublicKeyObject;
  */
 export type UsernameOrPublicKeyObject = UsernameObject | PublicKeyObject;
 
-export type TransactionQuery<T extends {}> = Partial<T> & {
+export type TransactionQuery<T extends object> = Partial<T> & {
   or?: Partial<T>;
   and?: Partial<T>;
 };
