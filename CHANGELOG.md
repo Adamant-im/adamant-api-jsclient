@@ -1,5 +1,52 @@
 # Changelog
 
+## [2.3.0] - 2024-03-01
+
+### Added
+
+- `transformTransactionQuery` function:
+
+  ```ts
+  const transformed = transformTransactionQuery({
+    fromHeight: 7585271,
+    and: {
+      toHeight: 7586280,
+    },
+    or: {
+      senderId: 'U18132012621449491414',
+    },
+  });
+
+  /**
+   * {
+   *   and:fromHeight: 7585271,
+   *   and:toHeight: 7586280,
+   *   or:senderId: 'U18132012621449491414'
+   * }
+   */
+  console.log(transformed);
+  ```
+
+### Fixed
+
+- TypeScript: `id` should have `string` type in the methods: `api.getTransaction()`, `api.getQueuedTransaction()`, `api.getUnconfirmedTransaction()`
+
+- Global installation of packages that use `adamant-api` as its dependency
+
+- Transaction query methods:
+
+  ```ts
+  const blocks = await api.getTransactions({
+    fromHeight: 7585271,
+    and: {
+      toHeight: 7586280,
+    },
+    or: {
+      senderId: 'U18132012621449491414',
+    },
+  });
+  ```
+
 ## [2.2.0] - 2023-12-01
 
 ## Added
@@ -12,11 +59,13 @@
   function isAdmPublicKey(publicKey: unknown): publicKey is string;
   function isAdmVoteForPublicKey(publicKey: unknown): publicKey is string;
   function isAdmVoteForAddress(address: unknown): boolean;
-  function isAdmVoteForDelegateName(delegateName: unknown): delegateName is string;
+  function isAdmVoteForDelegateName(
+    delegateName: unknown
+  ): delegateName is string;
   function validateMessage(
     message: string,
     messageType: MessageType = MessageType.Chat
-  ): { success: false, error: string } | { success: true };
+  ): {success: false; error: string} | {success: true};
   function isDelegateName(name: unknown): name is string;
   function admToSats(amount: number): number;
   ```
@@ -28,11 +77,13 @@
 - `api.initSocket()` now accepts an instance of `WebSocketClient` as an argument:
 
   ```js
-  const socket = new WebSocketClient({ /* ... */ })
+  const socket = new WebSocketClient({
+    /* ... */
+  });
 
-  api.initSocket(socket)
+  api.initSocket(socket);
   // instead of
-  api.socket = socket
+  api.socket = socket;
   ```
 
 - Improved the `encodeMessage()` and `decodeMessage()` functions to accept public keys as Uint8Array or Buffer
@@ -62,7 +113,7 @@
   For example, you can now use `'log'` instead of `LogLevel.Log` in TypeScript:
 
   ```ts
-  const api = new AdamantApi({ /* ... */ logLevel: 'log' })
+  const api = new AdamantApi({/* ... */ logLevel: 'log'});
   ```
 
 - TypeScript: Added missing declaration modules to npm that led to the error:
@@ -95,7 +146,7 @@
 
   ```js
   // before
-  const block = await api.get('blocks/get', { id });
+  const block = await api.get('blocks/get', {id});
 
   // after
   const block = await api.getBlock(id);
@@ -104,17 +155,16 @@
   and `post()` method:
 
   ```js
-  await api.post('transactions/process', { transaction });
+  await api.post('transactions/process', {transaction});
   ```
-
 
 - **getTransactionId()** method
 
   Pass signed transaction with signature to get a transaction id as a string:
 
   ```js
-  import {getTransactionId} from 'adamant-api'
-  const id = getTransactionId(signedTransaction)
+  import {getTransactionId} from 'adamant-api';
+  const id = getTransactionId(signedTransaction);
   ```
 
   _See [documentation](https://github.com/Adamant-im/adamant-api-jsclient/wiki/Calculating-transaction-id) for more information._
@@ -136,9 +186,13 @@
   Now you will create new instances of `adamant-api` using keyword `new`:
 
   ```js
-  import { AdamantApi } from 'adamant-api';
+  import {AdamantApi} from 'adamant-api';
 
-  const api = new AdamantApi({ nodes: [/* ... */] });
+  const api = new AdamantApi({
+    nodes: [
+      /* ... */
+    ],
+  });
   ```
 
 - **Socket Initialization**
@@ -157,7 +211,7 @@
   });
 
   // after
-  api.initSocket({ admAddress: 'U1234..' });
+  api.initSocket({admAddress: 'U1234..'});
 
   api.socket.on((transaction: AnyTransaction) => {
     // ...
@@ -168,29 +222,34 @@
 
   ```ts
   // socket.ts
-  import { WebSocketClient, TransactionType } from 'adamant-api';
+  import {WebSocketClient, TransactionType} from 'adamant-api';
 
-  const socket = new WebSocketClient({ admAddress: 'U1234..' });
+  const socket = new WebSocketClient({admAddress: 'U1234..'});
 
-  socket.on([TransactionType.CHAT_MESSAGE, TransactionType.SEND], (transaction) => {
-    // handle chat messages and transfer tokens transactions
-  });
+  socket.on(
+    [TransactionType.CHAT_MESSAGE, TransactionType.SEND],
+    transaction => {
+      // handle chat messages and transfer tokens transactions
+    }
+  );
 
-  socket.on(TransactionType.VOTE, (transaction) => {
+  socket.on(TransactionType.VOTE, transaction => {
     // handle vote for delegate transaction
   });
 
-  export { socket };
+  export {socket};
   ```
 
   ```ts
   // api.ts
-  import { AdamantApi } from 'adamant-api';
-  import { socket } from './socket';
+  import {AdamantApi} from 'adamant-api';
+  import {socket} from './socket';
 
   export const api = new AdamantApi({
     socket,
-    nodes: [/* ... */],
+    nodes: [
+      /* ... */
+    ],
   });
   ```
 
