@@ -454,10 +454,15 @@ export class AdamantApi extends NodeManager {
    *
    * @example
    * ```
-   * voteForDelegate([
-   *   '+b3d0c0b99f64d0960324089eb678e90d8bcbb3dd8c73ee748e026f8b9a5b5468',
-   *   '-9ef1f6212ae871716cfa2d04e3dc5339e8fe75f89818be21ee1d75004983e2a8'
-   * ])
+   * voteForDelegate(
+   *   'apple banana cherry date elderberry fig grape hazelnut iris juniper kiwi lemon',
+   *   [
+   *     '+b3d0c0b99f64d0960324089eb678e90d8bcbb3dd8c73ee748e026f8b9a5b5468',
+   *     '-9ef1f6212ae871716cfa2d04e3dc5339e8fe75f89818be21ee1d75004983e2a8',
+   *     '+system',
+   *     '-U16615166477939602094'
+   *   ]
+   * )
    * ```
    */
   async voteForDelegate(passphrase: string, votes: string[]) {
