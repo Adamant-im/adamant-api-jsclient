@@ -488,7 +488,12 @@ export class AdamantApi extends NodeManager {
           this.logger.warn(
             `[ADAMANT js-api] Failed to get public key for ${vote}. ${response.errorMessage}.`
           );
-          return badParameter('votes');
+
+          return badParameter(
+            'votes',
+            vote,
+            "couldn't get address' public key"
+          );
         }
 
         const {publicKey} = response.account;
@@ -499,14 +504,19 @@ export class AdamantApi extends NodeManager {
         continue;
       }
 
-      if (isAdmVoteForDelegateName(name)) {
+      if (isAdmVoteForDelegateName(vote)) {
         const response = await this.getDelegate({username: name});
 
         if (!response.success) {
           this.logger.warn(
             `[ADAMANT js-api] Failed to get public key for ${vote}. ${response.errorMessage}.`
           );
-          return badParameter('votes');
+          console.log('couldnt get delegates publickey');
+          return badParameter(
+            'votes',
+            name,
+            "couldn't get delegate's public key"
+          );
         }
 
         const {publicKey} = response.delegate;
@@ -517,8 +527,12 @@ export class AdamantApi extends NodeManager {
         continue;
       }
 
-      if (!isAdmVoteForPublicKey(name)) {
-        return badParameter('votes');
+      if (!isAdmVoteForPublicKey(vote)) {
+        return badParameter(
+          'votes',
+          name,
+          "the vote doesn't look like public key, address or delegate name"
+        );
       }
 
       uniqueVotes[name] = direction;
