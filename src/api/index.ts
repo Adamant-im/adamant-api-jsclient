@@ -516,7 +516,7 @@ export class AdamantApi extends NodeManager {
           this.logger.warn(
             `[ADAMANT js-api] Failed to get public key for ${vote}. ${response.errorMessage}.`
           );
-          console.log('couldnt get delegates publickey');
+
           return badParameter(
             'votes',
             name,
