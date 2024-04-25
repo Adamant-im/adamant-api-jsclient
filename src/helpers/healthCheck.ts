@@ -215,7 +215,7 @@ export class NodeManager {
     );
   }
 
-  async getNodeStatus(node: string) {
+  async checkNode(node: string) {
     try {
       const {timeout} = this.options;
 
@@ -239,7 +239,7 @@ export class NodeManager {
     for (const node of nodes) {
       const start = unixTimestamp();
 
-      const response = await this.getNodeStatus(node);
+      const response = await this.checkNode(node);
 
       const ping = unixTimestamp() - start;
 
