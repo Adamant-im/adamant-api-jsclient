@@ -116,8 +116,10 @@ export class NodeManager {
 
     const {length: activeNodesCount} = activeNodes;
     if (!activeNodesCount) {
+      const totalNodesCount = this.options.nodes.length;
+
       logger.error(
-        `[ADAMANT js-api] Health check: All of ${activeNodesCount} nodes are unavailable. Check internet connection and nodes list in config.`
+        `[ADAMANT js-api] Health check: All of ${totalNodesCount} nodes are unavailable. Check internet connection and nodes list in config.`
       );
       return;
     }
