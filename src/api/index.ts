@@ -204,15 +204,20 @@ export class AdamantApi extends NodeManager {
       return response.data;
     } catch (error) {
       if (error instanceof AxiosError) {
-        const logMessage = `[ADAMANT js-api] Get-request: Request to ${url} failed with ${error
-          .response?.status} status code, ${error}${
-          error.response?.data
-            ? '. Message: ' + error.response.data.toString().trim()
-            : ''
-        }. Try ${retryNo} of ${maxRetries}.`;
+        const {response} = error;
+
+        const nodeStatus = response?.status
+          ? `Request to ${url} failed with ${response.status} status code`
+          : `Node ${url} hasn't returned its status`;
+
+        const logMessage = `[ADAMANT js-api] Get-request: ${nodeStatus}, ${error}${
+          response?.data ? '. Message: ' + response.data.toString().trim() : ''
+        }.`;
 
         if (retryNo <= maxRetries) {
-          logger.log(`${logMessage} Retrying…`);
+          logger.log(
+            `${logMessage} Try ${retryNo} of ${maxRetries}. Retrying…`
+          );
 
           await this.updateNodes();
           return this.request<T>(method, endpoint, data, retryNo + 1);
