@@ -247,7 +247,7 @@ export class NodeManager {
 
       if (!response.success) {
         this.logger.log(
-          `[ADAMANT js-api] Health check: Node ${node} haven't returned its status`
+          `[ADAMANT js-api] Health check: Node ${node} hasn't returned its status`
         );
         continue;
       }

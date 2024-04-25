@@ -208,7 +208,7 @@ export class AdamantApi extends NodeManager {
 
         const nodeStatus = response?.status
           ? `Request to ${url} failed with ${response.status} status code`
-          : `Node ${url} haven't returned its status`;
+          : `Node ${url} hasn't returned its status`;
 
         const logMessage = `[ADAMANT js-api] Get-request: ${nodeStatus}, ${error}${
           response?.data ? '. Message: ' + response.data.toString().trim() : ''
