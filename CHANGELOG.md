@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.1] - 2024-04-26
+
+### Fixed
+
+- A bug when only one random node was checked
+- Log messages for health checks
+
 ## [2.3.0] - 2024-03-01
 
 ### Added
