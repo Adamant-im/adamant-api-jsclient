@@ -116,8 +116,10 @@ export class NodeManager {
 
     const {length: activeNodesCount} = activeNodes;
     if (!activeNodesCount) {
+      const totalNodesCount = this.options.nodes.length;
+
       logger.error(
-        `[ADAMANT js-api] Health check: All of ${activeNodesCount} nodes are unavailable. Check internet connection and nodes list in config.`
+        `[ADAMANT js-api] Health check: All of ${totalNodesCount} nodes are unavailable. Check internet connection and nodes list in config.`
       );
       return;
     }
@@ -215,7 +217,7 @@ export class NodeManager {
     );
   }
 
-  async getNodeStatus(node: string) {
+  async checkNode(node: string) {
     try {
       const {timeout} = this.options;
 
@@ -239,13 +241,13 @@ export class NodeManager {
     for (const node of nodes) {
       const start = unixTimestamp();
 
-      const response = await this.getNodeStatus(node);
+      const response = await this.checkNode(node);
 
       const ping = unixTimestamp() - start;
 
       if (!response.success) {
         this.logger.log(
-          `[ADAMANT js-api] Health check: Node ${node} haven't returned its status`
+          `[ADAMANT js-api] Health check: Node ${node} hasn't returned its status`
         );
         continue;
       }
