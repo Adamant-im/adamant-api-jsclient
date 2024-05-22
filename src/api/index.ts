@@ -497,7 +497,7 @@ export class AdamantApi extends NodeManager {
           return badParameter(
             'votes',
             vote,
-            "couldn't get address' public key"
+            "unable to retrieve the address's public key"
           );
         }
 
@@ -520,7 +520,7 @@ export class AdamantApi extends NodeManager {
           return badParameter(
             'votes',
             name,
-            "couldn't get delegate's public key"
+            "unable to retrieve the delegate's public key"
           );
         }
 
