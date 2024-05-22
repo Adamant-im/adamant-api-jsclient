@@ -77,6 +77,7 @@ import {
   type VoteDirection,
   transformTransactionQuery,
   parseVote,
+  isVoteDirection,
 } from './utils';
 
 export type AdamantAddress = `U${string}`;
@@ -484,6 +485,10 @@ export class AdamantApi extends NodeManager {
       if (cachedPublicKey) {
         uniqueVotes[cachedPublicKey] = direction;
         continue;
+      }
+
+      if (!isVoteDirection(direction)) {
+        return badParameter('votes', vote, 'the vote should have direction');
       }
 
       if (isAdmVoteForAddress(vote)) {
