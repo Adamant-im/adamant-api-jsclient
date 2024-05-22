@@ -451,6 +451,7 @@ export class AdamantApi extends NodeManager {
   /**
    * Vote for specific delegates
    *
+   * @param passphrase Account's passphrase
    * @param votes Array with public keys. For upvote, add leading `+` to delegate's public key. For downvote, add leading `-` to delegate's public key.
    *
    * @example
