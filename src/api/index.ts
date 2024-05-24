@@ -24,6 +24,7 @@ import {
 import {DEFAULT_GET_REQUEST_RETRIES, MessageType} from '../helpers/constants';
 
 import type {
+  DelegateDto,
   GetAccountBalanceResponseDto,
   GetAccountInfoResponseDto,
   GetAccountPublicKeyResponseDto,
@@ -478,6 +479,8 @@ export class AdamantApi extends NodeManager {
       [publicKey: string]: VoteDirection;
     } = {};
 
+    let delegates: DelegateDto[] = [];
+
     for (const vote of votes) {
       const [name, direction] = parseVote(vote);
 
@@ -493,21 +496,31 @@ export class AdamantApi extends NodeManager {
       }
 
       if (isAdmVoteForAddress(vote)) {
-        const response = await this.getAccountInfo({address: name});
+        if (!delegates.length) {
+          const response = await this.getDelegates();
 
-        if (!response.success) {
-          this.logger.warn(
-            `[ADAMANT js-api] Failed to get public key for ${vote}. ${response.errorMessage}.`
-          );
+          if (!response.success) {
+            this.logger.warn(
+              `[ADAMANT js-api] Failed to get list of delegates. ${response.errorMessage}.`
+            );
 
-          return badParameter(
-            'votes',
-            vote,
-            "unable to retrieve the address's public key"
-          );
+            return badParameter(
+              'votes',
+              vote,
+              'unable to retrieve the delegates list'
+            );
+          }
+
+          ({delegates} = response);
         }
 
-        const {publicKey} = response.account;
+        const delegate = delegates.find(delegate => delegate.address === name);
+
+        if (!delegate) {
+          return badParameter('votes', vote, 'the address is not a delegate');
+        }
+
+        const {publicKey} = delegate;
 
         publicKeysCache[name] = publicKey;
         uniqueVotes[publicKey] = direction;
@@ -623,7 +636,7 @@ export class AdamantApi extends NodeManager {
   /**
    * Retrieves list of registered ADAMANT delegates
    */
-  async getDelegates(options: GetDelegatesOptions) {
+  async getDelegates(options?: GetDelegatesOptions) {
     return this.get<GetDelegatesResponseDto>('delegates', options);
   }
 
