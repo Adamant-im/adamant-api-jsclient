@@ -1,7 +1,15 @@
 import {hasOwnProperty} from '../helpers/utils';
 import {TransactionQuery} from '.';
 
-export type VoteDirection = '+' | '-';
+const VOTE_DIRECTIONS = ['+', '-'] as const;
+
+export type VoteDirection = (typeof VOTE_DIRECTIONS)[number];
+
+export const isVoteDirection = (
+  direction: unknown
+): direction is VoteDirection =>
+  typeof direction === 'string' &&
+  VOTE_DIRECTIONS.includes(direction as VoteDirection);
 
 export const parseVote = (vote: string): [string, VoteDirection] => {
   const name = vote.slice(1);

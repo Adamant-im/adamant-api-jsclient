@@ -134,7 +134,7 @@ export const badParameter = (
 ) => ({
   success: false,
   error: `Wrong '${name}' parameter${value ? `: ${value}` : ''}${
-    message ? `. Error: ${message}` + message : ''
+    message ? `. Error: ${message}` : ''
   }`,
 });
 
