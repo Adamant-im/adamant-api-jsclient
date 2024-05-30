@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.4.0] - 2024-05-30
+
+### Fixed
+
+- Validation of public keys and delegate names for `api.voteForDelegate()` method
+
+### Added
+
+- Check if an address is actually a delegate in `api.voteForDelegate()`
+- More validation error messages for `api.voteForDelegate()`
+
 ## [2.3.1] - 2024-04-26
 
 ### Fixed
