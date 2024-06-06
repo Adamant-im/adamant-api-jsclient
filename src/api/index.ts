@@ -24,6 +24,7 @@ import {
 import {DEFAULT_GET_REQUEST_RETRIES, MessageType} from '../helpers/constants';
 
 import type {
+  DelegateDto,
   GetAccountBalanceResponseDto,
   GetAccountInfoResponseDto,
   GetAccountPublicKeyResponseDto,
@@ -77,6 +78,7 @@ import {
   type VoteDirection,
   transformTransactionQuery,
   parseVote,
+  isVoteDirection,
 } from './utils';
 
 export type AdamantAddress = `U${string}`;
@@ -455,14 +457,20 @@ export class AdamantApi extends NodeManager {
   /**
    * Vote for specific delegates
    *
+   * @param passphrase Account's passphrase
    * @param votes Array with public keys. For upvote, add leading `+` to delegate's public key. For downvote, add leading `-` to delegate's public key.
    *
    * @example
    * ```
-   * voteForDelegate([
-   *   '+b3d0c0b99f64d0960324089eb678e90d8bcbb3dd8c73ee748e026f8b9a5b5468',
-   *   '-9ef1f6212ae871716cfa2d04e3dc5339e8fe75f89818be21ee1d75004983e2a8'
-   * ])
+   * voteForDelegate(
+   *   'apple banana cherry date elderberry fig grape hazelnut iris juniper kiwi lemon',
+   *   [
+   *     '+b3d0c0b99f64d0960324089eb678e90d8bcbb3dd8c73ee748e026f8b9a5b5468',
+   *     '-9ef1f6212ae871716cfa2d04e3dc5339e8fe75f89818be21ee1d75004983e2a8',
+   *     '+system',
+   *     '-U16615166477939602094'
+   *   ]
+   * )
    * ```
    */
   async voteForDelegate(passphrase: string, votes: string[]) {
@@ -476,6 +484,8 @@ export class AdamantApi extends NodeManager {
       [publicKey: string]: VoteDirection;
     } = {};
 
+    let delegates: DelegateDto[] = [];
+
     for (const vote of votes) {
       const [name, direction] = parseVote(vote);
 
@@ -486,17 +496,36 @@ export class AdamantApi extends NodeManager {
         continue;
       }
 
-      if (isAdmVoteForAddress(vote)) {
-        const response = await this.getAccountInfo({address: name});
+      if (!isVoteDirection(direction)) {
+        return badParameter('votes', vote, 'the vote should have direction');
+      }
 
-        if (!response.success) {
-          this.logger.warn(
-            `[ADAMANT js-api] Failed to get public key for ${vote}. ${response.errorMessage}.`
-          );
-          return badParameter('votes');
+      if (isAdmVoteForAddress(vote)) {
+        if (!delegates.length) {
+          const response = await this.getDelegates();
+
+          if (!response.success) {
+            this.logger.warn(
+              `[ADAMANT js-api] Failed to get list of delegates. ${response.errorMessage}.`
+            );
+
+            return badParameter(
+              'votes',
+              vote,
+              'unable to retrieve the delegates list'
+            );
+          }
+
+          ({delegates} = response);
         }
 
-        const {publicKey} = response.account;
+        const delegate = delegates.find(delegate => delegate.address === name);
+
+        if (!delegate) {
+          return badParameter('votes', vote, 'the address is not a delegate');
+        }
+
+        const {publicKey} = delegate;
 
         publicKeysCache[name] = publicKey;
         uniqueVotes[publicKey] = direction;
@@ -504,14 +533,19 @@ export class AdamantApi extends NodeManager {
         continue;
       }
 
-      if (isAdmVoteForDelegateName(name)) {
+      if (isAdmVoteForDelegateName(vote)) {
         const response = await this.getDelegate({username: name});
 
         if (!response.success) {
           this.logger.warn(
             `[ADAMANT js-api] Failed to get public key for ${vote}. ${response.errorMessage}.`
           );
-          return badParameter('votes');
+
+          return badParameter(
+            'votes',
+            name,
+            "unable to retrieve the delegate's public key"
+          );
         }
 
         const {publicKey} = response.delegate;
@@ -522,8 +556,12 @@ export class AdamantApi extends NodeManager {
         continue;
       }
 
-      if (!isAdmVoteForPublicKey(name)) {
-        return badParameter('votes');
+      if (!isAdmVoteForPublicKey(vote)) {
+        return badParameter(
+          'votes',
+          name,
+          "the vote doesn't look like public key, address or delegate name"
+        );
       }
 
       uniqueVotes[name] = direction;
@@ -603,7 +641,7 @@ export class AdamantApi extends NodeManager {
   /**
    * Retrieves list of registered ADAMANT delegates
    */
-  async getDelegates(options: GetDelegatesOptions) {
+  async getDelegates(options?: GetDelegatesOptions) {
     return this.get<GetDelegatesResponseDto>('delegates', options);
   }
 
