@@ -327,16 +327,16 @@ describe('validateMessage', () => {
     expect(validator.validateMessage('', 2).success).toBe(false);
   });
 
-  test('should return false for an empty string signal message', () => {
-    expect(validator.validateMessage('', 3).success).toBe(false);
+  test('should return true for an empty string signal message', () => {
+    expect(validator.validateMessage('', 3).success).toBe(true);
   });
 
-  test('should return false for an empty json rich message', () => {
-    expect(validator.validateMessage('{}', 2).success).toBe(false);
+  test('should return true for an empty json rich message', () => {
+    expect(validator.validateMessage('{}', 2).success).toBe(true);
   });
 
   test('should return false for an empty json signal message', () => {
-    expect(validator.validateMessage('{}', 3).success).toBe(false);
+    expect(validator.validateMessage('{}', 3).success).toBe(true);
   });
 
   test('should return true for a json rich message with the given amount', () => {
@@ -360,13 +360,22 @@ describe('validateMessage', () => {
     ).toBe(false);
   });
 
-  test('should return false for a json signal message with upercase coin name', () => {
+  test('should return false for a json rich message with upercase coin name', () => {
+    expect(
+      validator.validateMessage(
+        '{"amount": "0.13", "type": "ETH_transaction"}',
+        2
+      ).success
+    ).toBe(false);
+  });
+
+  test('should return true for a json signal message with upercase coin name', () => {
     expect(
       validator.validateMessage(
         '{"amount": "0.13", "type": "ETH_transaction"}',
         3
       ).success
-    ).toBe(false);
+    ).toBe(true);
   });
 
   test('should return true for a json rich message with lowercase coin name', () => {
@@ -385,6 +394,18 @@ describe('validateMessage', () => {
         3
       ).success
     ).toBe(true);
+  });
+
+  test('should allow a string signal message', () => {
+    expect(validator.validateMessage('not a json string', 3).success).toBe(
+      true
+    );
+  });
+
+  test('should NOT allow a string rich message', () => {
+    expect(validator.validateMessage('not a json string', 2).success).toBe(
+      false
+    );
   });
 });
 

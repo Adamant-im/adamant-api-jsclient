@@ -86,7 +86,7 @@ export const validateMessage = (
     };
   }
 
-  if ([MessageType.Rich, MessageType.Signal].includes(messageType)) {
+  if ([MessageType.Rich].includes(messageType)) {
     const data = parseJsonSafe(message);
 
     const {success, result} = data;
@@ -98,21 +98,20 @@ export const validateMessage = (
     }
 
     const typeInLowerCase = result.type?.toLowerCase();
-    if (
-      typeInLowerCase?.includes('_transaction') &&
-      typeInLowerCase !== result.type
-    ) {
-      return {
-        success: false,
-        error: "Value '<coin>_transaction' must be in lower case",
-      };
-    }
+    if (typeInLowerCase?.includes('_transaction')) {
+      if (typeInLowerCase !== result.type) {
+        return {
+          success: false,
+          error: "Value '<coin>_transaction' must be in lower case",
+        };
+      }
 
-    if (typeof result.amount !== 'string' || !isStringAmount(result.amount)) {
-      return {
-        success: false,
-        error: "Field 'amount' must be a string, representing a number",
-      };
+      if (typeof result.amount !== 'string' || !isStringAmount(result.amount)) {
+        return {
+          success: false,
+          error: "Field 'amount' must be a string, representing a number",
+        };
+      }
     }
   }
 
