@@ -387,6 +387,15 @@ describe('validateMessage', () => {
     ).toBe(true);
   });
 
+  test('should return true for a push notification signal message', () => {
+    expect(
+      validator.validateMessage(
+        '{"token": "DeviceToken","provider":"apns","action":"add"}',
+        3
+      ).success
+    ).toBe(true);
+  });
+
   test('should allow a string signal message', () => {
     expect(validator.validateMessage('not a json string', 3).success).toBe(
       true
