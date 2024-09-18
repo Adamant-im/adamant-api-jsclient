@@ -1,3 +1,4 @@
+import {MessageType} from '../constants';
 import * as validator from '../validator';
 
 describe('isNumeric', () => {
@@ -324,38 +325,45 @@ describe('validateMessage', () => {
   });
 
   test('should return false for an empty string rich message', () => {
-    expect(validator.validateMessage('', 2).success).toBe(false);
+    expect(validator.validateMessage('', MessageType.Rich).success).toBe(false);
   });
 
   test('should return true for an empty string signal message', () => {
-    expect(validator.validateMessage('', 3).success).toBe(true);
+    expect(validator.validateMessage('', MessageType.Signal).success).toBe(
+      true
+    );
   });
 
   test('should return true for an empty json rich message', () => {
-    expect(validator.validateMessage('{}', 2).success).toBe(true);
+    expect(validator.validateMessage('{}', MessageType.Rich).success).toBe(
+      true
+    );
   });
 
   test('should return false for an empty json signal message', () => {
-    expect(validator.validateMessage('{}', 3).success).toBe(true);
+    expect(validator.validateMessage('{}', MessageType.Signal).success).toBe(
+      true
+    );
   });
 
   test('should return true for a json rich message with the given amount', () => {
-    expect(validator.validateMessage('{"amount": "0.13"}', 2).success).toBe(
-      true
-    );
+    expect(
+      validator.validateMessage('{"amount": "0.13"}', MessageType.Rich).success
+    ).toBe(true);
   });
 
   test('should return true for a json signal message with the given amount', () => {
-    expect(validator.validateMessage('{"amount": "0.13"}', 3).success).toBe(
-      true
-    );
+    expect(
+      validator.validateMessage('{"amount": "0.13"}', MessageType.Signal)
+        .success
+    ).toBe(true);
   });
 
   test('should return false for a json rich message with uppercase coin name', () => {
     expect(
       validator.validateMessage(
         '{"amount": "0.13", "type": "ETH_transaction"}',
-        2
+        MessageType.Rich
       ).success
     ).toBe(false);
   });
@@ -364,7 +372,7 @@ describe('validateMessage', () => {
     expect(
       validator.validateMessage(
         '{"amount": "0.13", "type": "ETH_transaction"}',
-        3
+        MessageType.Signal
       ).success
     ).toBe(true);
   });
@@ -373,7 +381,7 @@ describe('validateMessage', () => {
     expect(
       validator.validateMessage(
         '{"amount": "0.13", "type": "eth_transaction"}',
-        2
+        MessageType.Rich
       ).success
     ).toBe(true);
   });
@@ -382,7 +390,7 @@ describe('validateMessage', () => {
     expect(
       validator.validateMessage(
         '{"amount": "0.13", "type": "eth_transaction"}',
-        3
+        MessageType.Signal
       ).success
     ).toBe(true);
   });
@@ -391,21 +399,21 @@ describe('validateMessage', () => {
     expect(
       validator.validateMessage(
         '{"token": "DeviceToken","provider":"apns","action":"add"}',
-        3
+        MessageType.Signal
       ).success
     ).toBe(true);
   });
 
   test('should allow a string signal message', () => {
-    expect(validator.validateMessage('not a json string', 3).success).toBe(
-      true
-    );
+    expect(
+      validator.validateMessage('not a json string', MessageType.Signal).success
+    ).toBe(true);
   });
 
   test('should NOT allow a string rich message', () => {
-    expect(validator.validateMessage('not a json string', 2).success).toBe(
-      false
-    );
+    expect(
+      validator.validateMessage('not a json string', MessageType.Rich).success
+    ).toBe(false);
   });
 });
 
