@@ -351,7 +351,7 @@ describe('validateMessage', () => {
     );
   });
 
-  test('should return false for a json rich message with upercase coin name', () => {
+  test('should return false for a json rich message with uppercase coin name', () => {
     expect(
       validator.validateMessage(
         '{"amount": "0.13", "type": "ETH_transaction"}',
@@ -360,7 +360,7 @@ describe('validateMessage', () => {
     ).toBe(false);
   });
 
-  test('should return true for a json signal message with upercase coin name', () => {
+  test('should return true for a json signal message with uppercase coin name', () => {
     expect(
       validator.validateMessage(
         '{"amount": "0.13", "type": "ETH_transaction"}',
