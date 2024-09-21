@@ -15,7 +15,7 @@ export const isNumeric = (str: unknown): str is string =>
 
 export const parseJsonSafe = (json: string) => {
   try {
-    const result = JSON.parse(json);
+    const result = JSON.parse(json) as unknown;
 
     return {
       result,
@@ -86,33 +86,37 @@ export const validateMessage = (
     };
   }
 
-  if ([MessageType.Rich, MessageType.Signal].includes(messageType)) {
+  if ([MessageType.Rich].includes(messageType)) {
     const data = parseJsonSafe(message);
 
     const {success, result} = data;
-    if (!success || typeof result !== 'object') {
+    if (!success || typeof result !== 'object' || result === null) {
       return {
         success: false,
         error: "For rich and signal message, 'message' should be a JSON string",
       };
     }
 
-    const typeInLowerCase = result.type?.toLowerCase();
-    if (
-      typeInLowerCase?.includes('_transaction') &&
-      typeInLowerCase !== result.type
-    ) {
-      return {
-        success: false,
-        error: "Value '<coin>_transaction' must be in lower case",
-      };
-    }
+    if ('type' in result && typeof result.type === 'string') {
+      const typeInLowerCase = result.type.toLowerCase();
+      if (typeInLowerCase.endsWith('_transaction')) {
+        if (typeInLowerCase !== result.type) {
+          return {
+            success: false,
+            error: "Value '<coin>_transaction' must be in lower case",
+          };
+        }
 
-    if (typeof result.amount !== 'string' || !isStringAmount(result.amount)) {
-      return {
-        success: false,
-        error: "Field 'amount' must be a string, representing a number",
-      };
+        if (
+          'amount' in result &&
+          (typeof result.amount !== 'string' || !isStringAmount(result.amount))
+        ) {
+          return {
+            success: false,
+            error: "Field 'amount' must be a string, representing a number",
+          };
+        }
+      }
     }
   }
 
