@@ -1,9 +1,9 @@
 import {io, type Socket} from 'socket.io-client';
 
-import type {ActiveNode} from './healthCheck';
-import {Logger} from './logger';
-import {getRandomIntInclusive} from './validator';
-import {TransactionType} from './constants';
+import type {ActiveNode} from '../healthCheck';
+import {Logger} from '../logger';
+import {getRandomIntInclusive} from '../validator';
+import {TransactionType} from '../constants';
 import type {
   AnyTransaction,
   ChatMessageTransaction,
@@ -11,31 +11,63 @@ import type {
   RegisterDelegateTransaction,
   TokenTransferTransaction,
   VoteForDelegateTransaction,
-} from '../api/generated';
-import type {AdamantAddress} from '../api';
+} from '../../api/generated';
+import type {AdamantAddress} from '../../api';
+import {AdamantWsError} from './error';
 
 export type WsType = 'ws' | 'wss';
 
 export interface WsOptions {
   /**
-   * ADM address to subscribe to notifications
+   * ADM address to subscribe to transactions
    */
-  admAddress: AdamantAddress;
+  admAddress?: AdamantAddress;
 
   /**
-   * Websocket type: `'wss'` or `'ws'`. `'wss'` is recommended.
+   * Multiple ADM addresses to subscribe to transactions
+   */
+  admAddresses?: AdamantAddress[];
+
+  /**
+   * Transaction types to subscribe
+   */
+  types?: number[];
+
+  /**
+   * Message types to subscribe
+   */
+  assetChatTypes?: number[];
+
+  /**
+   * Websocket type: `'wss'` or `'ws'`. `'wss'` is recommended
    */
   wsType?: WsType;
 
   /**
-   * Must connect to node with minimum ping. Not recommended. Default is `false`.
+   * Must connect to node with minimum ping. Not recommended. Default is `false`
    */
   useFastest?: boolean;
 
-  logger?: Logger;
+  /**
+   * Max tries to reconnect to the websocket. Until the connection is established,
+   * transactions will be pulled from the node's REST API
+   *
+   * Default is `3`
+   */
+  maxTries?: number;
+
+  /**
+   * Delay before reconnection in ms
+   *
+   * Default is `5000`
+   */
+  reconnectionDelay?: number;
+
+  logger?: Logger | null;
 }
 
 type ErrorHandler = (error: unknown) => void;
+type ConnectionHandler = (node: string) => void;
 
 type TransactionMap = {
   [TransactionType.SEND]: TokenTransferTransaction;
@@ -60,9 +92,19 @@ export type SingleTransactionHandler =
 
 export type AnyTransactionHandler = TransactionHandler<AnyTransaction>;
 
+export interface ReconnectReason {
+  reason: string;
+  message: Error | string;
+  tryNo: number;
+}
+
+export interface ReconnectOptions {
+  try?: number;
+}
+
 export class WebSocketClient {
   /**
-   * Web socket client options.
+   * Web socket client options
    */
   public options: WsOptions;
 
@@ -72,13 +114,17 @@ export class WebSocketClient {
   private connection?: Socket;
 
   /**
-   * List of nodes that are active, synced and support socket.
+   * List of nodes that are active, synced and support socket
    */
   private nodes: ActiveNode[];
 
+  private maxTries: number;
   private logger: Logger;
 
   private errorHandler: ErrorHandler;
+  private connectionHandler: ConnectionHandler;
+  private reconnectionHandler: ConnectionHandler;
+
   private eventHandlers: {
     [T in EventType]: TransactionHandler<TransactionMap[T]>[];
   } = {
@@ -90,16 +136,31 @@ export class WebSocketClient {
   };
 
   constructor(options: WsOptions) {
-    this.logger = options.logger || new Logger();
     this.options = {
+      logger: null,
+      useFastest: false,
       wsType: 'ws',
+      reconnectionDelay: 5000,
       ...options,
     };
 
+    this.maxTries = options.maxTries ?? 3;
+
+    const logger = options.logger || new Logger();
+
+    this.logger = logger;
     this.nodes = [];
 
     this.errorHandler = (error: unknown) => {
-      this.logger.error(`${error}`);
+      logger.error(`${error}`);
+    };
+
+    this.connectionHandler = (node: string) => {
+      logger.info(`[Socket] Connected to ${node}`);
+    };
+
+    this.reconnectionHandler = (node: string) => {
+      logger.info(`[Socket] Reconnected to ${node}`);
     };
   }
 
@@ -119,7 +180,7 @@ export class WebSocketClient {
       node =>
         node.socketSupport &&
         !node.outOfSync &&
-        // Remove nodes without IP if 'ws' connection type
+        // Remove nodes without IP if connection type in options set to 'ws'
         (wsType !== 'ws' || !node.isHttps || node.ip)
     );
 
@@ -129,7 +190,7 @@ export class WebSocketClient {
   /**
    * Chooses node and sets up connection.
    */
-  setConnection() {
+  setConnection(tryNo = 0) {
     const {logger} = this;
 
     const supportedCount = this.nodes.length;
@@ -139,29 +200,48 @@ export class WebSocketClient {
     }
 
     const node = this.chooseNode();
-    logger.log(
-      `[Socket] Supported nodes: ${supportedCount}. Connecting to ${node}...`
-    );
+
+    const isFirstConnection = tryNo === 0;
+
+    if (isFirstConnection) {
+      logger.log(
+        `[Socket] Supported nodes: ${supportedCount}. Connecting to ${node}...`
+      );
+    } else {
+      logger.log(
+        `[Socket] (${tryNo}/${this.maxTries}) Reconnecting to ${node}...`
+      );
+    }
+
     const connection = io(node, {
       reconnection: false,
       timeout: 5000,
     });
 
     connection.on('connect', () => {
-      const {admAddress} = this.options;
+      this.subscribe();
 
-      connection.emit('address', admAddress);
-      logger.info(
-        `[Socket] Connected to ${node} and subscribed to incoming transactions for ${admAddress}`
-      );
+      if (isFirstConnection) {
+        this.connectionHandler(node);
+      } else {
+        this.reconnectionHandler(node);
+      }
     });
 
     connection.on('disconnect', reason =>
-      logger.warn(`[Socket] Disconnected. Reason: ${reason}`)
+      this.reconnect({
+        reason: 'disconnection',
+        message: reason,
+        tryNo,
+      })
     );
 
-    connection.on('connect_error', error =>
-      logger.warn(`[Socket] Connection error: ${error}`)
+    connection.on('connect_error', errorMessage =>
+      this.reconnect({
+        reason: 'connection_error',
+        message: errorMessage,
+        tryNo,
+      })
     );
 
     connection.on('newTrans', (transaction: AnyTransaction) => {
@@ -173,6 +253,72 @@ export class WebSocketClient {
     });
 
     this.connection = connection;
+  }
+
+  /**
+   * Subscribe to the provided in options addresses and transaction types
+   */
+  private subscribe() {
+    const {options, connection, logger} = this;
+
+    if (!connection) {
+      return;
+    }
+
+    if (options.admAddress) {
+      connection.emit('address', options.admAddress);
+      logger.log(
+        `[Socket] Subscribed to incoming transactions for ${options.admAddress}`
+      );
+    }
+
+    if (options.admAddresses) {
+      connection.emit('address', options.admAddresses);
+      logger.log(
+        `[Socket] Subscribed to incoming transactions for ${options.admAddresses.join(
+          ', '
+        )}`
+      );
+    }
+
+    if (options.types) {
+      connection.emit('types', options.types);
+      logger.log(
+        `[Socket] Subscribed to incoming transactions for ${options.types.join(
+          ', '
+        )} types`
+      );
+    }
+
+    if (options.assetChatTypes) {
+      connection.emit('assetChatTypes', options.assetChatTypes);
+      logger.log(
+        `[Socket] Subscribed to incoming transactions for ${options.assetChatTypes.join(
+          ', '
+        )} message types`
+      );
+    }
+  }
+
+  private reconnect(reconnectReason: ReconnectReason) {
+    this.connection?.disconnect();
+    this.connection?.removeAllListeners();
+
+    if (reconnectReason.tryNo > this.maxTries) {
+      const error = new AdamantWsError(
+        reconnectReason.reason,
+        reconnectReason.message
+      );
+      this.errorHandler(error);
+      return;
+    }
+
+    const nextTry = reconnectReason.tryNo + 1;
+
+    setTimeout(
+      () => this.setConnection(nextTry),
+      this.options.reconnectionDelay
+    );
   }
 
   /**
@@ -189,6 +335,36 @@ export class WebSocketClient {
    */
   public catch(callback: ErrorHandler) {
     this.errorHandler = callback;
+    return this;
+  }
+
+  /**
+   * Sets a listener for connection.
+   *
+   * @example
+   * ```js
+   * socket.onConnection((node) => {
+   *   console.log(`Connected to ${node} node`)
+   * })
+   * ```
+   */
+  public onConnection(callback: ConnectionHandler) {
+    this.connectionHandler = callback;
+    return this;
+  }
+
+  /**
+   * Sets a handler for REconnection.
+   *
+   * @example
+   * ```js
+   * socket.onConnection((node) => {
+   *   console.log(`Connected to ${node} node`)
+   * })
+   * ```
+   */
+  public onReconnection(callback: ConnectionHandler) {
+    this.reconnectionHandler = callback;
     return this;
   }
 
@@ -223,7 +399,11 @@ export class WebSocketClient {
   ) {
     if (handler === undefined) {
       if (typeof typesOrHandler === 'function') {
-        for (const trigger of Object.keys(this.eventHandlers)) {
+        const triggers = Object.keys(this.eventHandlers);
+
+        this.connection?.emit('types', triggers);
+
+        for (const trigger of triggers) {
           this.eventHandlers[+trigger as EventType].push(typesOrHandler);
         }
       }
@@ -231,6 +411,8 @@ export class WebSocketClient {
       const triggers = Array.isArray(typesOrHandler)
         ? typesOrHandler
         : [typesOrHandler];
+
+      this.connection?.emit('types', triggers);
 
       for (const trigger of triggers) {
         this.eventHandlers[trigger as T].push(handler);

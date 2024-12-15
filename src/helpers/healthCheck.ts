@@ -6,7 +6,7 @@ import {parseUrl} from './url';
 
 import {GetNodeStatusResponseDto} from '../api/generated';
 import {AdamantApiResult, getRandomIntInclusive} from './validator';
-import {WebSocketClient, WsOptions} from './wsClient';
+import {WebSocketClient, WsOptions} from './wsClient/wsClient';
 
 export interface NodeManagerOptions {
   nodes: string[];
