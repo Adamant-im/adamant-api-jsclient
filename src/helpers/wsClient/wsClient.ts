@@ -13,7 +13,7 @@ import type {
   VoteForDelegateTransaction,
 } from '../../api/generated';
 import type {AdamantAddress} from '../../api';
-import {AdamantWsError} from './error';
+import {AdamantWsConnectionError} from './error';
 
 export type WsType = 'ws' | 'wss';
 
@@ -305,7 +305,7 @@ export class WebSocketClient {
     this.connection?.removeAllListeners();
 
     if (reconnectReason.tryNo > this.maxTries) {
-      const error = new AdamantWsError(
+      const error = new AdamantWsConnectionError(
         reconnectReason.reason,
         reconnectReason.message
       );

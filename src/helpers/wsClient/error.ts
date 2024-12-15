@@ -1,4 +1,4 @@
-export class AdamantWsError extends Error {
+export class AdamantWsConnectionError extends Error {
   reason: string;
   details: string;
 
@@ -7,7 +7,7 @@ export class AdamantWsError extends Error {
 
     super(message);
 
-    this.name = 'AdamantWsError';
+    this.name = 'AdamantWsConnectionError';
 
     this.reason = reason;
     this.details = message;
