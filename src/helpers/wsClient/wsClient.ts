@@ -67,7 +67,7 @@ export interface WsOptions {
 }
 
 type ErrorHandler = (error: unknown) => void;
-type ConnectionHandler = (node: string) => void;
+type ConnectionHandler = (connectedNode: string) => void;
 
 type TransactionMap = {
   [TransactionType.SEND]: TokenTransferTransaction;
@@ -189,6 +189,8 @@ export class WebSocketClient {
 
   /**
    * Chooses node and sets up connection.
+   *
+   * @param tryNo Current try number
    */
   setConnection(tryNo = 0) {
     const {logger} = this;
@@ -300,6 +302,11 @@ export class WebSocketClient {
     }
   }
 
+  /**
+   * Reconnect to a random node from the active node list or the same fastest node
+   *
+   * @param reconnectReason reconnection status
+   */
   private reconnect(reconnectReason: ReconnectReason) {
     this.connection?.disconnect();
     this.connection?.removeAllListeners();
@@ -343,7 +350,7 @@ export class WebSocketClient {
    *
    * @example
    * ```js
-   * socket.onConnection((node) => {
+   * socket.onConnection((connectedNode) => {
    *   console.log(`Connected to ${node} node`)
    * })
    * ```
@@ -358,7 +365,7 @@ export class WebSocketClient {
    *
    * @example
    * ```js
-   * socket.onConnection((node) => {
+   * socket.onConnection((connectedNode) => {
    *   console.log(`Connected to ${node} node`)
    * })
    * ```
