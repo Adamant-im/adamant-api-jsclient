@@ -144,6 +144,9 @@ export class WebSocketClient {
       ...options,
     };
 
+    // Subscribe to all types by default
+    this.options.types ??= Object.keys(this.eventHandlers).map(Number);
+
     this.maxTries = options.maxTries ?? 3;
 
     const logger = options.logger || new Logger();
@@ -404,8 +407,6 @@ export class WebSocketClient {
       if (typeof typesOrHandler === 'function') {
         const triggers = Object.keys(this.eventHandlers);
 
-        this.connection?.emit('types', triggers);
-
         for (const trigger of triggers) {
           this.eventHandlers[+trigger as EventType].push(typesOrHandler);
         }
@@ -414,8 +415,6 @@ export class WebSocketClient {
       const triggers = Array.isArray(typesOrHandler)
         ? typesOrHandler
         : [typesOrHandler];
-
-      this.connection?.emit('types', triggers);
 
       for (const trigger of triggers) {
         this.eventHandlers[trigger as T].push(handler);
