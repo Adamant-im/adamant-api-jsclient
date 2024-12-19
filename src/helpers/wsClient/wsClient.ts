@@ -247,10 +247,6 @@ export class WebSocketClient {
     );
 
     connection.on('newTrans', (transaction: AnyTransaction) => {
-      if (transaction.recipientId !== this.options.admAddress) {
-        return;
-      }
-
       this.handle(transaction);
     });
 
