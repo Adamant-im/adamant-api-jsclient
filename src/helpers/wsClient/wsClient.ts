@@ -229,13 +229,17 @@ export class WebSocketClient {
       }
     });
 
-    connection.on('disconnect', reason =>
+    connection.on('disconnect', reason => {
+      if (reason.includes('client disconnect')) {
+        return;
+      }
+
       this.reconnect({
         reason: 'disconnection',
         message: reason,
         tryNo,
-      })
-    );
+      });
+    });
 
     connection.on('connect_error', errorMessage =>
       this.reconnect({
@@ -250,6 +254,23 @@ export class WebSocketClient {
     });
 
     this.connection = connection;
+  }
+
+  /**
+   * Alias for {@link setConnection}
+   *
+   * @param tryNo Current try number
+   */
+  connect(tryNo?: number) {
+    this.setConnection(tryNo);
+  }
+
+  /**
+   * Forces disconnection from the current socket
+   */
+  disconnect() {
+    this.connection?.disconnect();
+    this.connection?.removeAllListeners();
   }
 
   /**
@@ -303,8 +324,7 @@ export class WebSocketClient {
    * @param reconnectReason reconnection status
    */
   private reconnect(reconnectReason: ReconnectReason) {
-    this.connection?.disconnect();
-    this.connection?.removeAllListeners();
+    this.disconnect();
 
     if (reconnectReason.tryNo > this.maxTries) {
       const error = new AdamantWsConnectionError(
