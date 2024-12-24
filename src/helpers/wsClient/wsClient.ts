@@ -98,10 +98,6 @@ export interface ReconnectReason {
   tryNo: number;
 }
 
-export interface ReconnectOptions {
-  try?: number;
-}
-
 export class WebSocketClient {
   /**
    * Web socket client options
