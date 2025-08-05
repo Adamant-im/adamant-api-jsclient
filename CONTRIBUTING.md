@@ -92,15 +92,12 @@ Then, copy `dist/generated.ts` to `adamant-api-jsclient` at `src/api/generated.t
 ## Project Structure
 
 - **`src`**: contains the source code
-
   - **`api`**: contains group of methods and methods for the API.
-
     - **`genearated.ts`**: contains auto-generated types for API.
 
   - **`coins`**: contains group of utils for coins.
 
   - **`helpers`**: contains utilities shared across the entire codebase.
-
     - **`tests`**: contains tests for the helpers directory.
 
 ## Contributing Tests

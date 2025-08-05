@@ -1,11 +1,11 @@
-import {signTransaction} from './hash';
+import { signTransaction } from './hash'
 
-import {createAddressFromPublicKey} from '../keys';
-import {getEpochTime} from '../time';
+import { createAddressFromPublicKey } from '../keys'
+import { getEpochTime } from '../time'
 
-import {MessageType, TransactionType} from '../constants';
-import type {KeyPair} from '../keys';
-import type {AdamantAddress} from '../../api';
+import { MessageType, TransactionType } from '../constants'
+import type { KeyPair } from '../keys'
+import type { AdamantAddress } from '../../api'
 
 export type AnyTransactionData = (
   | SendTransactionData
@@ -14,46 +14,46 @@ export type AnyTransactionData = (
   | DelegateTransactionData
   | StateTransactionData
 ) & {
-  transactionType: TransactionType;
-};
+  transactionType: TransactionType
+}
 
 export interface BasicTransactionData {
-  keyPair: KeyPair;
+  keyPair: KeyPair
 }
 
 export interface SendTransactionData extends BasicTransactionData {
-  recipientId: string;
-  amount: number;
+  recipientId: string
+  amount: number
 }
 
 export interface ChatTransactionData extends BasicTransactionData {
-  recipientId: AdamantAddress;
-  message_type: MessageType;
-  amount?: number;
-  message: string;
-  own_message: string;
+  recipientId: AdamantAddress
+  message_type: MessageType
+  amount?: number
+  message: string
+  own_message: string
 }
 
 export interface VoteTransactionData extends BasicTransactionData {
-  votes: string[];
+  votes: string[]
 }
 
 export interface DelegateTransactionData extends BasicTransactionData {
-  username: string;
+  username: string
 }
 
 export interface StateTransactionData extends BasicTransactionData {
-  key: string;
-  value: string;
+  key: string
+  value: string
 }
 
 interface BasicTransaction<T extends TransactionType> {
-  type: T;
-  timestamp: number;
-  amount: number;
-  senderPublicKey: string;
-  senderId: AdamantAddress;
-  asset: {};
+  type: T
+  timestamp: number
+  amount: number
+  senderPublicKey: string
+  senderId: AdamantAddress
+  asset: object
 }
 
 export const createBasicTransaction = <T extends TransactionType>(
@@ -65,38 +65,38 @@ export const createBasicTransaction = <T extends TransactionType>(
     amount: 0,
     senderPublicKey: data.keyPair.publicKey.toString('hex'),
     senderId: createAddressFromPublicKey(data.keyPair.publicKey),
-    asset: {},
-  };
+    asset: {}
+  }
 
-  return transaction;
-};
+  return transaction
+}
 
 export const createSendTransaction = (data: SendTransactionData) => {
   const details = {
     ...data,
-    transactionType: TransactionType.SEND,
-  };
+    transactionType: TransactionType.SEND
+  }
 
   const transaction = {
     ...createBasicTransaction<TransactionType.SEND>(details),
     recipientId: details.recipientId,
     amount: details.amount,
-    asset: {},
-  };
+    asset: {}
+  }
 
-  const signature = signTransaction(transaction, details.keyPair);
+  const signature = signTransaction(transaction, details.keyPair)
 
   return {
     ...transaction,
-    signature,
-  };
-};
+    signature
+  }
+}
 
 export const createStateTransaction = (data: StateTransactionData) => {
   const details = {
     ...data,
-    transactionType: TransactionType.STATE,
-  };
+    transactionType: TransactionType.STATE
+  }
 
   const transaction = {
     ...createBasicTransaction<TransactionType.STATE>(details),
@@ -105,24 +105,24 @@ export const createStateTransaction = (data: StateTransactionData) => {
       state: {
         key: details.key,
         value: details.value,
-        type: 0 as const,
-      },
-    },
-  };
+        type: 0 as const
+      }
+    }
+  }
 
-  const signature = signTransaction(transaction, details.keyPair);
+  const signature = signTransaction(transaction, details.keyPair)
 
   return {
     ...transaction,
-    signature,
-  };
-};
+    signature
+  }
+}
 
 export const createChatTransaction = (data: ChatTransactionData) => {
   const details = {
     ...data,
-    transactionType: TransactionType.CHAT_MESSAGE,
-  };
+    transactionType: TransactionType.CHAT_MESSAGE
+  }
 
   const transaction = {
     ...createBasicTransaction<TransactionType.CHAT_MESSAGE>(details),
@@ -132,24 +132,24 @@ export const createChatTransaction = (data: ChatTransactionData) => {
       chat: {
         message: data.message,
         own_message: data.own_message,
-        type: data.message_type,
-      },
-    },
-  };
+        type: data.message_type
+      }
+    }
+  }
 
-  const signature = signTransaction(transaction, details.keyPair);
+  const signature = signTransaction(transaction, details.keyPair)
 
   return {
     ...transaction,
-    signature,
-  };
-};
+    signature
+  }
+}
 
 export const createDelegateTransaction = (data: DelegateTransactionData) => {
   const details = {
     ...data,
-    transactionType: TransactionType.DELEGATE,
-  };
+    transactionType: TransactionType.DELEGATE
+  }
 
   const transaction = {
     ...createBasicTransaction<TransactionType.DELEGATE>(details),
@@ -157,43 +157,42 @@ export const createDelegateTransaction = (data: DelegateTransactionData) => {
     asset: {
       delegate: {
         username: details.username,
-        publicKey: details.keyPair.publicKey.toString('hex'),
-      },
-    },
-  };
+        publicKey: details.keyPair.publicKey.toString('hex')
+      }
+    }
+  }
 
-  const signature = signTransaction(transaction, details.keyPair);
+  const signature = signTransaction(transaction, details.keyPair)
 
   return {
     ...transaction,
-    signature,
-  };
-};
+    signature
+  }
+}
 
 export const createVoteTransaction = (data: VoteTransactionData) => {
   const details = {
     ...data,
-    transactionType: TransactionType.VOTE,
-  };
+    transactionType: TransactionType.VOTE
+  }
 
-  const basicTransaction =
-    createBasicTransaction<TransactionType.VOTE>(details);
+  const basicTransaction = createBasicTransaction<TransactionType.VOTE>(details)
 
   const transaction = {
     ...basicTransaction,
     recipientId: basicTransaction.senderId,
     asset: {
-      votes: details.votes,
-    },
-  };
+      votes: details.votes
+    }
+  }
 
-  const signature = signTransaction(transaction, details.keyPair);
+  const signature = signTransaction(transaction, details.keyPair)
 
   return {
     ...transaction,
-    signature,
-  };
-};
+    signature
+  }
+}
 
-export * from './hash';
-export * from './id';
+export * from './hash'
+export * from './id'

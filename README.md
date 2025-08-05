@@ -39,17 +39,17 @@ Initialize the library:
 const { AdamantApi } = require('adamant-api')
 
 const nodes = [
-  "http://localhost:36666",
-  "https://endless.adamant.im",
-  "https://clown.adamant.im",
-  "http://23.226.231.225:36666",
-  "http://88.198.156.44:36666",
-  "https://lake.adamant.im"
-];
+  'http://localhost:36666',
+  'https://endless.adamant.im',
+  'https://clown.adamant.im',
+  'http://23.226.231.225:36666',
+  'http://88.198.156.44:36666',
+  'https://lake.adamant.im'
+]
 
 const api = new AdamantApi({
-  nodes,
-});
+  nodes
+})
 ```
 
 Request example:
