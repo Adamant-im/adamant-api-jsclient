@@ -47,7 +47,7 @@
   "scripts": {
     "test": "jest",
     "lint": "npx eslint",
-    "prepare": "husky install",
+    "prepare": "husky",
     "clean": "gts clean",
     "compile": "tsc",
     "fix": "gts fix",
