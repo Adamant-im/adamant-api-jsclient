@@ -1,5 +1,31 @@
 # Changelog
 
+## [2.5.0] - 2025-08-08
+
+### Added
+
+- **API Methods**
+
+  Added `address` option for the `api.getDelegate()` method
+  Added the `api.getPeer()` method
+
+- **WebSocket**
+
+  Added:
+  - `onMessage(MessageType, handler)`
+  - `onChatMessage(handler)`
+  - `onRichMessage(handler)`
+  - `onSignalMessage(handler)`
+
+### Fixed
+
+- Fixed subscribing to multiple addresses
+
+### Changed
+
+- Updated dependencies
+- Updated auto generated API types
+
 ## [2.4.0] - 2024-05-30
 
 ### Fixed
