@@ -1,4 +1,6 @@
 import axios, { AxiosError } from 'axios'
+import qs from 'qs'
+
 import { NodeManager, NodeManagerOptions } from '../helpers/healthCheck'
 import { Logger, type CustomLogger, type LogLevel, type LogLevelName } from '../helpers/logger'
 import {
@@ -184,7 +186,8 @@ export class AdamantApi extends NodeManager {
             }
           : {
               params: data
-            })
+            }),
+        paramsSerializer: (params) => qs.stringify(params, { arrayFormat: 'comma' })
       })
 
       return response.data
