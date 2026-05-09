@@ -6,3 +6,6 @@ logs/
 test.js
 .editorconfig
 .DS_Store
+
+# ai
+.ai-ignored/

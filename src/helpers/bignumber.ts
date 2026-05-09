@@ -7,9 +7,7 @@ interface TransformBufferOptions {
   size?: number | 'auto';
 }
 
-type EndianMap = {
-  [K in Endian]: 'big' | 'little';
-};
+type EndianMap = Record<Endian, 'big' | 'little'>;
 
 const endianMap: EndianMap = {
   1: 'big',
