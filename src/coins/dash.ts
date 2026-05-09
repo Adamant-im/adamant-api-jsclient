@@ -3,26 +3,12 @@ import {ECPairFactory} from 'ecpair';
 import * as tinysecp from 'tiny-secp256k1';
 
 import coininfo from 'coininfo';
-
-const toECPairNetwork = (
-  networkInfo: ReturnType<typeof coininfo.dash.main.toBitcoinJS>
-) => {
-  const network = {
-    messagePrefix: networkInfo.messagePrefix,
-    bech32: networkInfo.bech32 ?? 'dash',
-    bip32: networkInfo.bip32,
-    pubKeyHash: networkInfo.pubKeyHash,
-    scriptHash: networkInfo.scriptHash,
-    wif: networkInfo.wif,
-  };
-
-  return network;
-};
+import {toECPairNetwork} from './ecpairNetwork';
 
 const RE_DASH_ADDRESS = /^[7X][1-9A-HJ-NP-Za-km-z]{33,}$/;
 
 const network = coininfo.dash.main.toBitcoinJS();
-const ecpairNetwork = toECPairNetwork(network);
+const ecpairNetwork = toECPairNetwork(network, 'dash');
 
 export const dash = {
   keys: (passphrase: string) => {
