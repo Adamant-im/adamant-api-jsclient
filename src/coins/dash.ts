@@ -4,24 +4,44 @@ import * as tinysecp from 'tiny-secp256k1';
 
 import coininfo from 'coininfo';
 
+const toECPairNetwork = (
+  networkInfo: ReturnType<typeof coininfo.dash.main.toBitcoinJS>
+) => {
+  const network = {
+    messagePrefix: networkInfo.messagePrefix,
+    bech32: networkInfo.bech32 ?? 'dash',
+    bip32: networkInfo.bip32,
+    pubKeyHash: networkInfo.pubKeyHash,
+    scriptHash: networkInfo.scriptHash,
+    wif: networkInfo.wif,
+  };
+
+  return network;
+};
+
 const RE_DASH_ADDRESS = /^[7X][1-9A-HJ-NP-Za-km-z]{33,}$/;
 
 const network = coininfo.dash.main.toBitcoinJS();
+const ecpairNetwork = toECPairNetwork(network);
 
 export const dash = {
   keys: (passphrase: string) => {
     const pwHash = bitcoin.crypto.sha256(Buffer.from(passphrase));
 
     const ECPairAPI = ECPairFactory(tinysecp);
-    const keyPair = ECPairAPI.fromPrivateKey(pwHash, {network});
+    const keyPair = ECPairAPI.fromPrivateKey(pwHash, {network: ecpairNetwork});
+    const publicKey = Buffer.from(keyPair.publicKey);
+    const privateKey = keyPair.privateKey && Buffer.from(keyPair.privateKey);
 
     return {
       network,
       keyPair,
-      address: bitcoin.payments.p2pkh({pubkey: keyPair.publicKey, network})
-        .address,
+      address: bitcoin.payments.p2pkh({
+        pubkey: publicKey,
+        network: ecpairNetwork,
+      }).address,
       // DASH private key is a regular 256-bit key
-      privateKey: keyPair.privateKey?.toString('hex'), // regular 256-bit (32 bytes, 64 characters) private key
+      privateKey: privateKey?.toString('hex'), // regular 256-bit (32 bytes, 64 characters) private key
       privateKeyWIF: keyPair.toWIF(), // Wallet Import Format (52 base58 characters)
     };
   },

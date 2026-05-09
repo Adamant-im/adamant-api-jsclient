@@ -11,6 +11,10 @@ export const eth = {
       .fromMasterSeed(seed)
       .derive(HD_KEY_PATH).privateKey;
 
+    if (!privateKey) {
+      throw new Error('Unable to derive Ethereum private key');
+    }
+
     return {
       address: bufferToHex(privateToAddress(privateKey)),
       privateKey: bufferToHex(privateKey),
