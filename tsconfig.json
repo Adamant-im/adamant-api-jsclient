@@ -8,8 +8,10 @@
     "rootDir": "./src",
     "declaration": true,
     "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "types": ["node", "jest"],
     "skipLibCheck": true
   },
-  "include": ["src/index.ts", "types/*.d.ts"],
-  "exclude": ["node_modules"]
+  "include": ["src/**/*.ts", "src/**/*.json", "types/*.d.ts"],
+  "exclude": ["node_modules", "src/**/tests/**"]
 }
