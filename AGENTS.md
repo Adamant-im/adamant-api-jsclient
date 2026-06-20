@@ -15,6 +15,18 @@ Agent output must optimize for:
 
 If tradeoffs are required, preserve secret safety, signing correctness, and network compatibility first.
 
+## Architecture Direction
+
+- Evolve this repository toward a unified, modular JavaScript SDK for the ADAMANT blockchain and ADM-derived external cryptocurrency wallets
+- Keep the current external coin scope focused on authoritative metadata from `adamant-wallets`, deterministic key and address derivation, and address validation; external-chain balances, transaction history, signing, and broadcasting require separate explicit tasks
+- Keep coin-specific dependencies inside `adamant-api` for now, but isolate coin implementations behind subpath exports and do not import them from the root entry point so ADM-only consumers do not load or bundle Bitcoin, Ethereum, or other coin code
+- Preserve the existing root API while introducing stable module boundaries and subpath exports; splitting coin implementations into separately installed packages is not part of the current architecture task
+- Leave room for future agent-oriented workflows and a signer abstraction without implementing or exposing those APIs prematurely; current architectural changes should avoid choices that would require breaking the SDK to add them later
+- Treat `@adamant/sdk` as a prospective package identity, not an alias or approved rename. The repository remains `adamant-api-jsclient`, and package naming changes require a separate compatibility and migration plan
+- `adamant-wallets-js` is archived and is not an implementation source; retain its history only as prior research
+
+See [Refactor] Evolve adamant-api-jsclient into a modular ADM and coin SDK <https://github.com/Adamant-im/adamant-api-jsclient/issues/77> for details.
+
 ## Language Policy
 
 - Developers may communicate with AI in any language
@@ -81,7 +93,7 @@ Key areas of this repository:
 - `src/helpers/encryptor.ts`: message encryption and decryption
 - `src/helpers/transactions/*`: transaction creation, hashing, signing, and IDs
 - `src/helpers/wsClient.ts`: Socket.IO subscriptions for incoming transactions
-- `src/coins/*.ts`: BTC, ETH, LSK, DASH, and DOGE wallet helpers
+- `src/coins/*.ts`: BTC, ETH, DASH, and DOGE wallet helpers
 
 ## Non-Negotiable Security Rules
 
