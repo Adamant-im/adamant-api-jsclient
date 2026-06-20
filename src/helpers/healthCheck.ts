@@ -31,6 +31,7 @@ export interface ActiveNode {
 const CHECK_NODES_INTERVAL = 60 * 5 * 1000; // Update active nodes every 5 minutes
 const HEIGHT_EPSILON = 5; // Used to group nodes by height and choose synced
 
+/** Selects healthy, synchronized nodes and coordinates socket reconnection. */
 export class NodeManager {
   options: NodeManagerOptions;
 
@@ -59,7 +60,7 @@ export class NodeManager {
     this.node = nodes[0];
 
     if (checkHealthAtStartup) {
-      this.updateNodes(true);
+      void this.updateNodes(true);
 
       setInterval(() => this.updateNodes(true), CHECK_NODES_INTERVAL);
     } else {
@@ -96,7 +97,7 @@ export class NodeManager {
 
     if (!isPlannedUpdate) {
       this.logger.warn(
-        '[ADAMANT js-api] Health check: Forcing to update active nodes…'
+        '[ADAMANT js-api] Health check: Forcing to update active nodes…',
       );
     }
 
@@ -119,7 +120,7 @@ export class NodeManager {
       const totalNodesCount = this.options.nodes.length;
 
       logger.error(
-        `[ADAMANT js-api] Health check: All of ${totalNodesCount} nodes are unavailable. Check internet connection and nodes list in config.`
+        `[ADAMANT js-api] Health check: All of ${totalNodesCount} nodes are unavailable. Check internet connection and nodes list in config.`,
       );
       return;
     }
@@ -155,7 +156,7 @@ export class NodeManager {
 
           return grouped;
         },
-        {}
+        {},
       );
 
       let biggestGroup: ActiveNode[] = [];
@@ -213,7 +214,7 @@ export class NodeManager {
     }
 
     this.logger.log(
-      `[ADAMANT js-api] Health check: Found ${supportedCount} supported and synced nodes${nodesInfoString}. Active node is ${this.node}.`
+      `[ADAMANT js-api] Health check: Found ${supportedCount} supported and synced nodes${nodesInfoString}. Active node is ${this.node}.`,
     );
   }
 
@@ -228,7 +229,7 @@ export class NodeManager {
       });
 
       return response.data;
-    } catch (error) {
+    } catch {
       return {success: false} as {success: false};
     }
   }
@@ -247,7 +248,7 @@ export class NodeManager {
 
       if (!response.success) {
         this.logger.log(
-          `[ADAMANT js-api] Health check: Node ${node} hasn't returned its status`
+          `[ADAMANT js-api] Health check: Node ${node} hasn't returned its status`,
         );
         continue;
       }

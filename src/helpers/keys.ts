@@ -10,8 +10,10 @@ export interface KeyPair {
   privateKey: Buffer;
 }
 
+/** Creates a new BIP39 mnemonic suitable for an ADM account passphrase. */
 export const createNewPassphrase = () => generateMnemonic();
 
+/** Derives the established ADM Ed25519 keypair from a 32-byte seed hash. */
 export const makeKeypairFromHash = (hash: Buffer): KeyPair => {
   const keypair = sodium.crypto_sign_seed_keypair(hash);
 
@@ -21,20 +23,23 @@ export const makeKeypairFromHash = (hash: Buffer): KeyPair => {
   };
 };
 
+/** Applies the protocol-compatible ADM passphrase hashing procedure. */
 export const createHashFromPassphrase = (passphrase: string) =>
   crypto
     .createHash('sha256')
     .update(mnemonicToSeedSync(passphrase).toString('hex'), 'hex')
     .digest();
 
+/** Derives the established ADM keypair from a BIP39 passphrase. */
 export const createKeypairFromPassphrase = (passphrase: string) => {
   const hash = createHashFromPassphrase(passphrase);
 
   return makeKeypairFromHash(hash);
 };
 
+/** Converts an ADM public key into its `U`-prefixed account address. */
 export const createAddressFromPublicKey = (
-  publicKey: Buffer | string
+  publicKey: Buffer | string,
 ): AdamantAddress => {
   const hash = crypto.createHash('sha256');
 

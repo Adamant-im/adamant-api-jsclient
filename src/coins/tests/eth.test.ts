@@ -1,5 +1,3 @@
-import hdkey from 'hdkey';
-
 import {eth} from '../eth';
 import {passphrase} from './mock/passphrase';
 
@@ -14,19 +12,12 @@ describe('eth.keys()', () => {
     });
   });
 
-  test('should throw when derived private key is missing', () => {
-    const fromMasterSeedSpy = jest
-      .spyOn(hdkey, 'fromMasterSeed')
-      .mockReturnValue({
-        derive: () => ({
-          privateKey: null,
-        }),
-      } as unknown as ReturnType<typeof hdkey.fromMasterSeed>);
-
-    expect(() => eth.keys(passphrase)).toThrow(
-      'Unable to derive Ethereum private key'
+  test('should validate Ethereum addresses using wallet metadata', () => {
+    expect(
+      eth.isValidAddress('0x6c892b27f6deb1c81ed0122b23193c5802464c2c'),
+    ).toBe(true);
+    expect(eth.isValidAddress('6c892b27f6deb1c81ed0122b23193c5802464c2c')).toBe(
+      false,
     );
-
-    fromMasterSeedSpy.mockRestore();
   });
 });

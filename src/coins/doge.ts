@@ -3,20 +3,23 @@ import {ECPairFactory} from 'ecpair';
 import * as tinysecp from 'tiny-secp256k1';
 
 import coininfo from 'coininfo';
+import {coinMetadata} from '../metadata/index';
 import {toECPairNetwork} from './ecpairNetwork';
 
-const RE_DOGE_ADDRESS = /^[A|D|9][A-Z0-9]([0-9a-zA-Z]{9,})$/;
+const RE_DOGE_ADDRESS = new RegExp(coinMetadata.DOGE.regexAddress);
 
 const network = coininfo.dogecoin.main.toBitcoinJS();
 const ecpairNetwork = toECPairNetwork(network, 'doge');
 
+/** Deterministic Dogecoin wallet derivation and address validation helpers. */
 export const doge = {
+  metadata: coinMetadata.DOGE,
   keys: (passphrase: string) => {
     const pwHash = bitcoin.crypto.sha256(Buffer.from(passphrase));
 
     const ECPairAPI = ECPairFactory(tinysecp);
     const keyPair = ECPairAPI.fromPrivateKey(pwHash, {network: ecpairNetwork});
-    const publicKey = Buffer.from(keyPair.publicKey);
+    const publicKey = keyPair.publicKey;
     const privateKey = keyPair.privateKey && Buffer.from(keyPair.privateKey);
 
     return {

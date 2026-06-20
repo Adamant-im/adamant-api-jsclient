@@ -50,7 +50,7 @@ export const isAdmPublicKey = (publicKey: unknown): publicKey is string =>
 const RE_ADM_VOTE_FOR_PUBLIC_KEY = /^(\+|-)[a-fA-F0-9]{64}$/;
 
 export const isAdmVoteForPublicKey = (
-  publicKey: unknown
+  publicKey: unknown,
 ): publicKey is string =>
   typeof publicKey === 'string' && RE_ADM_VOTE_FOR_PUBLIC_KEY.test(publicKey);
 
@@ -62,7 +62,7 @@ export const isAdmVoteForAddress = (address: unknown) =>
 const RE_ADM_VOTE_FOR_DELEGATE_NAME = /^(\+|-)([a-z0-9!@$&_]{1,20})$/;
 
 export const isAdmVoteForDelegateName = (
-  delegateName: unknown
+  delegateName: unknown,
 ): delegateName is string =>
   typeof delegateName === 'string' &&
   RE_ADM_VOTE_FOR_DELEGATE_NAME.test(delegateName);
@@ -72,12 +72,12 @@ export const isIntegerAmount = (amount: number) => Number.isSafeInteger(amount);
 export const isStringAmount = (amount: string) => isNumeric(amount);
 
 export const isMessageType = (
-  messageType: number
+  messageType: number,
 ): messageType is MessageTypes => [1, 2, 3].includes(messageType);
 
 export const validateMessage = (
   message: string,
-  messageType: MessageType = MessageType.Chat
+  messageType: MessageType = MessageType.Chat,
 ) => {
   if (typeof message !== 'string') {
     return {
@@ -134,7 +134,7 @@ export const admToSats = (amount: number) =>
 export const badParameter = (
   name: string,
   value?: unknown,
-  message?: string
+  message?: string,
 ) => ({
   success: false,
   error: `Wrong '${name}' parameter${value ? `: ${value}` : ''}${

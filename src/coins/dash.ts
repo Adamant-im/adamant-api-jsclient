@@ -3,20 +3,23 @@ import {ECPairFactory} from 'ecpair';
 import * as tinysecp from 'tiny-secp256k1';
 
 import coininfo from 'coininfo';
+import {coinMetadata} from '../metadata/index';
 import {toECPairNetwork} from './ecpairNetwork';
 
-const RE_DASH_ADDRESS = /^[7X][1-9A-HJ-NP-Za-km-z]{33,}$/;
+const RE_DASH_ADDRESS = new RegExp(coinMetadata.DASH.regexAddress);
 
 const network = coininfo.dash.main.toBitcoinJS();
 const ecpairNetwork = toECPairNetwork(network, 'dash');
 
+/** Deterministic Dash wallet derivation and address validation helpers. */
 export const dash = {
+  metadata: coinMetadata.DASH,
   keys: (passphrase: string) => {
     const pwHash = bitcoin.crypto.sha256(Buffer.from(passphrase));
 
     const ECPairAPI = ECPairFactory(tinysecp);
     const keyPair = ECPairAPI.fromPrivateKey(pwHash, {network: ecpairNetwork});
-    const publicKey = Buffer.from(keyPair.publicKey);
+    const publicKey = keyPair.publicKey;
     const privateKey = keyPair.privateKey && Buffer.from(keyPair.privateKey);
 
     return {

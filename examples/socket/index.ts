@@ -7,11 +7,10 @@ import {
 } from 'adamant-api';
 
 const nodes = [
-  'https://endless.adamant.im',
-  'https://clown.adamant.im',
-  'http://23.226.231.225:36666',
-  'http://88.198.156.44:36666',
-  'https://lake.adamant.im',
+    "http://localhost:36666",
+    'https://endless.adamant.im',
+    'https://clown.adamant.im',
+    'https://lake.adamant.im',
 ];
 
 /**
@@ -32,11 +31,11 @@ function onChatTransaction(transaction: ChatMessageTransaction) {
     chat.message,
     transaction.senderPublicKey,
     passphrase,
-    chat.own_message
+    chat.own_message,
   );
 
   console.log(
-    `Got a new message from ${transaction.senderId}:\n  "${decoded}"`
+    `Got a new message from ${transaction.senderId}:\n  "${decoded}"`,
   );
 }
 

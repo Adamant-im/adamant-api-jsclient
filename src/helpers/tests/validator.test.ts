@@ -127,24 +127,24 @@ describe('isAdmPublicKey', () => {
   test('should return false for a string that contains `L`', () => {
     expect(
       validator.isAdmPublicKey(
-        'Le003f782cd1c1c84a6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        'Le003f782cd1c1c84a6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(false);
   });
 
   test('should return true for a public key that starts with a number', () => {
     expect(
       validator.isAdmPublicKey(
-        '4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        '4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(true);
   });
 
   test('should return true for a public key that starts with a letter', () => {
     expect(
       validator.isAdmPublicKey(
-        'e4003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        'e4003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(true);
   });
 });
@@ -172,31 +172,31 @@ describe('isAdmVoteForAddress', () => {
 
   test('should return false for a string that starts with `L`', () => {
     expect(validator.isAdmVoteForAddress('L01234561293812931283918239')).toBe(
-      false
+      false,
     );
   });
 
   test('should return false for an address that starts with a number', () => {
     expect(validator.isAdmVoteForAddress('0U1234561293812931283918239')).toBe(
-      false
+      false,
     );
   });
 
   test('should return false for an address that starts with a letter', () => {
     expect(validator.isAdmVoteForAddress('U01234561293812931283918239')).toBe(
-      false
+      false,
     );
   });
 
   test('should return true for an address with a plus', () => {
     expect(validator.isAdmVoteForAddress('+U01234561293812931283918239')).toBe(
-      true
+      true,
     );
   });
 
   test('should return true for an address with a minus', () => {
     expect(validator.isAdmVoteForAddress('+U01234561293812931283918239')).toBe(
-      true
+      true,
     );
   });
 });
@@ -225,40 +225,40 @@ describe('isAdmVoteForPublicKey', () => {
   test('should return false for a string that starts with `L`', () => {
     expect(
       validator.isAdmVoteForPublicKey(
-        '+L4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        '+L4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(false);
   });
 
   test('should return false for a public key that starts with a number', () => {
     expect(
       validator.isAdmVoteForPublicKey(
-        '4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        '4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(false);
   });
 
   test('should return false for a public key that starts with a letter', () => {
     expect(
       validator.isAdmVoteForPublicKey(
-        'e4003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        'e4003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(false);
   });
 
   test('should return true for a public key with a plus', () => {
     expect(
       validator.isAdmVoteForPublicKey(
-        '+4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        '+4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(true);
   });
 
   test('should return true for a public key with a minus', () => {
     expect(
       validator.isAdmVoteForPublicKey(
-        '+4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        '+4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(true);
   });
 });
@@ -290,7 +290,7 @@ describe('isAdmVoteForDelegateName', () => {
 
   test('should return false for a too long delegate name', () => {
     expect(
-      validator.isAdmVoteForDelegateName('+e003f782cd1c1c84A6767a871321af2e')
+      validator.isAdmVoteForDelegateName('+e003f782cd1c1c84A6767a871321af2e'),
     ).toBe(false);
   });
 
@@ -330,32 +330,32 @@ describe('validateMessage', () => {
 
   test('should return true for an empty string signal message', () => {
     expect(validator.validateMessage('', MessageType.Signal).success).toBe(
-      true
+      true,
     );
   });
 
   test('should return true for an empty json rich message', () => {
     expect(validator.validateMessage('{}', MessageType.Rich).success).toBe(
-      true
+      true,
     );
   });
 
   test('should return false for an empty json signal message', () => {
     expect(validator.validateMessage('{}', MessageType.Signal).success).toBe(
-      true
+      true,
     );
   });
 
   test('should return true for a json rich message with the given amount', () => {
     expect(
-      validator.validateMessage('{"amount": "0.13"}', MessageType.Rich).success
+      validator.validateMessage('{"amount": "0.13"}', MessageType.Rich).success,
     ).toBe(true);
   });
 
   test('should return true for a json signal message with the given amount', () => {
     expect(
       validator.validateMessage('{"amount": "0.13"}', MessageType.Signal)
-        .success
+        .success,
     ).toBe(true);
   });
 
@@ -363,8 +363,8 @@ describe('validateMessage', () => {
     expect(
       validator.validateMessage(
         '{"amount": "0.13", "type": "ETH_transaction"}',
-        MessageType.Rich
-      ).success
+        MessageType.Rich,
+      ).success,
     ).toBe(false);
   });
 
@@ -372,8 +372,8 @@ describe('validateMessage', () => {
     expect(
       validator.validateMessage(
         '{"amount": "0.13", "type": "ETH_transaction"}',
-        MessageType.Signal
-      ).success
+        MessageType.Signal,
+      ).success,
     ).toBe(true);
   });
 
@@ -381,8 +381,8 @@ describe('validateMessage', () => {
     expect(
       validator.validateMessage(
         '{"amount": "0.13", "type": "eth_transaction"}',
-        MessageType.Rich
-      ).success
+        MessageType.Rich,
+      ).success,
     ).toBe(true);
   });
 
@@ -390,8 +390,8 @@ describe('validateMessage', () => {
     expect(
       validator.validateMessage(
         '{"amount": "0.13", "type": "eth_transaction"}',
-        MessageType.Signal
-      ).success
+        MessageType.Signal,
+      ).success,
     ).toBe(true);
   });
 
@@ -399,20 +399,21 @@ describe('validateMessage', () => {
     expect(
       validator.validateMessage(
         '{"token": "DeviceToken","provider":"apns","action":"add"}',
-        MessageType.Signal
-      ).success
+        MessageType.Signal,
+      ).success,
     ).toBe(true);
   });
 
   test('should allow a string signal message', () => {
     expect(
-      validator.validateMessage('not a json string', MessageType.Signal).success
+      validator.validateMessage('not a json string', MessageType.Signal)
+        .success,
     ).toBe(true);
   });
 
   test('should NOT allow a string rich message', () => {
     expect(
-      validator.validateMessage('not a json string', MessageType.Rich).success
+      validator.validateMessage('not a json string', MessageType.Rich).success,
     ).toBe(false);
   });
 });

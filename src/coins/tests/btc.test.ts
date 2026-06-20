@@ -16,4 +16,12 @@ describe('btc.keys()', () => {
       },
     });
   });
+
+  test('should validate P2PKH and SegWit addresses using wallet metadata', () => {
+    expect(btc.isValidAddress('13rK42XbSJV9BdvKQvDJeH3n45zNBbXsUV')).toBe(true);
+    expect(
+      btc.isValidAddress('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'),
+    ).toBe(true);
+    expect(btc.isValidAddress('not-a-bitcoin-address')).toBe(false);
+  });
 });

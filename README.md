@@ -1,65 +1,142 @@
-# ADAMANT JavaScript API library
+# ADAMANT JavaScript API
 
-ADAMANT JavaScript API is a library intended to interact with ADAMANT blockchain for JavaScript developers. Also [ADAMANT Console](https://github.com/Adamant-im/adamant-console/wiki) and [ADAMANT node Direct API](https://github.com/Adamant-im/adamant/wiki/) are available.
+`adamant-api` is the TypeScript/Node.js SDK for the ADAMANT blockchain. It provides resilient ADM node access, account and transaction primitives, encrypted messaging, WebSocket subscriptions, and deterministic helpers for supported external wallets.
 
-Features:
+## Features
 
-- High reliability
-- GET-requests to the blockchain
-- Sending tokens
-- Sending messages
-- Creating a delegate
-- Voting for delegates
-- Caching public keys
-- Encrypting and decrypting of messages
-- Forming and signing transactions
-- Working with ADM key pairs
-- Generating crypto wallets (addresses and keys), bound to ADM account
-- Working with ADAMANT epoch time
-- Support for WebSocket connections
-- Logging warnings, errors, info
+- Automatic ADM node health checks, retries, failover, and height-aware node selection
+- Typed blockchain API requests and response DTOs
+- ADM passphrase hashing, keypair and address derivation
+- Message encryption and decryption
+- Transaction construction, hashing, signing, and ID calculation
+- WebSocket subscriptions for incoming transactions
+- Optional BTC, ETH, DASH, and DOGE wallet derivation and address validation
+- Pinned, reproducible schema metadata from [`adamant-schema`](https://github.com/Adamant-im/adamant-schema)
+- Pinned, reproducible coin metadata from [`adamant-wallets`](https://github.com/Adamant-im/adamant-wallets)
+
+## Requirements
+
+- Node.js 22 or newer
+- npm, pnpm, or another package manager supported by your project
+
+## Installation
+
+```sh
+npm install adamant-api
+```
+
+## ADM API usage
+
+The package root and `adamant-api/adm` expose ADM functionality and shared metadata. Importing either entry point does not load coin-specific implementations.
+
+```ts
+import {AdamantApi} from 'adamant-api';
+
+const api = new AdamantApi({
+  nodes: [
+    "http://localhost:36666",
+    'https://endless.adamant.im',
+    'https://clown.adamant.im',
+    'https://lake.adamant.im',
+  ],
+});
+
+const response = await api.getBlocks();
+
+if (response.success) {
+  console.log(response.data);
+}
+```
+
+CommonJS remains supported:
+
+```js
+const {AdamantApi} = require('adamant-api');
+```
+
+Do not place a passphrase, private key, decrypted message, or sensitive token in logs.
+
+## Modular imports
+
+Use the narrowest entry point that fits the task:
+
+| Entry point | Purpose |
+| --- | --- |
+| `adamant-api` | ADM API and shared metadata |
+| `adamant-api/adm` | Explicit ADM-only SDK surface |
+| `adamant-api/api` | ADM HTTP client and generated API DTOs |
+| `adamant-api/transactions` | ADM transaction construction, hashing, signing, and IDs |
+| `adamant-api/metadata` | Bundled ADM and coin metadata |
+| `adamant-api/coins/btc` | Bitcoin wallet helper |
+| `adamant-api/coins/eth` | Ethereum wallet helper |
+| `adamant-api/coins/dash` | Dash wallet helper |
+| `adamant-api/coins/doge` | Dogecoin wallet helper |
+
+For example:
+
+```ts
+import {btc} from 'adamant-api/coins/btc';
+
+const wallet = btc.keys('your twelve-word ADM passphrase');
+const valid = btc.isValidAddress(wallet.address ?? '');
+```
+
+The external coin scope is intentionally limited to metadata, deterministic key/address derivation, and address validation. Balance lookup, history, fees, external-chain signing, and broadcasting are not part of this SDK surface.
+
+## Wallet metadata
+
+```ts
+import {coinMetadata, walletMetadataSource} from 'adamant-api/metadata';
+
+console.log(coinMetadata.ADM.decimals); // 8
+console.log(walletMetadataSource.revision);
+```
+
+Metadata is generated from a pinned `adamant-wallets` revision so updates are deterministic and reviewable:
+
+```sh
+pnpm metadata:check
+pnpm metadata:sync
+```
+
+Generated ADAMANT API DTOs follow the same pinned workflow for `adamant-schema`:
+
+```sh
+pnpm api-types:check
+pnpm api-types:sync
+```
 
 ## Reliability
 
-JS API shows decentralization in action—if a network node cannot fulfill your request, the library will redirect it to another node, and so on several times. You will get the result and you do not need to think about processing the request.
+`AdamantApi` checks configured nodes through the node status endpoint and selects a live node at an actual blockchain height. When a request fails, the client retries and can switch to another healthy node instead of depending on a single endpoint.
 
-Health Check system pings all nodes in the list using [`/status`](https://github.com/Adamant-im/adamant/wiki/API-Specification#get-blockchain-and-network-status) endpoint, and connects to a node with actual height. When the library unable to process request with current node, it forces to re-initialize Health Check.
+Applications should provide several independently operated HTTPS nodes and handle returned errors. Malformed responses, timeouts, and partial network outages must not be treated as successful requests.
 
-## Usage
+## Development
 
-Install library from npm:
-
-```bash
-npm i adamant-api
+```sh
+corepack enable
+pnpm install
+pnpm build
+pnpm test
+pnpm lint
 ```
 
-Initialize the library:
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for repository conventions, testing expectations, generated files, and pull request guidance.
 
-```js
-const { AdamantApi } = require('adamant-api')
+## Links
 
-const nodes = [
-  "http://localhost:36666",
-  "https://endless.adamant.im",
-  "https://clown.adamant.im",
-  "http://23.226.231.225:36666",
-  "http://88.198.156.44:36666",
-  "https://lake.adamant.im"
-];
+- [ADAMANT website](https://adamant.im/)
+- [ADAMANT documentation](https://docs.adamant.im/)
+- [ADAMANT Improvement Proposals](https://aips.adamant.im/all)
+- [ADAMANT Node](https://github.com/Adamant-im/adamant)
+- [ADAMANT API schema](https://schema.adamant.im/)
+- [ADAMANT schema source](https://github.com/Adamant-im/adamant-schema)
+- [ADAMANT wallet metadata](https://github.com/Adamant-im/adamant-wallets)
+- [ADAMANT blockchain explorer](https://explorer.adamant.im/)
+- [Package documentation and examples](https://github.com/Adamant-im/adamant-api-jsclient/wiki)
+- [Issues and feature requests](https://github.com/Adamant-im/adamant-api-jsclient/issues)
 
-const api = new AdamantApi({
-  nodes,
-});
-```
+## License
 
-Request example:
-
-```js
-const response = await api.getBlocks()
-
-console.log(response.data)
-```
-
-## Documentation
-
-See [Wiki](https://github.com/Adamant-im/adamant-api-jsclient/wiki) for documentation and usage.
+[GPL-3.0](./LICENSE)

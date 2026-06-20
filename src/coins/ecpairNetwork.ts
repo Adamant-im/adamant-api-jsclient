@@ -6,7 +6,7 @@ export type ECPairNetwork = Omit<Network, 'bech32'> & {
 
 export const toECPairNetwork = (
   networkInfo: Network,
-  fallbackBech32: string
+  fallbackBech32: string,
 ): ECPairNetwork => {
   return {
     messagePrefix: networkInfo.messagePrefix,

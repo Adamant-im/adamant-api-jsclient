@@ -20,7 +20,7 @@ export class Logger {
 
   constructor(
     level: LogLevel | LogLevelName = LogLevel.Log,
-    logger: CustomLogger = console
+    logger: CustomLogger = console,
   ) {
     this.level = typeof level === 'number' ? level : logLevels.indexOf(level);
     this.logger = logger;

@@ -44,19 +44,6 @@
   "main": "dist/index.js",
   "src": "src/index.ts",
   "types": "dist/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "adm": ["dist/adm/index.d.ts"],
-      "api": ["dist/api/index.d.ts"],
-      "transactions": ["dist/helpers/transactions/index.d.ts"],
-      "metadata": ["dist/metadata/index.d.ts"],
-      "coins": ["dist/coins/index.d.ts"],
-      "coins/btc": ["dist/coins/btc.d.ts"],
-      "coins/eth": ["dist/coins/eth.d.ts"],
-      "coins/dash": ["dist/coins/dash.d.ts"],
-      "coins/doge": ["dist/coins/doge.d.ts"]
-    }
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -77,10 +64,6 @@
     "./metadata": {
       "types": "./dist/metadata/index.d.ts",
       "default": "./dist/metadata/index.js"
-    },
-    "./coins": {
-      "types": "./dist/coins/index.d.ts",
-      "default": "./dist/coins/index.js"
     },
     "./coins/btc": {
       "types": "./dist/coins/btc.d.ts",
