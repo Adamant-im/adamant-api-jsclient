@@ -56,7 +56,6 @@
     "posttest": "npm run lint"
   },
   "dependencies": {
-    "@liskhq/lisk-cryptography": "4.1.0",
     "axios": "^1.16.0",
     "bignumber.js": "^9.3.1",
     "bip39": "^3.1.0",
