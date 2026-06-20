@@ -7,10 +7,10 @@ import {
 } from 'adamant-api';
 
 const nodes = [
-    "http://localhost:36666",
-    'https://endless.adamant.im',
-    'https://clown.adamant.im',
-    'https://lake.adamant.im',
+  'http://localhost:36666',
+  'https://endless.adamant.im',
+  'https://clown.adamant.im',
+  'https://lake.adamant.im',
 ];
 
 /**

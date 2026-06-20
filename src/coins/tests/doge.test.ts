@@ -17,3 +17,14 @@ describe('doge.keys()', () => {
     });
   });
 });
+
+describe('doge.isValidAddress()', () => {
+  test('accepts a Dogecoin address and rejects other values', () => {
+    expect(doge.isValidAddress('D7zQbHUEjiPRie6v9WCsC3DNwDifUdbFdd')).toBe(
+      true,
+    );
+    expect(doge.isValidAddress('XdY9tHBVQ1hjLaWuGoXXVojZtRa4GfEdNP')).toBe(
+      false,
+    );
+  });
+});

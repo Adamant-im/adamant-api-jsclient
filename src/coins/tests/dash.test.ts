@@ -17,3 +17,14 @@ describe('dash.keys()', () => {
     });
   });
 });
+
+describe('dash.isValidAddress()', () => {
+  test('accepts a Dash address and rejects other values', () => {
+    expect(dash.isValidAddress('XdY9tHBVQ1hjLaWuGoXXVojZtRa4GfEdNP')).toBe(
+      true,
+    );
+    expect(dash.isValidAddress('D7zQbHUEjiPRie6v9WCsC3DNwDifUdbFdd')).toBe(
+      false,
+    );
+  });
+});

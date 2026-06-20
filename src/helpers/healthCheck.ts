@@ -69,6 +69,11 @@ export class NodeManager {
   }
 
   public onReady(callback: () => void) {
+    if (this.initialized) {
+      callback();
+      return;
+    }
+
     this.onReadyCallback = callback;
   }
 

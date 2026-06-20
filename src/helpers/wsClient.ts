@@ -197,9 +197,10 @@ export class WebSocketClient {
    */
   public off(handler: SingleTransactionHandler) {
     for (const handlers of Object.values(this.eventHandlers)) {
-      const index = (handlers as SingleTransactionHandler[]).indexOf(handler);
-      if (index !== -1) {
+      let index = (handlers as SingleTransactionHandler[]).indexOf(handler);
+      while (index !== -1) {
         handlers.splice(index, 1);
+        index = (handlers as SingleTransactionHandler[]).indexOf(handler);
       }
     }
 

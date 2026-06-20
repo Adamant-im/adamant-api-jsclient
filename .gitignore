@@ -1,4 +1,5 @@
 dist
+coverage/
 node_modules/
 logs/
 .idea/

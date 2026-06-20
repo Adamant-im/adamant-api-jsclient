@@ -4,14 +4,13 @@
     "lib": [],
     "target": "ESNext",
     "module": "CommonJS",
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "declaration": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "types": ["node", "jest"],
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "noEmit": true,
+    "rootDir": "."
   },
-  "include": ["src/**/*.ts", "src/**/*.json", "types/*.d.ts"],
-  "exclude": ["node_modules", "src/**/tests/**"]
+  "include": ["src/**/*.ts", "src/**/*.json", "examples/**/*.ts", "types/*.d.ts"],
+  "exclude": ["node_modules", "dist"]
 }

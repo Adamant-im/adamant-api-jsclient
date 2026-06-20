@@ -1,6 +1,14 @@
 import {MessageType} from '../constants';
 import * as validator from '../validator';
 
+describe('isEndpoint', () => {
+  test('accepts API paths and rejects non-path values', () => {
+    expect(validator.isEndpoint('/api/status')).toBe(true);
+    expect(validator.isEndpoint('api/status')).toBe(false);
+    expect(validator.isEndpoint(undefined)).toBe(false);
+  });
+});
+
 describe('isNumeric', () => {
   test('should return false for a number', () => {
     expect(validator.isNumeric(3)).toBe(false);
