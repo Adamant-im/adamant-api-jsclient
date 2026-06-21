@@ -122,6 +122,10 @@ pnpm api-types:sync
 
 Applications should provide several independently operated HTTPS nodes and handle returned errors. Malformed responses, timeouts, and partial network outages must not be treated as successful requests.
 
+Logging can be disabled only with `logLevel: 'none'`. Supported thresholds are
+`error`, `warn`, `info`, and `log`; unknown application-specific names such as
+`debug` or `trace` fall back to `log` instead of disabling SDK output.
+
 ## Error handling
 
 Expected validation, node, and transport failures resolve to a single result

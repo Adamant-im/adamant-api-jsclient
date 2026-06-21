@@ -8,12 +8,7 @@
 
 import axios, {AxiosError} from 'axios';
 import {NodeManager, NodeManagerOptions} from '../helpers/healthCheck';
-import {
-  Logger,
-  type CustomLogger,
-  type LogLevel,
-  type LogLevelName,
-} from '../helpers/logger';
+import {Logger, type CustomLogger, type LogLevelInput} from '../helpers/logger';
 import {
   AdamantApiResult,
   admToSats,
@@ -271,7 +266,11 @@ export interface AdamantApiOptions extends NodeManagerOptions {
   timeout?: number;
 
   logger?: CustomLogger;
-  logLevel?: LogLevel | LogLevelName;
+  /**
+   * Logging threshold. Only `none` disables logging. Unknown string values,
+   * including `debug` and `trace`, fall back to the most verbose `log` level.
+   */
+  logLevel?: LogLevelInput;
 }
 
 const publicKeysCache: {

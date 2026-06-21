@@ -215,3 +215,57 @@ describe('logger: error', () => {
     logger.error('error');
   });
 });
+
+describe('logger: level normalization', () => {
+  const createMockLogger = () => ({
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    log: jest.fn(),
+  });
+
+  test.each(['none', LogLevel.None])('disables all output for %s', level => {
+    const output = createMockLogger();
+    const logger = new Logger(level, output);
+
+    logger.error('error');
+    logger.warn('warn');
+    logger.info('info');
+    logger.log('log');
+
+    expect(logger.level).toBe(LogLevel.None);
+    expect(output.error).not.toHaveBeenCalled();
+    expect(output.warn).not.toHaveBeenCalled();
+    expect(output.info).not.toHaveBeenCalled();
+    expect(output.log).not.toHaveBeenCalled();
+  });
+
+  test.each(['debug', 'trace', 'unknown'])('%s falls back to log', level => {
+    const output = createMockLogger();
+    const logger = new Logger(level, output);
+
+    logger.error('error');
+    logger.warn('warn');
+    logger.info('info');
+    logger.log('log');
+
+    expect(logger.level).toBe(LogLevel.Log);
+    expect(output.error).toHaveBeenCalledWith('error');
+    expect(output.warn).toHaveBeenCalledWith('warn');
+    expect(output.info).toHaveBeenCalledWith('info');
+    expect(output.log).toHaveBeenCalledWith('log');
+  });
+
+  test.each([-2, 4, Number.NaN])(
+    'invalid numeric level %s falls back to log',
+    level => {
+      const output = createMockLogger();
+      const logger = new Logger(level, output);
+
+      logger.log('log');
+
+      expect(logger.level).toBe(LogLevel.Log);
+      expect(output.log).toHaveBeenCalledWith('log');
+    },
+  );
+});

@@ -19,6 +19,7 @@ const address: AdamantAddress = 'U123456';
 const api = new AdamantApi({
   nodes: ['https://node.example'],
   checkHealthAtStartup: false,
+  logLevel: 'debug',
 });
 
 assert.equal(AdamantApi, ExplicitAdamantApi);

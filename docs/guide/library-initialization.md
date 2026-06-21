@@ -53,6 +53,8 @@ const api = new AdamantApi({
 
   /**
    * 'none' (-1) < 'error' (0) < 'warn' (1) < 'info' (2) < 'log' (3).
+   * Only 'none' disables logging. Unknown names such as 'debug' or 'trace'
+   * fall back to 'log'.
    */
   logLevel: 'info', // default is `3` ('log')
 
@@ -67,6 +69,22 @@ api.onReady(() => {
 });
 
 export {api};
+```
+
+## Log levels
+
+The SDK supports `none`, `error`, `warn`, `info`, and `log`. Only `none` (or
+`LogLevel.None`) disables logging completely. The default is `log`, which emits
+all SDK messages.
+
+Applications sometimes pass their own logger level names through shared
+configuration. Since the SDK has no separate `debug` or `trace` methods,
+unknown string values such as `debug` and `trace` safely fall back to `log`
+instead of disabling output.
+
+```ts
+new AdamantApi({nodes, logger, logLevel: 'none'}); // no SDK logs
+new AdamantApi({nodes, logger, logLevel: 'debug'}); // falls back to `log`
 ```
 
 Then refer to the API module from your other modules:
