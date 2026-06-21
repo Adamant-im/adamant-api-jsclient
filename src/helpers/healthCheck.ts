@@ -153,6 +153,9 @@ export class NodeManager {
 
     const respondingNodesCount = activeNodes.length;
     if (!respondingNodesCount) {
+      // There is no version evidence while every node is offline. Reset the
+      // compatibility flag so callers receive the actual transport failure.
+      this.hasCompatibleNode = true;
       const totalNodesCount = this.options.nodes.length;
 
       logger.error(

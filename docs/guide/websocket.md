@@ -159,8 +159,9 @@ ws.onConnection(connectedNode => console.log(connectedNode));
 
 ### `.onReconnection()`
 
-Adds an event listener for reconnection. The node never changes when
-reconnecting if `options.useFastest` is `true`.
+Adds an event listener for reconnection. When `options.useFastest` is `true`,
+each reconnection uses the currently fastest node from the latest health-check
+results, which may differ from the previously connected node.
 
 ```ts
 function onReconnection(callback: ConnectionHandler): this;

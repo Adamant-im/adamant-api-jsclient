@@ -18,6 +18,12 @@ const activeNode = (name: string, height: number, ping = 10): ActiveNode => ({
   version: '0.9.0',
 });
 
+class TestNodeManager extends NodeManager {
+  get compatibleNodeAvailable() {
+    return this.hasCompatibleNode;
+  }
+}
+
 describe('NodeManager', () => {
   const output = {
     error: jest.fn(),
@@ -143,7 +149,7 @@ describe('NodeManager', () => {
   });
 
   test('reports when every responding node is below the minimum version', async () => {
-    const manager = new NodeManager(logger, {
+    const manager = new TestNodeManager(logger, {
       nodes: ['https://old'],
       minVersion: '0.9.0',
       checkHealthAtStartup: false,
@@ -156,6 +162,10 @@ describe('NodeManager', () => {
     expect(output.error).toHaveBeenCalledWith(
       '[ADAMANT js-api] Health check: No compatible nodes available. 1 node is below minimum required version v0.9.0.',
     );
+    expect(manager.compatibleNodeAvailable).toBe(false);
+
+    await manager.chooseNode([]);
+    expect(manager.compatibleNodeAvailable).toBe(true);
   });
 
   test('treats an unparseable node version as incompatible', async () => {

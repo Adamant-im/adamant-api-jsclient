@@ -82,7 +82,7 @@ type EventType = keyof TransactionMap;
 
 export type TransactionHandler<T extends AnyTransaction> = (
   transaction: T,
-) => void;
+) => void | Promise<void>;
 
 export type SingleTransactionHandler =
   | TransactionHandler<TokenTransferTransaction>
@@ -180,10 +180,6 @@ export class WebSocketClient {
    * @param nodes Sorted by ping array of active nodes
    */
   reviseConnection(nodes: ActiveNode[]) {
-    if (this.connection?.connected) {
-      return;
-    }
-
     const {wsType} = this.options;
 
     this.nodes = nodes.filter(
@@ -193,6 +189,10 @@ export class WebSocketClient {
         // Remove nodes without IP if 'ws' connection type
         (wsType !== 'ws' || !node.isHttps || node.ip),
     );
+
+    if (this.connection?.connected) {
+      return;
+    }
 
     this.connect();
   }
@@ -266,6 +266,9 @@ export class WebSocketClient {
     }
 
     if (!this.connection) {
+      // A direct connect starts a fresh connection cycle. Scheduled retries
+      // call setConnection() themselves and retain the current attempt count.
+      this.reconnectTry = 0;
       this.setConnection();
     }
 
@@ -499,14 +502,26 @@ export class WebSocketClient {
     const directions = this.getTransactionDirections(transaction);
     const direction = directions.join('+') || 'unrelated';
     const filter = this.options.direction ?? 'allDirections';
+    const shouldDiscard =
+      filter !== 'allDirections' && !directions.includes(filter);
+    const transactionType =
+      TransactionType[transaction.type] ?? 'UNKNOWN_TRANSACTION_TYPE';
+    const amount =
+      transaction.amount === undefined || transaction.amount === null
+        ? ''
+        : `; amount: ${transaction.amount}`;
+    const details = `${transaction.senderId ?? '(unknown sender)'} -> ${transaction.recipientId ?? '(no recipient)'}; type: ${transaction.type} (${transactionType})${amount}; direction: ${direction}; filter: ${filter}`;
 
-    this.logger.debug(
-      `[ADAMANT js-api Socket] Received transaction ${transaction.id ?? '(without id)'} (type: ${transaction.type}, direction: ${direction}, filter: ${filter}).`,
-    );
-
-    if (filter !== 'allDirections' && !directions.includes(filter)) {
+    if (shouldDiscard) {
+      this.logger.debug(
+        `[ADAMANT js-api Socket] Discarding transaction ${transaction.id ?? '(without id)'}: ${details}.`,
+      );
       return;
     }
+
+    this.logger.debug(
+      `[ADAMANT js-api Socket] Processing transaction ${transaction.id ?? '(without id)'}: ${details}.`,
+    );
 
     const handlers = this.transactionHandlers[transaction.type as T] ?? [];
 
@@ -519,7 +534,18 @@ export class WebSocketClient {
     }
 
     if (transaction.type === TransactionType.CHAT_MESSAGE) {
-      const messageType = transaction.asset.chat.type as MessageType;
+      const messageType = transaction.asset?.chat?.type as
+        | MessageType
+        | undefined;
+      if (messageType === undefined) {
+        this.errorHandler(
+          new TypeError(
+            'Received a malformed chat transaction without asset.chat.type',
+          ),
+        );
+        return;
+      }
+
       for (const handler of this.messageHandlers[messageType] ?? []) {
         try {
           await handler(transaction);

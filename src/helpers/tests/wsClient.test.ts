@@ -112,6 +112,37 @@ describe('WebSocketClient', () => {
     expect(io).toHaveBeenCalledWith('wss://second.example', expect.any(Object));
   });
 
+  test('refreshes the healthy-node list without replacing a live socket', () => {
+    jest.useFakeTimers();
+    const first = makeSocket();
+    const second = makeSocket();
+    jest
+      .mocked(io)
+      .mockReturnValueOnce(first as never)
+      .mockReturnValueOnce(second as never);
+    const client = new WebSocketClient({
+      admAddress: 'U123456',
+      reconnectionDelay: 100,
+      logger,
+    });
+
+    client.reviseConnection([node()]);
+    first.connected = true;
+    client.reviseConnection([node({ip: '192.0.2.2'})]);
+    expect(io).toHaveBeenCalledTimes(1);
+
+    first.connected = false;
+    first.listeners.disconnect('transport close');
+    jest.advanceTimersByTime(100);
+    expect(io).toHaveBeenLastCalledWith('ws://192.0.2.2:36667', {
+      reconnection: false,
+      timeout: 5000,
+    });
+
+    client.disconnect();
+    jest.useRealTimers();
+  });
+
   test('warns instead of connecting when no node supports sockets', () => {
     const client = new WebSocketClient({admAddress: 'U123456', logger});
     client.reviseConnection([node({socketSupport: false})]);
@@ -290,11 +321,62 @@ describe('WebSocketClient', () => {
     socket.listeners.newTrans({
       ...transaction(TransactionType.SEND),
       id: '123',
+      amount: 100000000,
     });
     await new Promise(resolve => setImmediate(resolve));
 
     expect(output.debug).toHaveBeenCalledWith(
-      '[ADAMANT js-api Socket] Received transaction 123 (type: 0, direction: incoming, filter: incoming).',
+      '[ADAMANT js-api Socket] Processing transaction 123: U654321 -> U123456; type: 0 (SEND); amount: 100000000; direction: incoming; filter: incoming.',
+    );
+  });
+
+  test('marks transactions rejected by the direction filter as discarded', async () => {
+    const socket = makeSocket();
+    jest.mocked(io).mockReturnValue(socket as never);
+    const debugLogger = new Logger('debug', output);
+    const handler = jest.fn();
+    const client = new WebSocketClient({
+      admAddress: 'U123456',
+      direction: 'outgoing',
+      logger: debugLogger,
+    }).on(handler);
+    client.reviseConnection([node()]);
+
+    socket.listeners.newTrans({
+      ...transaction(TransactionType.SEND),
+      id: '456',
+      amount: 50000000,
+    });
+    await new Promise(resolve => setImmediate(resolve));
+
+    expect(output.debug).toHaveBeenCalledWith(
+      '[ADAMANT js-api Socket] Discarding transaction 456: U654321 -> U123456; type: 0 (SEND); amount: 50000000; direction: incoming; filter: outgoing.',
+    );
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  test('reports malformed chat transactions without an unhandled rejection', async () => {
+    const socket = makeSocket();
+    jest.mocked(io).mockReturnValue(socket as never);
+    const caught = jest.fn();
+    const client = new WebSocketClient({
+      admAddress: 'U123456',
+      logger,
+    })
+      .onMessage(jest.fn())
+      .catch(caught);
+    client.reviseConnection([node()]);
+
+    socket.listeners.newTrans({
+      ...transaction(TransactionType.CHAT_MESSAGE),
+      asset: {},
+    });
+    await new Promise(resolve => setImmediate(resolve));
+
+    expect(caught).toHaveBeenCalledWith(
+      new TypeError(
+        'Received a malformed chat transaction without asset.chat.type',
+      ),
     );
   });
 
@@ -418,6 +500,42 @@ describe('WebSocketClient', () => {
     expect(caught).toHaveBeenCalledTimes(1);
     expect(failed.removeAllListeners).toHaveBeenCalled();
     expect(failed.disconnect).toHaveBeenCalled();
+  });
+
+  test('resets the retry budget for a fresh connection cycle', () => {
+    jest.useFakeTimers();
+    const first = makeSocket();
+    const retry = makeSocket();
+    const fresh = makeSocket();
+    const freshRetry = makeSocket();
+    jest
+      .mocked(io)
+      .mockReturnValueOnce(first as never)
+      .mockReturnValueOnce(retry as never)
+      .mockReturnValueOnce(fresh as never)
+      .mockReturnValueOnce(freshRetry as never);
+    const caught = jest.fn();
+    const client = new WebSocketClient({
+      admAddress: 'U123456',
+      maxTries: 1,
+      reconnectionDelay: 100,
+      logger,
+    }).catch(caught);
+
+    client.reviseConnection([node()]);
+    first.listeners.connect_error(new Error('first failure'));
+    jest.advanceTimersByTime(100);
+    retry.listeners.connect_error(new Error('retry failure'));
+    expect(caught).toHaveBeenCalledTimes(1);
+
+    client.reviseConnection([node()]);
+    fresh.listeners.connect_error(new Error('fresh failure'));
+    expect(caught).toHaveBeenCalledTimes(1);
+    jest.advanceTimersByTime(100);
+    expect(io).toHaveBeenCalledTimes(4);
+
+    client.disconnect();
+    jest.useRealTimers();
   });
 
   test('routes synchronous and asynchronous handler errors to catch()', async () => {
