@@ -123,7 +123,7 @@ pnpm test:package
 pnpm lint
 ```
 
-`pnpm test:package` packs the current working tree and installs its tarball into a temporary consumer project. It verifies CommonJS and ESM imports, package subpaths, runtime helpers, and TypeScript declarations without using the published npm version.
+`pnpm test:package` packs the current working tree and installs its tarball into a temporary consumer project. It verifies CommonJS and ESM imports, package subpaths, runtime helpers, and TypeScript declarations without using the published npm version. Edit [`scripts/package-test/consumer.ts`](./scripts/package-test/consumer.ts) to extend the consumer scenario.
 
 Run the deterministic transaction ID example directly on Node.js 22 or newer:
 

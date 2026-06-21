@@ -1,5 +1,6 @@
 import {execFileSync} from 'node:child_process';
 import {
+  copyFileSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -14,6 +15,12 @@ const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const temporaryRoot = mkdtempSync(join(tmpdir(), 'adamant-api-package-'));
 const packedDirectory = join(temporaryRoot, 'packed');
 const consumerDirectory = join(temporaryRoot, 'consumer');
+const consumerFixture = join(
+  projectRoot,
+  'scripts',
+  'package-test',
+  'consumer.ts',
+);
 
 const run = (command, args, cwd) =>
   execFileSync(command, args, {
@@ -65,36 +72,7 @@ try {
     consumerDirectory,
   );
 
-  writeFileSync(
-    join(consumerDirectory, 'consumer.mjs'),
-    `import assert from 'node:assert/strict';
-import {AdamantApi, admToSats, createKeypairFromPassphrase} from 'adamant-api';
-import {AdamantApi as ExplicitAdamantApi} from 'adamant-api/adm';
-import {AdamantApi as ApiEntryAdamantApi} from 'adamant-api/api';
-import {getTransactionId} from 'adamant-api/transactions';
-import {coinMetadata} from 'adamant-api/metadata';
-import {btc} from 'adamant-api/coins/btc';
-import {dash} from 'adamant-api/coins/dash';
-import {doge} from 'adamant-api/coins/doge';
-import {eth} from 'adamant-api/coins/eth';
-
-assert.equal(AdamantApi, ExplicitAdamantApi);
-assert.equal(AdamantApi, ApiEntryAdamantApi);
-assert.equal(admToSats(1.25), 125000000);
-assert.equal(typeof createKeypairFromPassphrase('package test passphrase with enough characters').publicKey, 'object');
-assert.equal(typeof getTransactionId, 'function');
-assert.equal(coinMetadata.ADM.decimals, 8);
-assert.equal(typeof btc.keys, 'function');
-assert.equal(typeof dash.isValidAddress, 'function');
-assert.equal(typeof doge.isValidAddress, 'function');
-assert.equal(typeof eth.keys, 'function');
-
-const api = new AdamantApi({nodes: ['https://node.example'], checkHealthAtStartup: false});
-assert.equal(api.node, 'https://node.example');
-
-console.log('ESM package imports passed.');
-`,
-  );
+  copyFileSync(consumerFixture, join(consumerDirectory, 'consumer.ts'));
 
   writeFileSync(
     join(consumerDirectory, 'consumer.cjs'),
@@ -107,23 +85,6 @@ assert.equal(typeof root.getTransactionId, 'function');
 assert.equal(typeof btc.isValidAddress, 'function');
 
 console.log('CommonJS package imports passed.');
-`,
-  );
-
-  writeFileSync(
-    join(consumerDirectory, 'consumer.ts'),
-    `import {AdamantApi, type AdamantAddress} from 'adamant-api';
-import {btc} from 'adamant-api/coins/btc';
-
-const address: AdamantAddress = 'U123456';
-const api = new AdamantApi({
-  nodes: ['https://node.example'],
-  checkHealthAtStartup: false,
-});
-
-void address;
-void api;
-void btc.isValidAddress('1BoatSLRHtKNngkdXEeobR76b53LETtpyT');
 `,
   );
 
@@ -149,7 +110,11 @@ void btc.isValidAddress('1BoatSLRHtKNngkdXEeobR76b53LETtpyT');
   );
 
   console.log('Testing the installed package...');
-  run(process.execPath, ['consumer.mjs'], consumerDirectory);
+  run(
+    process.execPath,
+    ['--experimental-strip-types', 'consumer.ts'],
+    consumerDirectory,
+  );
   run(process.execPath, ['consumer.cjs'], consumerDirectory);
   run(
     join(projectRoot, 'node_modules', '.bin', 'tsc'),
