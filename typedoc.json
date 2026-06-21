@@ -1,0 +1,29 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "plugin": ["typedoc-plugin-markdown", "typedoc-vitepress-theme"],
+  "entryPoints": [
+    "src/index.ts",
+    "src/adm/index.ts",
+    "src/api/index.ts",
+    "src/helpers/transactions/index.ts",
+    "src/metadata/index.ts",
+    "src/coins/btc.ts",
+    "src/coins/eth.ts",
+    "src/coins/dash.ts",
+    "src/coins/doge.ts"
+  ],
+  "entryPointStrategy": "resolve",
+  "tsconfig": "tsconfig.json",
+  "out": "docs/api",
+  "readme": "none",
+  "githubPages": false,
+  "hideGenerator": true,
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "entryFileName": "index",
+  "indexFormat": "table",
+  "parametersFormat": "table",
+  "useCodeBlocks": true,
+  "expandObjects": true,
+  "docsRoot": "docs"
+}

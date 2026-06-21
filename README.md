@@ -2,6 +2,8 @@
 
 `adamant-api` is the TypeScript/Node.js SDK for the ADAMANT blockchain. It provides resilient ADM node access, account and transaction primitives, encrypted messaging, WebSocket subscriptions, and deterministic helpers for supported external wallets.
 
+📚 **Documentation:** [js.docs.adamant.im](https://js.docs.adamant.im)
+
 ## Features
 
 - Automatic ADM node health checks, retries, failover, and height-aware node selection
@@ -152,7 +154,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for repository conventions, testing exp
 - [ADAMANT schema source](https://github.com/Adamant-im/adamant-schema)
 - [ADAMANT wallet metadata](https://github.com/Adamant-im/adamant-wallets)
 - [ADAMANT blockchain explorer](https://explorer.adamant.im/)
-- [Package documentation and examples](https://github.com/Adamant-im/adamant-api-jsclient/wiki)
+- [Package documentation and examples](https://js.docs.adamant.im)
 - [Changelog and releases](https://github.com/Adamant-im/adamant-api-jsclient/releases)
 - [Issues and feature requests](https://github.com/Adamant-im/adamant-api-jsclient/issues)
 

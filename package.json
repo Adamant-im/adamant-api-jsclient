@@ -36,7 +36,7 @@
     "bitcoin",
     "ethereum"
   ],
-  "homepage": "https://github.com/Adamant-im/adamant-api-jsclient#readme",
+  "homepage": "https://js.docs.adamant.im",
   "bugs": {
     "url": "https://github.com/Adamant-im/adamant-api-jsclient/issues"
   },
@@ -110,6 +110,10 @@
     "api-types:check": "node scripts/sync-api-types.mjs --check",
     "metadata:sync": "node scripts/sync-wallet-metadata.mjs",
     "metadata:check": "node scripts/sync-wallet-metadata.mjs --check",
+    "docs:api": "typedoc",
+    "docs:dev": "pnpm docs:api && vitepress dev docs",
+    "docs:build": "pnpm docs:api && vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "pretest": "npm run build && npm run typecheck",
     "posttest": "npm run lint",
     "prepack": "npm run build"
@@ -149,7 +153,11 @@
     "prettier": "3.8.4",
     "swagger-typescript-api": "13.12.2",
     "ts-jest": "^29.4.11",
-    "typescript": "~6.0.3"
+    "typedoc": "^0.28.0",
+    "typedoc-plugin-markdown": "^4.4.0",
+    "typedoc-vitepress-theme": "^1.1.2",
+    "typescript": "~6.0.3",
+    "vitepress": "^1.6.4"
   },
   "publishConfig": {
     "access": "public"
