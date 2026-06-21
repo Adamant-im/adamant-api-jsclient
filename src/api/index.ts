@@ -169,6 +169,48 @@ const publicKeysCache: {
   [address: string]: string;
 } = {};
 
+const formatAxiosError = (error: AxiosError) => {
+  const aggregateErrors =
+    typeof error.cause === 'object' &&
+    error.cause !== null &&
+    'errors' in error.cause &&
+    Array.isArray(error.cause.errors)
+      ? error.cause.errors
+      : undefined;
+
+  if (aggregateErrors) {
+    const pending: unknown[] = [...aggregateErrors];
+    const messages: string[] = [];
+
+    while (pending.length) {
+      const cause = pending.shift();
+
+      if (
+        typeof cause === 'object' &&
+        cause !== null &&
+        'errors' in cause &&
+        Array.isArray(cause.errors)
+      ) {
+        pending.push(...cause.errors);
+      } else if (cause instanceof Error && cause.message.trim()) {
+        messages.push(cause.message.trim());
+      } else if (cause !== undefined) {
+        messages.push(String(cause));
+      }
+    }
+
+    if (messages.length) {
+      return [...new Set(messages)].join('; ');
+    }
+  }
+
+  if (error.message.trim()) {
+    return `${error.name}: ${error.message.trim()}`;
+  }
+
+  return error.code ? `${error.name} (${error.code})` : error.name;
+};
+
 /**
  * Resilient client for the public ADAMANT Node HTTP API.
  *
@@ -215,16 +257,17 @@ export class AdamantApi extends NodeManager {
         const {response} = error;
 
         const nodeStatus = response?.status
-          ? `Request to ${url} failed with ${response.status} status code`
-          : `Node ${url} hasn't returned its status`;
+          ? `Request to ${url} failed with HTTP ${response.status}`
+          : `Request to ${url} failed`;
+        const errorDetails = formatAxiosError(error);
 
-        const logMessage = `[ADAMANT js-api] Get-request: ${nodeStatus}, ${error}${
+        const logMessage = `[ADAMANT js-api] ${method} request: ${nodeStatus}. ${errorDetails}${
           response?.data ? '. Message: ' + response.data.toString().trim() : ''
         }.`;
 
         if (retryNo <= maxRetries) {
           logger.log(
-            `${logMessage} Try ${retryNo} of ${maxRetries}. Retrying…`,
+            `${logMessage} Try ${retryNo}/${maxRetries}. Retrying…`,
           );
 
           await this.updateNodes();
@@ -235,7 +278,7 @@ export class AdamantApi extends NodeManager {
 
         return {
           success: false,
-          errorMessage: `${error}`,
+          errorMessage: `${errorDetails}.`,
         };
       }
 

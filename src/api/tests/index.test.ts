@@ -70,13 +70,33 @@ describe('AdamantApi HTTP requests', () => {
     request.mockRejectedValueOnce(new AxiosError('offline'));
     await expect(api.get('status')).resolves.toEqual({
       success: false,
-      errorMessage: 'AxiosError: offline',
+      errorMessage:
+        'AxiosError: offline.',
     });
 
     request.mockRejectedValueOnce(new Error('boom'));
     await expect(api.get('status')).resolves.toEqual({
       success: false,
       errorMessage: 'Error: boom',
+    });
+  });
+
+  test('expands aggregate connection failures into actionable errors', async () => {
+    const api = createApi();
+    const ipv6Error = new Error('connect ECONNREFUSED ::1:36666');
+    const ipv4Error = new Error('connect ECONNREFUSED 127.0.0.1:36666');
+    const aggregateError = Object.assign(new Error(), {
+      name: 'AggregateError',
+      errors: [ipv6Error, ipv4Error],
+    });
+    request.mockRejectedValueOnce(
+      AxiosError.from(aggregateError, 'ECONNREFUSED'),
+    );
+
+    await expect(api.get('blocks')).resolves.toEqual({
+      success: false,
+      errorMessage:
+        'connect ECONNREFUSED ::1:36666; connect ECONNREFUSED 127.0.0.1:36666.',
     });
   });
 });
