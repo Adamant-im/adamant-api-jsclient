@@ -8,7 +8,7 @@ describe('package module boundaries', () => {
       process.execPath,
       [
         '-e',
-        "require('./dist'); console.log(Object.keys(require.cache).filter((file) => file.includes('/dist/coins/')).join('\\n'))",
+        "require('./dist'); console.log(Object.keys(require.cache).filter((file) => /[\\\\/]dist[\\\\/]coins[\\\\/]/.test(file)).join('\\n'))",
       ],
       {cwd: projectRoot, encoding: 'utf8'},
     ).trim();

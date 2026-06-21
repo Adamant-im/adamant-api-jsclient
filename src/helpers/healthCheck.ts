@@ -43,11 +43,11 @@ const hasMinVersion = (version: string | undefined, minVersion?: string) => {
   const coercedVersion = semver.coerce(version);
   const coercedMinVersion = semver.coerce(minVersion);
 
-  if (!coercedVersion || !coercedMinVersion) {
-    return (version ?? '') >= minVersion;
-  }
-
-  return semver.gte(coercedVersion, coercedMinVersion);
+  return Boolean(
+    coercedVersion &&
+    coercedMinVersion &&
+    semver.gte(coercedVersion, coercedMinVersion),
+  );
 };
 
 /** Selects healthy, synchronized nodes and coordinates socket reconnection. */
@@ -80,9 +80,9 @@ export class NodeManager {
     this.node = nodes[0];
 
     if (checkHealthAtStartup) {
-      void this.updateNodes(true);
+      this.updateNodesSafely();
 
-      setInterval(() => this.updateNodes(true), CHECK_NODES_INTERVAL);
+      setInterval(() => this.updateNodesSafely(), CHECK_NODES_INTERVAL);
     } else {
       this.ready();
     }
@@ -113,6 +113,15 @@ export class NodeManager {
     this.initialized = true;
   }
 
+  private updateNodesSafely() {
+    void this.updateNodes(true).catch(error => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `[ADAMANT js-api] Health check: Unexpected error while updating nodes: ${message}`,
+      );
+    });
+  }
+
   async updateNodes(isPlannedUpdate = false) {
     if (this.isCheckingNodes) {
       return;
@@ -120,21 +129,23 @@ export class NodeManager {
 
     this.isCheckingNodes = true;
 
-    if (!isPlannedUpdate) {
-      this.logger.warn(
-        '[ADAMANT js-api] Health check: Forcing to update active nodes…',
-      );
+    try {
+      if (!isPlannedUpdate) {
+        this.logger.warn(
+          '[ADAMANT js-api] Health check: Forcing to update active nodes…',
+        );
+      }
+
+      const activeNodes = await this.checkNodes();
+
+      await this.chooseNode(activeNodes, !isPlannedUpdate);
+
+      if (!this.initialized) {
+        this.ready();
+      }
+    } finally {
+      this.isCheckingNodes = false;
     }
-
-    const activeNodes = await this.checkNodes();
-
-    await this.chooseNode(activeNodes, !isPlannedUpdate);
-
-    if (!this.initialized) {
-      this.ready();
-    }
-
-    this.isCheckingNodes = false;
   }
 
   async chooseNode(activeNodes: ActiveNode[], forceChangeActiveNode?: boolean) {
@@ -164,11 +175,10 @@ export class NodeManager {
     if (incompatibleVersionCount) {
       for (const node of activeNodes) {
         if (!compatibleNodes.includes(node)) {
-          const nodeVersion = node.version
-            ? node.version.startsWith('v')
-              ? node.version
-              : `v${node.version}`
-            : 'unknown';
+          const parsedVersion = semver.coerce(node.version);
+          const nodeVersion = parsedVersion
+            ? `v${parsedVersion.version}`
+            : (node.version ?? 'unknown');
           logger.warn(
             `[ADAMANT js-api] Health check: Node ${node.node} version ${nodeVersion} is below minimum required version ${minVersionLabel}`,
           );

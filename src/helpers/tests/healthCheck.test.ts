@@ -158,6 +158,24 @@ describe('NodeManager', () => {
     );
   });
 
+  test('treats an unparseable node version as incompatible', async () => {
+    const manager = new NodeManager(logger, {
+      nodes: ['https://unknown', 'https://current'],
+      minVersion: '0.9.0',
+      checkHealthAtStartup: false,
+    });
+    const unknown = activeNode('unknown', 100);
+    unknown.version = 'development';
+    const current = activeNode('current', 100);
+
+    await manager.chooseNode([unknown, current]);
+
+    expect(manager.node).toBe('https://current');
+    expect(output.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Node https://unknown version development'),
+    );
+  });
+
   test('checks nodes and retains parsed health and socket data', async () => {
     const manager = new NodeManager(logger, {
       nodes: ['http://127.0.0.1:36666', 'https://offline.example'],
@@ -238,6 +256,22 @@ describe('NodeManager', () => {
     expect(update).toHaveBeenCalledWith(true);
     jest.advanceTimersByTime(5 * 60 * 1000);
     expect(update).toHaveBeenCalledTimes(2);
+    update.mockRestore();
+    jest.useRealTimers();
+  });
+
+  test('reports unexpected errors from scheduled health checks', async () => {
+    jest.useFakeTimers();
+    const update = jest
+      .spyOn(NodeManager.prototype, 'updateNodes')
+      .mockRejectedValue(new Error('unexpected failure'));
+
+    new NodeManager(logger, {nodes: ['https://one']});
+    await Promise.resolve();
+
+    expect(output.error).toHaveBeenCalledWith(
+      '[ADAMANT js-api] Health check: Unexpected error while updating nodes: unexpected failure',
+    );
     update.mockRestore();
     jest.useRealTimers();
   });

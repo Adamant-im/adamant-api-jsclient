@@ -4,9 +4,10 @@ const requestedArguments = process.argv.slice(2);
 const jestArguments = requestedArguments.length
   ? ['--coverage=false', ...requestedArguments]
   : [];
+const jestExecutable = process.platform === 'win32' ? 'jest.cmd' : 'jest';
 
 const exitCode = await new Promise((resolve, reject) => {
-  const child = spawn('jest', jestArguments, {stdio: 'inherit'});
+  const child = spawn(jestExecutable, jestArguments, {stdio: 'inherit'});
 
   child.once('error', reject);
   child.once('exit', (code, signal) => {

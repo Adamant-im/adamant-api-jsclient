@@ -348,7 +348,7 @@ describe('validateMessage', () => {
     );
   });
 
-  test('should return false for an empty json signal message', () => {
+  test('should return true for an empty json signal message', () => {
     expect(validator.validateMessage('{}', MessageType.Signal).success).toBe(
       true,
     );
