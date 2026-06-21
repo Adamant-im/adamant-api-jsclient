@@ -510,7 +510,7 @@ export class WebSocketClient {
       transaction.amount === undefined || transaction.amount === null
         ? ''
         : `; amount: ${transaction.amount}`;
-    const details = `${transaction.senderId ?? '(unknown sender)'} -> ${transaction.recipientId ?? '(no recipient)'}; type: ${transaction.type} (${transactionType})${amount}; direction: ${direction}; filter: ${filter}`;
+    const details = `${transaction.senderId ?? '(unknown sender)'} -> ${transaction.recipientId ?? '(no recipient)'}; type: ${transaction.type} (${transactionType})${amount}; direction: ${direction} (filter: ${filter})`;
 
     if (shouldDiscard) {
       this.logger.debug(

@@ -326,7 +326,7 @@ describe('WebSocketClient', () => {
     await new Promise(resolve => setImmediate(resolve));
 
     expect(output.debug).toHaveBeenCalledWith(
-      '[ADAMANT js-api Socket] Processing transaction 123: U654321 -> U123456; type: 0 (SEND); amount: 100000000; direction: incoming; filter: incoming.',
+      '[ADAMANT js-api Socket] Processing transaction 123: U654321 -> U123456; type: 0 (SEND); amount: 100000000; direction: incoming (filter: incoming).',
     );
   });
 
@@ -350,7 +350,7 @@ describe('WebSocketClient', () => {
     await new Promise(resolve => setImmediate(resolve));
 
     expect(output.debug).toHaveBeenCalledWith(
-      '[ADAMANT js-api Socket] Discarding transaction 456: U654321 -> U123456; type: 0 (SEND); amount: 50000000; direction: incoming; filter: outgoing.',
+      '[ADAMANT js-api Socket] Discarding transaction 456: U654321 -> U123456; type: 0 (SEND); amount: 50000000; direction: incoming (filter: outgoing).',
     );
     expect(handler).not.toHaveBeenCalled();
   });
