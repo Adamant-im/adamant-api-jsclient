@@ -326,6 +326,8 @@ describe('WebSocketClient', () => {
     client.reviseConnection([node()]);
     socket.listeners.newTrans(transaction(TransactionType.SEND));
     await new Promise(resolve => setImmediate(resolve));
-    expect(output.error).toHaveBeenCalledWith('[ADAMANT js-api Socket] Error: handler failed');
+    expect(output.error).toHaveBeenCalledWith(
+      '[ADAMANT js-api Socket] Error: handler failed',
+    );
   });
 });

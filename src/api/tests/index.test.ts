@@ -400,4 +400,62 @@ describe('AdamantApi query methods', () => {
       '[ADAMANT js-api] `withoutDirectTransfers` is deprecated. Use `includeDirectTransfers` instead.',
     );
   });
+
+  test('warns for the deprecated direct-transfer filter nested under and/or', async () => {
+    const logger = createLogger();
+    const api = new AdamantApi({
+      nodes: ['https://node.example'],
+      checkHealthAtStartup: false,
+      logger,
+    });
+    jest.spyOn(api, 'get').mockResolvedValue({success: true} as never);
+
+    await api.getChatMessages('U123456', 'U654321', {
+      and: {withoutDirectTransfers: 1},
+    });
+    await api.getChatTransactions({or: {withoutDirectTransfers: 0}});
+
+    expect(logger.warn).toHaveBeenCalledTimes(2);
+    expect(logger.warn).toHaveBeenLastCalledWith(
+      '[ADAMANT js-api] `withoutDirectTransfers` is deprecated. Use `includeDirectTransfers` instead.',
+    );
+  });
+
+  test('passes includeDirectTransfers through without a deprecation warning', async () => {
+    const logger = createLogger();
+    const api = new AdamantApi({
+      nodes: ['https://node.example'],
+      checkHealthAtStartup: false,
+      logger,
+    });
+    const get = jest
+      .spyOn(api, 'get')
+      .mockResolvedValue({success: true} as never);
+
+    await api.getChats('U123456', {includeDirectTransfers: true});
+
+    expect(get).toHaveBeenLastCalledWith('chatrooms/U123456', {
+      includeDirectTransfers: true,
+    });
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  test('forwards multi-type and unconfirmed transaction filters', async () => {
+    const api = createApi();
+    const get = jest
+      .spyOn(api, 'get')
+      .mockResolvedValue({success: true} as never);
+
+    await api.getTransactions({
+      types: [0, 8],
+      returnUnconfirmed: 1,
+      and: {type: 8},
+    });
+
+    expect(get).toHaveBeenLastCalledWith('transactions', {
+      types: [0, 8],
+      returnUnconfirmed: 1,
+      'and:type': 8,
+    });
+  });
 });

@@ -187,7 +187,9 @@ export class WebSocketClient {
 
     const supportedCount = this.nodes.length;
     if (!supportedCount) {
-      logger.warn('[ADAMANT js-api Socket] No supported socket nodes at the moment.');
+      logger.warn(
+        '[ADAMANT js-api Socket] No supported socket nodes at the moment.',
+      );
       return;
     }
 
