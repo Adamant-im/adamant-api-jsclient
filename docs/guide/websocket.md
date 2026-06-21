@@ -32,6 +32,11 @@ export {api};
 
 ```ts
 type WsType = 'ws' | 'wss';
+type TransactionDirection =
+  | 'allDirections'
+  | 'self'
+  | 'incoming'
+  | 'outgoing';
 
 interface WsOptions {
   /** ADM address to subscribe to transactions. */
@@ -45,6 +50,9 @@ interface WsOptions {
 
   /** Message (chat asset) types to subscribe to. */
   assetChatTypes?: number[];
+
+  /** Transaction direction delivered to handlers. Default is `allDirections`. */
+  direction?: TransactionDirection;
 
   /** Websocket type: `'wss'` or `'ws'`. `'wss'` is recommended. */
   wsType?: WsType;
@@ -98,6 +106,31 @@ const ws = new WebSocketClient({
 Use the singular `admAddress` for a single account, or `admAddresses` for
 several. While the socket is (re)connecting, transactions are pulled from the
 node's REST API so nothing is missed.
+
+### Filtering by transaction direction
+
+ADAMANT Node sends transactions where a subscribed address is either the sender
+or recipient. The SDK can filter them client-side before calling handlers:
+
+```ts
+api.initSocket({
+  admAddress: config.address,
+  wsType: config.ws_type,
+  direction: 'incoming',
+});
+
+api.socket?.on(transaction => {
+  // Only incoming transactions for config.address are delivered here.
+  txParser(transaction);
+});
+```
+
+Use `incoming` for transactions received by a subscribed address, `outgoing`
+for transactions sent by one, and `self` when sender and recipient are the same
+subscribed address. `allDirections` is the default and preserves the previous
+behavior. A transaction between two different addresses in `admAddresses`
+matches both `incoming` and `outgoing`. Direction filtering requires at least
+one `admAddress` or `admAddresses` entry.
 
 ## Connection lifecycle
 

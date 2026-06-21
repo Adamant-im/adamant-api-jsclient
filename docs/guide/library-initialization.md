@@ -52,14 +52,15 @@ const api = new AdamantApi({
   minVersion: '0.8.0', // default is unset
 
   /**
-   * 'none' (-1) < 'error' (0) < 'warn' (1) < 'info' (2) < 'log' (3).
-   * Only 'none' disables logging. Unknown names such as 'debug' or 'trace'
-   * fall back to 'log'.
+   * 'none' (-1) < 'error' (0) < 'warn' (1) < 'info' (2) < 'log' (3)
+   * < 'debug' (4). Only 'none' disables logging. Unknown names such as
+   * 'trace' fall back to 'log'.
    */
   logLevel: 'info', // default is `3` ('log')
 
   /**
    * Custom logger. MUST implement `error`, `warn`, `info`, and `log` methods.
+   * `debug` is optional and falls back to `log` when omitted.
    */
   logger: customLogger, // default is `console`
 });
@@ -73,18 +74,18 @@ export {api};
 
 ## Log levels
 
-The SDK supports `none`, `error`, `warn`, `info`, and `log`. Only `none` (or
-`LogLevel.None`) disables logging completely. The default is `log`, which emits
-all SDK messages.
+The SDK supports `none`, `error`, `warn`, `info`, `log`, and `debug`. Only
+`none` (or `LogLevel.None`) disables logging completely. The default is `log`;
+use `debug` for verbose diagnostic messages such as received WebSocket
+transaction directions.
 
 Applications sometimes pass their own logger level names through shared
-configuration. Since the SDK has no separate `debug` or `trace` methods,
-unknown string values such as `debug` and `trace` safely fall back to `log`
+configuration. Unknown string values such as `trace` safely fall back to `log`
 instead of disabling output.
 
 ```ts
 new AdamantApi({nodes, logger, logLevel: 'none'}); // no SDK logs
-new AdamantApi({nodes, logger, logLevel: 'debug'}); // falls back to `log`
+new AdamantApi({nodes, logger, logLevel: 'debug'}); // verbose SDK diagnostics
 ```
 
 Then refer to the API module from your other modules:

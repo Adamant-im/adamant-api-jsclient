@@ -52,6 +52,7 @@ describe('WebSocketClient', () => {
     warn: jest.fn(),
     info: jest.fn(),
     log: jest.fn(),
+    debug: jest.fn(),
   };
   const logger = new Logger('log', output);
 
@@ -221,6 +222,80 @@ describe('WebSocketClient', () => {
     expect(rich).toHaveBeenCalledTimes(1);
     expect(signal).toHaveBeenCalledTimes(1);
     expect(socket.emit).toHaveBeenCalledWith('assetChatTypes', [1, 2, 3]);
+  });
+
+  test.each([
+    ['allDirections', 'U654321', 'U999999', true],
+    ['incoming', 'U654321', 'U123456', true],
+    ['incoming', 'U123456', 'U654321', false],
+    ['outgoing', 'U123456', 'U654321', true],
+    ['outgoing', 'U654321', 'U123456', false],
+    ['self', 'U123456', 'U123456', true],
+    ['self', 'U654321', 'U123456', false],
+  ] as const)(
+    'filters %s transactions by subscribed address',
+    async (direction, senderId, recipientId, expected) => {
+      const socket = makeSocket();
+      jest.mocked(io).mockReturnValue(socket as never);
+      const handler = jest.fn();
+      const client = new WebSocketClient({
+        admAddress: 'U123456',
+        direction,
+        logger,
+      }).on(handler);
+      client.reviseConnection([node()]);
+
+      socket.listeners.newTrans({
+        ...transaction(TransactionType.SEND, recipientId),
+        id: `${direction}-transaction`,
+        senderId,
+      });
+      await new Promise(resolve => setImmediate(resolve));
+
+      expect(handler).toHaveBeenCalledTimes(expected ? 1 : 0);
+    },
+  );
+
+  test('treats transfers between subscribed addresses as both directions', async () => {
+    const socket = makeSocket();
+    jest.mocked(io).mockReturnValue(socket as never);
+    const handler = jest.fn();
+    const client = new WebSocketClient({
+      admAddresses: ['U123456', 'U654321'],
+      direction: 'incoming',
+      logger,
+    }).on(handler);
+    client.reviseConnection([node()]);
+
+    socket.listeners.newTrans({
+      ...transaction(TransactionType.SEND, 'U654321'),
+      senderId: 'U123456',
+    });
+    await new Promise(resolve => setImmediate(resolve));
+
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  test('logs received transaction direction at debug level', async () => {
+    const socket = makeSocket();
+    jest.mocked(io).mockReturnValue(socket as never);
+    const debugLogger = new Logger('debug', output);
+    const client = new WebSocketClient({
+      admAddress: 'U123456',
+      direction: 'incoming',
+      logger: debugLogger,
+    }).on(jest.fn());
+    client.reviseConnection([node()]);
+
+    socket.listeners.newTrans({
+      ...transaction(TransactionType.SEND),
+      id: '123',
+    });
+    await new Promise(resolve => setImmediate(resolve));
+
+    expect(output.debug).toHaveBeenCalledWith(
+      '[ADAMANT js-api Socket] Received transaction 123 (type: 0, direction: incoming, filter: incoming).',
+    );
   });
 
   test('reconnects with lifecycle callbacks and supports manual disconnect', () => {

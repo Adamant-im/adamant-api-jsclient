@@ -16,6 +16,16 @@ import type {AdamantAddress} from '../api';
 
 export type WsType = 'ws' | 'wss';
 
+export const transactionDirections = [
+  'allDirections',
+  'self',
+  'incoming',
+  'outgoing',
+] as const;
+
+/** Direction of transactions delivered to WebSocket handlers. */
+export type TransactionDirection = (typeof transactionDirections)[number];
+
 export interface WsOptions {
   /**
    * ADM address to subscribe to. Kept for backward compatibility.
@@ -30,6 +40,13 @@ export interface WsOptions {
 
   /** `transaction.asset.chat.type` values to subscribe to. */
   assetChatTypes?: number[];
+
+  /**
+   * Direction of transactions delivered to handlers. Filtering is performed
+   * client-side against the subscribed ADM address(es). Default is
+   * `allDirections`.
+   */
+  direction?: TransactionDirection;
 
   /**
    * Websocket type: `'wss'` or `'ws'`. `'wss'` is recommended.
@@ -140,6 +157,7 @@ export class WebSocketClient {
       useFastest: false,
       maxTries: 3,
       reconnectionDelay: 5000,
+      direction: 'allDirections',
       ...options,
     };
 
@@ -478,6 +496,18 @@ export class WebSocketClient {
   }
 
   private async handle<T extends EventType>(transaction: AnyTransaction) {
+    const directions = this.getTransactionDirections(transaction);
+    const direction = directions.join('+') || 'unrelated';
+    const filter = this.options.direction ?? 'allDirections';
+
+    this.logger.debug(
+      `[ADAMANT js-api Socket] Received transaction ${transaction.id ?? '(without id)'} (type: ${transaction.type}, direction: ${direction}, filter: ${filter}).`,
+    );
+
+    if (filter !== 'allDirections' && !directions.includes(filter)) {
+      return;
+    }
+
     const handlers = this.transactionHandlers[transaction.type as T] ?? [];
 
     for (const handler of handlers) {
@@ -498,6 +528,32 @@ export class WebSocketClient {
         }
       }
     }
+  }
+
+  private getTransactionDirections(
+    transaction: AnyTransaction,
+  ): Exclude<TransactionDirection, 'allDirections'>[] {
+    const addresses = new Set<AdamantAddress>([
+      ...(this.options.admAddress ? [this.options.admAddress] : []),
+      ...(this.options.admAddresses ?? []),
+    ]);
+    const senderId = transaction.senderId as AdamantAddress;
+    const recipientId = transaction.recipientId as AdamantAddress | null;
+    const isSender = addresses.has(senderId);
+    const isRecipient = recipientId !== null && addresses.has(recipientId);
+
+    if (isSender && isRecipient && senderId === recipientId) {
+      return ['self'];
+    }
+
+    const directions: Exclude<TransactionDirection, 'allDirections'>[] = [];
+    if (isRecipient) {
+      directions.push('incoming');
+    }
+    if (isSender) {
+      directions.push('outgoing');
+    }
+    return directions;
   }
 
   /**
