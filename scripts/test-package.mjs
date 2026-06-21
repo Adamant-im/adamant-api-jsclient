@@ -184,7 +184,7 @@ console.log('CommonJS package imports passed.');
     ],
     commonJsConsumerDirectory,
   );
-  console.log('\nRunning consumer.cjs…');
+  console.log('\nRunning consumer.cjs…\n');
   await run(process.execPath, ['consumer.cjs'], consumerDirectory);
 
   console.log('Checking TypeScript declarations…');
@@ -195,7 +195,7 @@ console.log('CommonJS package imports passed.');
   );
 
   console.log('TypeScript package declarations passed.');
-  console.log('Local package test passed.');
+  console.log('Local package test passed.\n');
 } finally {
   rmSync(temporaryRoot, {recursive: true, force: true});
 }
