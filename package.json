@@ -88,7 +88,7 @@
     "types/"
   ],
   "scripts": {
-    "test": "jest",
+    "test": "node scripts/run-tests.mjs",
     "test:package": "node scripts/test-package.mjs",
     "lint": "gts lint",
     "prepare": "husky",
