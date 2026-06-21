@@ -39,13 +39,18 @@ const api = new AdamantApi({
     'https://clown.adamant.im',
     'https://lake.adamant.im',
   ],
+  checkHealthAtStartup: true,
 });
 
-const response = await api.getBlocks();
+api.onReady(async () => {
+  const response = await api.getBlocks();
 
-if (response.success) {
-  console.log(response.blocks);
-}
+  if (response.success) {
+    console.log(response.blocks);
+  } else {
+    console.error(response.errorMessage);
+  }
+});
 ```
 
 CommonJS remains supported:
