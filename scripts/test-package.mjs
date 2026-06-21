@@ -109,7 +109,7 @@ console.log('CommonJS package imports passed.');
     )}\n`,
   );
 
-  console.log('Testing the installed package...');
+  console.log('\nTesting the installed package...');
   run(
     process.execPath,
     ['--experimental-strip-types', 'consumer.ts'],
