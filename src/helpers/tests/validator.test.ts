@@ -421,8 +421,11 @@ describe('validateMessage', () => {
 
   test('should NOT allow a string rich message', () => {
     expect(
-      validator.validateMessage('not a json string', MessageType.Rich).success,
-    ).toBe(false);
+      validator.validateMessage('not a json string', MessageType.Rich),
+    ).toEqual({
+      success: false,
+      error: "For rich message, 'message' should be a JSON string",
+    });
   });
 });
 

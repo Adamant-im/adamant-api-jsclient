@@ -189,7 +189,12 @@ console.log('CommonJS package imports passed.');
 
   console.log('Checking TypeScript declarations…');
   await run(
-    join(projectRoot, 'node_modules', '.bin', 'tsc'),
+    join(
+      projectRoot,
+      'node_modules',
+      '.bin',
+      process.platform === 'win32' ? 'tsc.cmd' : 'tsc',
+    ),
     ['--project', 'tsconfig.json'],
     consumerDirectory,
   );

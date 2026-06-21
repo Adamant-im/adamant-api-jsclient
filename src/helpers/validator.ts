@@ -93,7 +93,7 @@ export const validateMessage = (
     if (!success || typeof result !== 'object' || result === null) {
       return {
         success: false,
-        error: "For rich and signal message, 'message' should be a JSON string",
+        error: "For rich message, 'message' should be a JSON string",
       };
     }
 

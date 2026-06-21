@@ -66,7 +66,7 @@ interface WsOptions {
   reconnectionDelay?: number;
 
   /** Logger for websocket events. Default logger is `console`. */
-  logger?: Logger | null;
+  logger?: Logger;
 }
 ```
 
