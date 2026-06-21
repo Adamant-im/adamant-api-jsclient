@@ -66,6 +66,54 @@ describe('AdamantApi HTTP requests', () => {
     expect(request).toHaveBeenCalledTimes(2);
   });
 
+  test('retries only requests that are safe to replay', async () => {
+    const api = createApi(1);
+    jest.spyOn(api, 'updateNodes').mockResolvedValue();
+
+    request.mockRejectedValueOnce(
+      new AxiosError('server error', undefined, undefined, undefined, {
+        status: 500,
+        data: {error: 'Invalid transaction'},
+      } as never),
+    );
+    await expect(api.post('transactions', {})).resolves.toEqual({
+      success: false,
+      errorMessage: 'Invalid transaction.',
+    });
+    expect(request).toHaveBeenCalledTimes(1);
+
+    request.mockRejectedValueOnce(
+      new AxiosError('bad request', undefined, undefined, undefined, {
+        status: 400,
+      } as never),
+    );
+    await api.get('transactions');
+    expect(request).toHaveBeenCalledTimes(2);
+
+    request.mockRejectedValueOnce(
+      new AxiosError('server error', undefined, undefined, undefined, {
+        status: 500,
+        data: {error: 'Invalid query'},
+      } as never),
+    );
+    await expect(api.get('transactions')).resolves.toEqual({
+      success: false,
+      errorMessage: 'Invalid query.',
+    });
+    expect(request).toHaveBeenCalledTimes(3);
+
+    request
+      .mockRejectedValueOnce(
+        new AxiosError('server error', undefined, undefined, undefined, {
+          status: 503,
+        } as never),
+      )
+      .mockResolvedValueOnce({data: {success: true}});
+    await expect(api.get('transactions')).resolves.toEqual({success: true});
+    expect(request).toHaveBeenCalledTimes(5);
+    expect(api.updateNodes).toHaveBeenCalledTimes(1);
+  });
+
   test('returns structured errors for exhausted Axios and unexpected failures', async () => {
     const api = createApi();
     request.mockRejectedValueOnce(new AxiosError('offline'));
@@ -189,6 +237,9 @@ describe('AdamantApi transaction methods', () => {
     await expect(api.voteForDelegate('short', [])).resolves.toMatchObject({
       success: false,
     });
+    await expect(api.createAccount('invalid')).resolves.toMatchObject({
+      success: false,
+    });
     expect(post).not.toHaveBeenCalled();
   });
 
@@ -235,13 +286,18 @@ describe('AdamantApi query methods', () => {
     const get = jest
       .spyOn(api, 'get')
       .mockResolvedValue({success: true} as never);
+    const post = jest
+      .spyOn(api, 'post')
+      .mockResolvedValue({success: true} as never);
     const calls: Array<() => Promise<unknown>> = [
       () => api.getAccountInfo({address: 'U123456'}),
       () => api.getAccountBalance('U123456'),
+      () => api.createAccount(recipientPublicKey),
       () => api.getBlock('block'),
       () => api.getBlocks({limit: 1}),
       () => api.getChats('U123456', {or: {type: 0}}),
       () => api.getChatMessages('U123456', 'U654321', {and: {limit: 1}}),
+      () => api.getChatTransactions({returnUnconfirmed: 1}),
       () => api.getDelegates({limit: 1}),
       () => api.getDelegate({username: 'delegate'}),
       () => api.searchDelegates('del'),
@@ -250,7 +306,8 @@ describe('AdamantApi query methods', () => {
       () => api.getNextForgers(10),
       () => api.getVoters(recipientPublicKey),
       () => api.getVoteData('U123456'),
-      () => api.getPeers(),
+      () => api.getPeers({limit: 10, os: 'linux'}),
+      () => api.getPeer('192.0.2.1', 36666),
       () => api.getLoadingStatus(),
       () => api.getSyncStatus(),
       () => api.getPingStatus(),
@@ -266,7 +323,10 @@ describe('AdamantApi query methods', () => {
       () => api.getSupply(),
       () => api.getStatus(),
       () => api.getNodeStatus(),
+      () => api.getKVS({key: 'profile', returnUnconfirmed: 1}),
+      () => api.setKVS({transaction: {} as never}),
       () => api.getTransactions({or: {senderId: 'U123456'}}),
+      () => api.sendTransaction({transaction: {} as never}),
       () => api.getTransaction('transaction', {and: {returnAsset: 1}}),
       () => api.getTransactionsCount(),
       () => api.getQueuedTransactions(),
@@ -283,6 +343,7 @@ describe('AdamantApi query methods', () => {
       'blocks',
       'chatrooms/U123456',
       'chatrooms/U123456/U654321',
+      'chats/get',
       'delegates',
       'delegates/get',
       'delegates/search',
@@ -292,6 +353,7 @@ describe('AdamantApi query methods', () => {
       'delegates/voters',
       'accounts/delegates',
       'peers',
+      'peers/get',
       'loader/status',
       'loader/status/sync',
       'loader/status/ping',
@@ -307,6 +369,7 @@ describe('AdamantApi query methods', () => {
       'blocks/getSupply',
       'blocks/getStatus',
       'node/status',
+      'states/get',
       'transactions',
       'transactions/get',
       'transactions/count',
@@ -315,5 +378,84 @@ describe('AdamantApi query methods', () => {
       'transactions/unconfirmed',
       'transactions/unconfirmed/get',
     ]);
+    expect(post.mock.calls.map(([endpoint]) => endpoint)).toEqual([
+      'accounts/new',
+      'states/store',
+      'transactions',
+    ]);
+  });
+
+  test('warns when the deprecated direct-transfer filter is used', async () => {
+    const logger = createLogger();
+    const api = new AdamantApi({
+      nodes: ['https://node.example'],
+      checkHealthAtStartup: false,
+      logger,
+    });
+    jest.spyOn(api, 'get').mockResolvedValue({success: true} as never);
+
+    await api.getChats('U123456', {withoutDirectTransfers: true});
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      '[ADAMANT js-api] `withoutDirectTransfers` is deprecated. Use `includeDirectTransfers` instead.',
+    );
+  });
+
+  test('warns for the deprecated direct-transfer filter nested under and/or', async () => {
+    const logger = createLogger();
+    const api = new AdamantApi({
+      nodes: ['https://node.example'],
+      checkHealthAtStartup: false,
+      logger,
+    });
+    jest.spyOn(api, 'get').mockResolvedValue({success: true} as never);
+
+    await api.getChatMessages('U123456', 'U654321', {
+      and: {withoutDirectTransfers: 1},
+    });
+    await api.getChatTransactions({or: {withoutDirectTransfers: 0}});
+
+    expect(logger.warn).toHaveBeenCalledTimes(2);
+    expect(logger.warn).toHaveBeenLastCalledWith(
+      '[ADAMANT js-api] `withoutDirectTransfers` is deprecated. Use `includeDirectTransfers` instead.',
+    );
+  });
+
+  test('passes includeDirectTransfers through without a deprecation warning', async () => {
+    const logger = createLogger();
+    const api = new AdamantApi({
+      nodes: ['https://node.example'],
+      checkHealthAtStartup: false,
+      logger,
+    });
+    const get = jest
+      .spyOn(api, 'get')
+      .mockResolvedValue({success: true} as never);
+
+    await api.getChats('U123456', {includeDirectTransfers: true});
+
+    expect(get).toHaveBeenLastCalledWith('chatrooms/U123456', {
+      includeDirectTransfers: true,
+    });
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  test('forwards multi-type and unconfirmed transaction filters', async () => {
+    const api = createApi();
+    const get = jest
+      .spyOn(api, 'get')
+      .mockResolvedValue({success: true} as never);
+
+    await api.getTransactions({
+      types: [0, 8],
+      returnUnconfirmed: 1,
+      and: {type: 8},
+    });
+
+    expect(get).toHaveBeenLastCalledWith('transactions', {
+      types: [0, 8],
+      returnUnconfirmed: 1,
+      'and:type': 8,
+    });
   });
 });

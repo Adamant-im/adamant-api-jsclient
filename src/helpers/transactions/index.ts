@@ -19,6 +19,16 @@ export type AnyTransactionData = (
 
 export interface BasicTransactionData {
   keyPair: KeyPair;
+  /**
+   * Optional transaction time in milliseconds since the ADAMANT epoch.
+   *
+   * When provided, the second-precision `timestamp` is derived from it with
+   * `Math.floor(timestampMs / 1000)`. The field is attached to the transaction
+   * but is excluded from the signed bytes, so it stays backward compatible:
+   * older nodes ignore it, while upgraded nodes persist it for
+   * millisecond-precision ordering.
+   */
+  timestampMs?: number;
 }
 
 export interface SendTransactionData extends BasicTransactionData {
@@ -50,6 +60,7 @@ export interface StateTransactionData extends BasicTransactionData {
 interface BasicTransaction<T extends TransactionType> {
   type: T;
   timestamp: number;
+  timestampMs?: number;
   amount: number;
   senderPublicKey: string;
   senderId: AdamantAddress;
@@ -60,13 +71,19 @@ interface BasicTransaction<T extends TransactionType> {
 export const createBasicTransaction = <T extends TransactionType>(
   data: AnyTransactionData,
 ): BasicTransaction<T> => {
+  const {timestampMs} = data;
+
   const transaction = {
     type: data.transactionType as T,
-    timestamp: getEpochTime(),
+    timestamp:
+      timestampMs !== undefined
+        ? Math.floor(timestampMs / 1000)
+        : getEpochTime(),
     amount: 0,
     senderPublicKey: data.keyPair.publicKey.toString('hex'),
     senderId: createAddressFromPublicKey(data.keyPair.publicKey),
     asset: {},
+    ...(timestampMs !== undefined ? {timestampMs} : {}),
   };
 
   return transaction;
