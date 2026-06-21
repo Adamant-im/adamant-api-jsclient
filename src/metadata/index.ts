@@ -1,3 +1,10 @@
+/**
+ * Bundled, pinned ADM and external-coin wallet metadata, generated from a
+ * fixed `adamant-wallets` revision so updates stay deterministic and reviewable.
+ *
+ * @module
+ */
+
 import wallets from './wallets.json';
 
 /** Pinned upstream revision used to generate the bundled wallet metadata. */

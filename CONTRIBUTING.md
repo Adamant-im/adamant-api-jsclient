@@ -87,6 +87,26 @@ To update it:
 
 Address regexes, decimals, symbols, explorer links, and wallet-facing blockchain definitions should remain aligned with `adamant-wallets`.
 
+## Documentation site
+
+The documentation site at [js.docs.adamant.im](https://js.docs.adamant.im) is built with [VitePress](https://vitepress.dev). It has two parts:
+
+- **Guides** — hand-written Markdown in `docs/guide/` (plus the landing page `docs/index.md` and the VitePress config in `docs/.vitepress/config.mts`).
+- **API Reference** — generated from source TSDoc comments by [TypeDoc](https://typedoc.org) into `docs/api/` (configured in `typedoc.json`). This directory is generated and gitignored; never edit it by hand. To change the reference, edit the doc comments in `src/`.
+
+Run and build the site locally:
+
+```sh
+pnpm docs:api      # regenerate the API reference from src/ TSDoc into docs/api
+pnpm docs:dev      # generate the reference, then start the dev server (hot reload)
+pnpm docs:build    # generate the reference and build the static site
+pnpm docs:preview  # preview the built static site
+```
+
+`pnpm docs:dev` serves the site at `http://localhost:5173` by default. `docs:dev` and `docs:build` run `docs:api` first, so the API Reference is always regenerated from the current source.
+
+When you change a public export or its TSDoc, run `pnpm docs:api` (or `pnpm docs:dev`) to see the regenerated reference. When you add or rename a guide page, update the sidebar in `docs/.vitepress/config.mts`. The site is deployed to GitHub Pages automatically on push to `master` and on release by `.github/workflows/docs.yml`; you do not deploy it manually.
+
 ## Pull requests
 
 - Use a title in `Type: Short summary` form, for example `Refactor: Add modular coin entry points`.

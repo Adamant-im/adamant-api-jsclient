@@ -2,7 +2,7 @@
 
 module.exports = [
   {
-    ignores: ['dist/**', 'src/api/generated.ts'],
+    ignores: ['dist/**', 'docs/**', 'src/api/generated.ts'],
   },
   ...require('gts'),
   {

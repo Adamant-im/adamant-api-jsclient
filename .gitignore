@@ -8,5 +8,11 @@ test.js
 .editorconfig
 .DS_Store
 
+# docs site
+# Generated API reference (TypeDoc) and VitePress build artifacts
+docs/api/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+
 # ai
 .ai-ignored/

@@ -1,3 +1,10 @@
+/**
+ * Build, hash, and sign ADM transactions (token transfer, chat message, KVS
+ * state, delegate registration, and vote), and compute transaction IDs.
+ *
+ * @module
+ */
+
 import {signTransaction} from './hash';
 
 import {createAddressFromPublicKey} from '../keys';

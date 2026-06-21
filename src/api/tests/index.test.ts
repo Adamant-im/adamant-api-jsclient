@@ -453,9 +453,239 @@ describe('AdamantApi query methods', () => {
     });
 
     expect(get).toHaveBeenLastCalledWith('transactions', {
-      types: [0, 8],
+      'and:types': [0, 8],
       returnUnconfirmed: 1,
       'and:type': 8,
+    });
+  });
+
+  test('combines top-level transaction filters with `and` by default', async () => {
+    const api = createApi();
+    const get = jest
+      .spyOn(api, 'get')
+      .mockResolvedValue({success: true} as never);
+
+    await api.getTransactions({
+      type: 0,
+      recipientId: 'U123456',
+      limit: 20,
+      orderBy: 'timestamp:desc',
+    });
+
+    expect(get).toHaveBeenLastCalledWith('transactions', {
+      'and:type': 0,
+      'and:recipientId': 'U123456',
+      limit: 20,
+      orderBy: 'timestamp:desc',
+    });
+  });
+});
+
+describe('transaction query serialization across endpoints', () => {
+  const spyGet = (api: AdamantApi) =>
+    jest.spyOn(api, 'get').mockResolvedValue({success: true} as never);
+
+  describe('/api/transactions (getTransactions)', () => {
+    test('and-combines a rich filter mix and passes options through', async () => {
+      const api = createApi();
+      const get = spyGet(api);
+
+      await api.getTransactions({
+        senderId: 'U111',
+        recipientId: 'U222',
+        type: 0,
+        minAmount: 1000,
+        maxAmount: 5000,
+        fromHeight: 100,
+        limit: 25,
+        offset: 50,
+        orderBy: 'timestamp:desc',
+        returnAsset: 1,
+        returnUnconfirmed: 1,
+      });
+
+      expect(get).toHaveBeenLastCalledWith('transactions', {
+        'and:senderId': 'U111',
+        'and:recipientId': 'U222',
+        'and:type': 0,
+        'and:minAmount': 1000,
+        'and:maxAmount': 5000,
+        'and:fromHeight': 100,
+        limit: 25,
+        offset: 50,
+        orderBy: 'timestamp:desc',
+        returnAsset: 1,
+        returnUnconfirmed: 1,
+      });
+    });
+
+    test('supports an explicit `or` group mixed with default-and filters', async () => {
+      const api = createApi();
+      const get = spyGet(api);
+
+      await api.getTransactions({
+        type: 8,
+        or: {senderId: 'U111', recipientId: 'U222'},
+        limit: 10,
+      });
+
+      expect(get).toHaveBeenLastCalledWith('transactions', {
+        'and:type': 8,
+        'or:senderId': 'U111',
+        'or:recipientId': 'U222',
+        limit: 10,
+      });
+    });
+
+    test('getTransaction forwards the id alongside and-combined filters', async () => {
+      const api = createApi();
+      const get = spyGet(api);
+
+      await api.getTransaction('T123', {returnAsset: 1, and: {type: 0}});
+
+      expect(get).toHaveBeenLastCalledWith('transactions/get', {
+        id: 'T123',
+        returnAsset: 1,
+        'and:type': 0,
+      });
+    });
+  });
+
+  describe('/api/chats/get (getChatTransactions)', () => {
+    test('and-combines supported filters with pass-through options', async () => {
+      const api = createApi();
+      const get = spyGet(api);
+
+      await api.getChatTransactions({
+        senderId: 'U111',
+        type: 8,
+        fromHeight: 100,
+        limit: 20,
+        orderBy: 'timestamp:desc',
+      });
+
+      expect(get).toHaveBeenLastCalledWith('chats/get', {
+        'and:senderId': 'U111',
+        'and:type': 8,
+        'and:fromHeight': 100,
+        limit: 20,
+        orderBy: 'timestamp:desc',
+      });
+    });
+
+    test('rejects amount filters at the type level (the node ignores them here)', async () => {
+      const api = createApi();
+      const get = spyGet(api);
+
+      await api.getChatTransactions({
+        type: 8,
+        // @ts-expect-error `/api/chats/get` does not support amount filters
+        minAmount: 1000,
+      });
+
+      // The SDK does not strip unsupported filters; it still serializes them,
+      // but the node ignores `minAmount` for this endpoint.
+      expect(get).toHaveBeenLastCalledWith('chats/get', {
+        'and:type': 8,
+        'and:minAmount': 1000,
+      });
+    });
+  });
+
+  describe('/api/chatrooms (getChats, getChatMessages)', () => {
+    test('getChats and-combines `type` and passes chatroom options through', async () => {
+      const api = createApi();
+      const get = spyGet(api);
+
+      await api.getChats('U123456', {
+        type: 8,
+        includeDirectTransfers: true,
+        limit: 15,
+        offset: 30,
+        orderBy: 'timestamp:desc',
+      });
+
+      expect(get).toHaveBeenLastCalledWith('chatrooms/U123456', {
+        'and:type': 8,
+        includeDirectTransfers: true,
+        limit: 15,
+        offset: 30,
+        orderBy: 'timestamp:desc',
+      });
+    });
+
+    test('getChatMessages and-combines filters and keeps `userId` as an option', async () => {
+      const api = createApi();
+      const get = spyGet(api);
+
+      await api.getChatMessages('U123', 'U456', {
+        type: 8,
+        userId: 'U123',
+        limit: 5,
+      });
+
+      expect(get).toHaveBeenLastCalledWith('chatrooms/U123/U456', {
+        'and:type': 8,
+        userId: 'U123',
+        limit: 5,
+      });
+    });
+
+    test('rejects amount filters at the type level (chatrooms supports `type` only)', async () => {
+      const api = createApi();
+      const get = spyGet(api);
+
+      await api.getChats('U123456', {
+        type: 8,
+        // @ts-expect-error `/api/chatrooms` does not support amount filters
+        maxAmount: 5000,
+      });
+
+      expect(get).toHaveBeenLastCalledWith('chatrooms/U123456', {
+        'and:type': 8,
+        'and:maxAmount': 5000,
+      });
+    });
+  });
+
+  describe('/api/states/get (getKVS)', () => {
+    test('and-combines KVS filters and passes options through', async () => {
+      const api = createApi();
+      const get = spyGet(api);
+
+      await api.getKVS({
+        key: 'eth:address',
+        keyIds: ['eth:address', 'doge:address'],
+        senderId: 'U111',
+        senderIds: ['U111', 'U222'],
+        limit: 10,
+        orderBy: 'timestamp:desc',
+      });
+
+      expect(get).toHaveBeenLastCalledWith('states/get', {
+        'and:key': 'eth:address',
+        'and:keyIds': ['eth:address', 'doge:address'],
+        'and:senderId': 'U111',
+        'and:senderIds': ['U111', 'U222'],
+        limit: 10,
+        orderBy: 'timestamp:desc',
+      });
+    });
+
+    test('rejects amount filters at the type level (states/get filters by key, not amount)', async () => {
+      const api = createApi();
+      const get = spyGet(api);
+
+      await api.getKVS({
+        key: 'eth:address',
+        // @ts-expect-error `/api/states/get` does not support amount filters
+        minAmount: 1000,
+      });
+
+      expect(get).toHaveBeenLastCalledWith('states/get', {
+        'and:key': 'eth:address',
+        'and:minAmount': 1000,
+      });
     });
   });
 });

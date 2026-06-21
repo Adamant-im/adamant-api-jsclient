@@ -1,3 +1,10 @@
+/**
+ * Ethereum wallet helper: deterministic key and address derivation from an
+ * ADAMANT passphrase.
+ *
+ * @module
+ */
+
 import {mnemonicToSeedSync} from 'bip39';
 import BIP32Factory from 'bip32';
 import {keccak256} from 'ethereum-cryptography/keccak.js';
