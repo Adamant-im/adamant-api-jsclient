@@ -299,6 +299,52 @@ describe('WebSocketClient', () => {
     jest.useRealTimers();
   });
 
+  test('cancels a pending reconnect when a new connection is established', () => {
+    jest.useFakeTimers();
+    const first = makeSocket();
+    const second = makeSocket();
+    jest
+      .mocked(io)
+      .mockReturnValueOnce(first as never)
+      .mockReturnValueOnce(second as never);
+    const client = new WebSocketClient({
+      admAddress: 'U123456',
+      reconnectionDelay: 100,
+      logger,
+    });
+
+    client.reviseConnection([node()]);
+    first.listeners.connect();
+    // A dropped connection schedules a reconnect timer.
+    first.listeners.disconnect('transport close');
+    // A health-check refresh reconnects before that timer fires.
+    client.reviseConnection([node()]);
+    jest.advanceTimersByTime(200);
+
+    // The pending timer was cancelled, so no third socket is created.
+    expect(io).toHaveBeenCalledTimes(2);
+    client.disconnect();
+    jest.useRealTimers();
+  });
+
+  test('releases the dead socket when reconnection attempts are exhausted', () => {
+    const failed = makeSocket();
+    jest.mocked(io).mockReturnValueOnce(failed as never);
+    const caught = jest.fn();
+    const client = new WebSocketClient({
+      admAddress: 'U123456',
+      maxTries: 0,
+      logger,
+    }).catch(caught);
+
+    client.reviseConnection([node()]);
+    failed.listeners.connect_error(new Error('offline'));
+
+    expect(caught).toHaveBeenCalledTimes(1);
+    expect(failed.removeAllListeners).toHaveBeenCalled();
+    expect(failed.disconnect).toHaveBeenCalled();
+  });
+
   test('routes synchronous and asynchronous handler errors to catch()', async () => {
     const socket = makeSocket();
     jest.mocked(io).mockReturnValue(socket as never);

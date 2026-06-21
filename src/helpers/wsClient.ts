@@ -240,6 +240,13 @@ export class WebSocketClient {
   public connect() {
     this.manuallyDisconnected = false;
 
+    // Cancel a scheduled reconnection so it can't spin up a second socket on
+    // top of the one we are about to create.
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
+
     if (!this.connection) {
       this.setConnection();
     }
@@ -295,6 +302,11 @@ export class WebSocketClient {
     }
 
     if (this.reconnectTry >= (this.options.maxTries ?? 3)) {
+      // Give up: tear down the dead socket so it can't keep emitting events
+      // and triggering the error handler again.
+      this.connection?.removeAllListeners();
+      this.connection?.disconnect();
+      this.connection = undefined;
       this.errorHandler(new AdamantWsConnectionError(reason, details));
       return;
     }
