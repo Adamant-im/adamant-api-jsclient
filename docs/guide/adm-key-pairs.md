@@ -29,7 +29,8 @@ function createNewPassphrase(): string;
 import {createNewPassphrase} from 'adamant-api';
 
 const passphrase = createNewPassphrase();
-console.log(passphrase); // 'apple banana...'
+// `passphrase` is a 12-word secret like 'apple banana ...'.
+// Store it securely — never log it in real code.
 ```
 
 ## `makeKeypairFromHash()`
@@ -53,7 +54,8 @@ import {createHashFromPassphrase, makeKeypairFromHash} from 'adamant-api';
 const hash = createHashFromPassphrase('apple banana...');
 const keypair = makeKeypairFromHash(hash);
 
-console.log(keypair);
+// `keypair.publicKey` is safe to share; `keypair.privateKey` is a secret —
+// never log it in real code.
 ```
 
 ## `createHashFromPassphrase()`
@@ -72,7 +74,8 @@ import {createNewPassphrase, createHashFromPassphrase} from 'adamant-api';
 const passphrase = createNewPassphrase();
 const hash = createHashFromPassphrase(passphrase);
 
-console.log(`hash: ${hash.toString('hex')}`);
+// `hash` derives the key pair (see makeKeypairFromHash above), so treat it as
+// a secret — never log it in real code.
 ```
 
 ## `createKeypairFromPassphrase()`

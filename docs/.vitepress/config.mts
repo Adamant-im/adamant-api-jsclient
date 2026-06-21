@@ -95,7 +95,6 @@ export default defineConfig({
       pattern:
         'https://github.com/Adamant-im/adamant-api-jsclient/edit/dev/docs/:path',
       text: 'Edit this page on GitHub',
-    }
     },
 
     search: {
