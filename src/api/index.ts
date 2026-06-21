@@ -174,8 +174,6 @@ export interface TransactionQueryParameters {
   toHeight?: number;
   fromTimestamp?: number;
   toTimestamp?: number;
-  minAmount?: number;
-  maxAmount?: number;
   minFee?: number;
   maxFee?: number;
   minConfirmations?: number;
@@ -208,6 +206,10 @@ export interface TransactionsOptions extends TransactionQueryParameters {
   type?: number;
   types?: number[];
   returnAsset?: 1 | 0;
+  // Amount filters are supported only by `/api/transactions`, not by
+  // `/api/chats/get`, `/api/chatrooms`, or `/api/states/get`.
+  minAmount?: number;
+  maxAmount?: number;
 }
 
 export interface KVSOptions extends TransactionQueryParameters {

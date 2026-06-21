@@ -59,6 +59,32 @@ await api.getTransactions({
 An explicit `and: { ... }` wrapper is also still supported and is equivalent to
 passing those fields at the top level.
 
+## Filter support is endpoint-specific
+
+Not every filter is valid on every endpoint — see the node
+[query language](https://docs.adamant.im/api/transactions-query-language.html).
+The most important difference: **amount filters (`minAmount` / `maxAmount`) are
+supported only by `/api/transactions`.** The SDK enforces this at the type
+level, so they are a compile error on the chat and KVS methods:
+
+```ts
+await api.getTransactions({minAmount: 1000}); // OK
+
+// @ts-expect-error `/api/chats/get` has no amount filter
+await api.getChatTransactions({minAmount: 1000});
+```
+
+| Method (endpoint)                              | Typical filters                                  |
+| ---------------------------------------------- | ------------------------------------------------ |
+| `getTransactions` (`/api/transactions`)        | all, including `minAmount` / `maxAmount`, `types`|
+| `getChatTransactions` (`/api/chats/get`)       | `senderId`, `recipientId`, `type`, height range  |
+| `getChats` / `getChatMessages` (`/api/chatrooms`) | `type`, plus `userId` / direct-transfer options |
+| `getKVS` (`/api/states/get`)                   | `key`, `keyIds`, `senderId`, `senderIds`, `type` |
+
+The SDK only type-guards the amount filters; for other endpoint-specific
+limitations it forwards what you pass, and the node ignores filters it does not
+support for that endpoint.
+
 ## Filtering by multiple transaction types
 
 `getTransactions()` accepts a single `type` or, since `v0.10.0`, an array of
