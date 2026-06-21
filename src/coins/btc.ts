@@ -3,20 +3,23 @@ import {ECPairFactory} from 'ecpair';
 import * as tinysecp from 'tiny-secp256k1';
 
 import coininfo from 'coininfo';
-import {toECPairNetwork} from './ecpairNetwork';
+import {coinMetadata} from '../metadata/index';
+import {toECPairNetwork, type UtxoWalletKeys} from './ecpairNetwork';
 
-const RE_BTC_ADDRESS = /^(bc1|[13])[a-km-zA-HJ-NP-Z02-9]{25,39}$/;
+const RE_BTC_ADDRESS = new RegExp(coinMetadata.BTC.regexAddress);
 
 const network = coininfo.bitcoin.main.toBitcoinJS();
 const ecpairNetwork = toECPairNetwork(network, 'bc');
 
+/** Deterministic Bitcoin wallet derivation and address validation helpers. */
 export const btc = {
-  keys: (passphrase: string) => {
+  metadata: coinMetadata.BTC,
+  keys: (passphrase: string): UtxoWalletKeys => {
     const pwHash = bitcoin.crypto.sha256(Buffer.from(passphrase));
 
     const ECPairAPI = ECPairFactory(tinysecp);
     const keyPair = ECPairAPI.fromPrivateKey(pwHash, {network: ecpairNetwork});
-    const publicKey = Buffer.from(keyPair.publicKey);
+    const publicKey = keyPair.publicKey;
     const privateKey = keyPair.privateKey && Buffer.from(keyPair.privateKey);
 
     return {

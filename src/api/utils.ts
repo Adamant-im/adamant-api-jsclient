@@ -6,7 +6,7 @@ const VOTE_DIRECTIONS = ['+', '-'] as const;
 export type VoteDirection = (typeof VOTE_DIRECTIONS)[number];
 
 export const isVoteDirection = (
-  direction: unknown
+  direction: unknown,
 ): direction is VoteDirection =>
   typeof direction === 'string' &&
   VOTE_DIRECTIONS.includes(direction as VoteDirection);
@@ -19,7 +19,7 @@ export const parseVote = (vote: string): [string, VoteDirection] => {
 };
 
 export const transformTransactionQuery = <T extends object>(
-  obj?: TransactionQuery<T>
+  obj?: TransactionQuery<T>,
 ) => {
   if (!obj) {
     return {};

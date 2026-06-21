@@ -7,7 +7,7 @@ declare module 'sodium-browserify-tweetnacl' {
 
     export function crypto_sign_detached(
       hash: Buffer,
-      privateKey: Buffer
+      privateKey: Buffer,
     ): Buffer;
 
     export function randombytes(nonce: Buffer): void;

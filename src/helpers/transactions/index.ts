@@ -56,8 +56,9 @@ interface BasicTransaction<T extends TransactionType> {
   asset: {};
 }
 
+/** Builds the unsigned fields shared by ADM transactions. */
 export const createBasicTransaction = <T extends TransactionType>(
-  data: AnyTransactionData
+  data: AnyTransactionData,
 ): BasicTransaction<T> => {
   const transaction = {
     type: data.transactionType as T,
@@ -71,6 +72,7 @@ export const createBasicTransaction = <T extends TransactionType>(
   return transaction;
 };
 
+/** Creates and signs an ADM token transfer transaction. */
 export const createSendTransaction = (data: SendTransactionData) => {
   const details = {
     ...data,
@@ -92,6 +94,7 @@ export const createSendTransaction = (data: SendTransactionData) => {
   };
 };
 
+/** Creates and signs an ADM key-value state transaction. */
 export const createStateTransaction = (data: StateTransactionData) => {
   const details = {
     ...data,
@@ -118,6 +121,7 @@ export const createStateTransaction = (data: StateTransactionData) => {
   };
 };
 
+/** Creates and signs an encrypted ADM chat transaction envelope. */
 export const createChatTransaction = (data: ChatTransactionData) => {
   const details = {
     ...data,
@@ -145,6 +149,7 @@ export const createChatTransaction = (data: ChatTransactionData) => {
   };
 };
 
+/** Creates and signs an ADM delegate registration transaction. */
 export const createDelegateTransaction = (data: DelegateTransactionData) => {
   const details = {
     ...data,
@@ -170,6 +175,7 @@ export const createDelegateTransaction = (data: DelegateTransactionData) => {
   };
 };
 
+/** Creates and signs an ADM delegate vote transaction. */
 export const createVoteTransaction = (data: VoteTransactionData) => {
   const details = {
     ...data,

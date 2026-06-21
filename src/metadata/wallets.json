@@ -1,0 +1,89 @@
+{
+  "source": {
+    "repository": "Adamant-im/adamant-wallets",
+    "revision": "54a820b6dc5e0ec77c3a6fbac91d2f7809a2f5b7"
+  },
+  "coins": {
+    "ADM": {
+      "name": "ADAMANT Messenger",
+      "nameShort": "ADAMANT",
+      "website": "https://adamant.im",
+      "explorer": "https://explorer.adamant.im",
+      "explorerTx": "https://explorer.adamant.im/tx/${ID}",
+      "explorerAddress": "https://explorer.adamant.im/address/${ID}",
+      "regexAddress": "^U([0-9]{6,21})$",
+      "symbol": "ADM",
+      "type": "coin",
+      "decimals": 8,
+      "cryptoTransferDecimals": 8,
+      "status": "active",
+      "createCoin": true,
+      "defaultVisibility": true,
+      "defaultOrdinalLevel": 0
+    },
+    "BTC": {
+      "name": "Bitcoin",
+      "website": "https://bitcoin.org",
+      "explorer": "https://bitcoinexplorer.org",
+      "explorerTx": "https://bitcoinexplorer.org/tx/${ID}",
+      "explorerAddress": "https://bitcoinexplorer.org/address/${ID}",
+      "regexAddress": "^bc1[a-zA-Z0-9]{39,59}$|^[13][1-9A-HJ-NP-Za-km-z]{25,34}$",
+      "symbol": "BTC",
+      "type": "coin",
+      "decimals": 8,
+      "cryptoTransferDecimals": 8,
+      "status": "active",
+      "createCoin": true,
+      "defaultVisibility": true,
+      "defaultOrdinalLevel": 10
+    },
+    "ETH": {
+      "name": "Ethereum",
+      "website": "https://ethereum.org",
+      "explorer": "https://etherscan.io",
+      "explorerTx": "https://etherscan.io/tx/${ID}",
+      "explorerAddress": "https://etherscan.io/address/${ID}",
+      "regexAddress": "^0x[0-9a-fA-F]{40}$",
+      "symbol": "ETH",
+      "type": "coin",
+      "decimals": 18,
+      "cryptoTransferDecimals": 8,
+      "status": "active",
+      "createCoin": true,
+      "defaultVisibility": true,
+      "defaultOrdinalLevel": 20
+    },
+    "DASH": {
+      "name": "Dash",
+      "website": "https://dash.org",
+      "explorer": "https://dashblockexplorer.com",
+      "explorerTx": "https://dashblockexplorer.com/tx/${ID}",
+      "explorerAddress": "https://dashblockexplorer.com/address/${ID}",
+      "regexAddress": "^[7X][1-9A-HJ-NP-Za-km-z]{33,}$",
+      "symbol": "DASH",
+      "type": "coin",
+      "decimals": 8,
+      "cryptoTransferDecimals": 8,
+      "status": "active",
+      "createCoin": true,
+      "defaultVisibility": true,
+      "defaultOrdinalLevel": 70
+    },
+    "DOGE": {
+      "name": "Dogecoin",
+      "website": "https://dogecoin.com",
+      "explorer": "https://dogechain.info",
+      "explorerTx": "https://dogechain.info/tx/${ID}",
+      "explorerAddress": "https://dogechain.info/address/${ID}",
+      "regexAddress": "^[A|D|9][A-Z0-9]([0-9a-zA-Z]{9,})$",
+      "symbol": "DOGE",
+      "type": "coin",
+      "decimals": 8,
+      "cryptoTransferDecimals": 8,
+      "status": "active",
+      "createCoin": true,
+      "defaultVisibility": true,
+      "defaultOrdinalLevel": 70
+    }
+  }
+}

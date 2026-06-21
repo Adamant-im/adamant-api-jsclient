@@ -1,4 +1,7 @@
 /* eslint-disable */
+// Schema source: https://github.com/Adamant-im/adamant-schema/tree/8432b267a847864d3dd3218f59991159b9a6a3f6
+// Bundler: @redocly/cli@2.34.0
+// Generator: swagger-typescript-api@13.12.2
 /* tslint:disable */
 /*
  * ---------------------------------------------------------------
@@ -66,6 +69,8 @@ export interface GetChatRoomsResponseDto {
     lastTransaction?: TokenTransferTransaction | ChatMessageTransaction;
     participants?: ChatParticipant[];
   }[];
+  /** Total number of chatrooms available for the address (independent of `limit`/`offset`). */
+  count: number;
   success: boolean;
   nodeTimestamp: number;
 }
@@ -73,14 +78,15 @@ export interface GetChatRoomsResponseDto {
 export interface GetChatMessagesResponseDto {
   messages: (TokenTransferTransaction | ChatMessageTransaction)[];
   participants: ChatParticipant[];
+  /** Total number of messages in the chatroom (independent of `limit`/`offset`). */
+  count: number;
   success: boolean;
   nodeTimestamp: number;
 }
 
 export interface GetChatTransactionsResponseDto {
   transactions: ChatMessageTransaction[];
-  /** Number in string format */
-  count: string;
+  count: number;
   success: boolean;
   nodeTimestamp: number;
 }
@@ -223,6 +229,12 @@ export interface GetPeersResponseDto {
   nodeTimestamp: number;
 }
 
+export interface GetPeerInfoResponseDto {
+  peer: PeerDto;
+  success: boolean;
+  nodeTimestamp: number;
+}
+
 /** @example {"loaded":true,"now":10144343,"blocksCount":0,"success":true,"nodeTimestamp":58052355} */
 export interface GetLoadingStatusResponseDto {
   loaded: boolean;
@@ -335,8 +347,30 @@ export type GetNetworkInfoResponseDto = NetworkStatus & {
 export interface GetNodeStatusResponseDto {
   /** @example true */
   success: boolean;
-  /** @example 58052984 */
+  /**
+   * Current node time measured in seconds since the ADAMANT epoch.
+   * @example 58052984
+   */
   nodeTimestamp: number;
+  /**
+   * Current node time measured in milliseconds since the ADAMANT epoch. This is node clock metadata and is not consensus data.
+   * @example 58052984123
+   */
+  nodeTimestampMs: number;
+  /**
+   * Current node time measured in Unix milliseconds. This is node clock metadata and is not consensus data.
+   * @example 1562424584123
+   */
+  unixTimestampMs: number;
+  /** @example {"loaded":true,"now":4819,"syncing":true,"consensus":0,"blocks":15145334,"blocksCount":0} */
+  loader: {
+    loaded: boolean;
+    now: number;
+    syncing: boolean;
+    consensus: number;
+    blocks: number;
+    blocksCount: number;
+  };
   network: NetworkStatus;
   version: NodeVersion;
   wsClient: WsClient;
@@ -344,11 +378,8 @@ export interface GetNodeStatusResponseDto {
 
 export interface GetKVSResponseDto {
   transactions: KVSTransaction[];
-  /**
-   * Integer in string format
-   * @example "1"
-   */
-  count: string;
+  /** @example 1 */
+  count: number;
   /** @example true */
   success: boolean;
   /** @example 63647706 */
@@ -368,11 +399,8 @@ export interface SetKVSResponseDto {
 
 export interface GetTransactionsResponseDto {
   transactions: AnyTransaction[];
-  /**
-   * Integer in string format
-   * @example "1"
-   */
-  count: string;
+  /** @example 1 */
+  count: number;
   /** @example true */
   success: boolean;
   /** @example 63647706 */
@@ -399,11 +427,8 @@ export interface GetTransactionsCountResponseDto {
 
 export interface GetQueuedTransactionsResponseDto {
   transactions: QueuedTransaction[];
-  /**
-   * Integer in string format
-   * @example "1"
-   */
-  count: string;
+  /** @example 1 */
+  count: number;
   /** @example true */
   success: boolean;
   /** @example 63647706 */
@@ -420,11 +445,8 @@ export interface GetQueuedTransactionByIdResponseDto {
 
 export interface GetUnconfirmedTransactionsResponseDto {
   transactions: QueuedTransaction[];
-  /**
-   * Integer in string format
-   * @example "1"
-   */
-  count: string;
+  /** @example 1 */
+  count: number;
   /** @example true */
   success: boolean;
   /** @example 63647706 */
@@ -522,7 +544,10 @@ export interface BaseTransaction {
    */
   type: number;
   block_timestamp: number;
+  /** Transaction time specified by the sender, measured in seconds since the ADAMANT epoch. */
   timestamp: number;
+  /** Optional transaction time specified by the sender, measured in milliseconds since the ADAMANT epoch. Returned when a node has stored it; for blockchain consensus-sensitive data this works after the `spaceship` activation. When present, it belongs to the same second as `timestamp`, so clients should prefer it for timestamp ordering and fall back to `timestamp * 1000` when it is absent. */
+  timestampMs?: number | null;
   senderPublicKey: string;
   senderId: string;
   recipientId: string;
@@ -593,14 +618,17 @@ export interface ChatParticipant {
   publicKey: PublicKey;
 }
 
-/** @example {"type":0,"amount":0,"senderId":"U14236667426471084862","senderPublicKey":"8cd9631f9f634a361ea3b85cbd0df882633e39e7d26d7bc615bbcf75e41524ef","signature":"b3982d603be8f0246fa663e9f012bf28b198cd28f82473db1eb4a342d890f7a2a2c1845db8d256bb5bce1e64a9425822a91e10bf960a2e0b55e20b4841e4ae0b","timestamp":63228852} */
+/** @example {"type":0,"amount":0,"senderId":"U14236667426471084862","senderPublicKey":"8cd9631f9f634a361ea3b85cbd0df882633e39e7d26d7bc615bbcf75e41524ef","signature":"b3982d603be8f0246fa663e9f012bf28b198cd28f82473db1eb4a342d890f7a2a2c1845db8d256bb5bce1e64a9425822a91e10bf960a2e0b55e20b4841e4ae0b","timestamp":63228852,"timestampMs":63228852123} */
 export interface RegisterTransactionBase {
   type: number;
   amount: number;
   senderId: string;
   senderPublicKey: string;
   signature: string;
+  /** Transaction time measured in seconds since the ADAMANT epoch. */
   timestamp: number;
+  /** Optional transaction time measured in milliseconds since the ADAMANT epoch. Supported by upgraded nodes and stored in consensus-sensitive transaction data after the `spaceship` activation. If provided, clients should derive `timestamp` from the same value using `Math.floor(timestampMs / 1000)`; `round` or `ceil` can create an invalid timestamp pair. */
+  timestampMs?: number;
 }
 
 export type RegisterChatMessageTransaction = RegisterTransactionBase & {
@@ -672,7 +700,12 @@ export interface QueuedTransaction {
   /** @example "8cd9631f9f634a361ea3b85cbd0df882633e39e7d26d7bc615bbcf75e41524ef" */
   senderPublicKey: string;
   /** @example 63394407 */
-  timestamp?: number;
+  timestamp: number;
+  /**
+   * Optional transaction time measured in milliseconds since the ADAMANT epoch. Available for transactions that include it; for consensus-sensitive blockchain storage it works after the `spaceship` activation. When present, it belongs to the same second as `timestamp`.
+   * @example 63394407123
+   */
+  timestampMs?: number | null;
   /** @example "7f4f5d240fc66da1cbdb3fe291d6fcec006848236355aebe346fcd1e3ba500caeac1ed0af6f3d7f912a889a1bbedc1d7bab17b6ebd36386b81df78189ddf7c07" */
   signature: string;
   /** @example "13616514419605573351" */
@@ -686,6 +719,9 @@ export interface QueuedTransaction {
    * @example "2019-09-06T10:33:28.054Z"
    */
   receivedAt: string;
+  blockId: null;
+  height: null;
+  confirmations: 0;
 }
 
 /** @example {"delegate":{"address":"U3031563782805250428","username":"kpeo","publicKey":"a339974effc141f302bd3589c603bdc9468dd66bcc424b60025b36999eb69ca3"}} */
@@ -775,7 +811,7 @@ export type RegisterVotesTransactionDto = QueuedTransaction & {
   nodeTimestamp: number;
 };
 
-/** @example {"ip":"194.32.79.175","port":36666,"state":2,"os":"linux4.15.0-36-generic","version":"0.4.0","broadhash":"3dfdf6c7bbaf7537eac9c70432f7ba1cae835b9b15e4ecd97e147616dde67e62","height":10146365,"clock":null,"updated":1562424199553,"nonce":"jxXV6g0sHJhmDubq"} */
+/** @example {"ip":"194.32.79.175","port":36666,"state":2,"os":"linux4.15.0-36-generic","version":"0.4.0","broadhash":"3dfdf6c7bbaf7537eac9c70432f7ba1cae835b9b15e4ecd97e147616dde67e62","height":10146365,"clock":null,"updated":1562424199553,"nonce":"jxXV6g0sHJhmDubq","isBroadcastingViaSocket":false,"syncProtocol":"ws"} */
 export interface PeerDto {
   /** IPv4 address of node */
   ip: string;
@@ -796,6 +832,10 @@ export interface PeerDto {
   updated: number;
   /** Unique Identifier for the peer. Random string. */
   nonce: string;
+  /** Indicates whether the node can send transactions to the peer over WebSocket. */
+  isBroadcastingViaSocket: boolean;
+  /** Indicates the protocol used to subscribe to the peer: 'http' if using HTTP only, or 'ws' if using WebSocket, which also allows receiving transactions via both WebSocket and HTTP. */
+  syncProtocol: "http" | "ws";
 }
 
 /** @example {"build":"","commit":"b07aaf9580dffb5cc95cc65f303f6f1e5fca7d9c","version":"0.5.2"} */

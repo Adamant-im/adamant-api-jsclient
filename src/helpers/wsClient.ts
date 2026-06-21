@@ -48,7 +48,7 @@ type TransactionMap = {
 type EventType = keyof TransactionMap;
 
 export type TransactionHandler<T extends AnyTransaction> = (
-  transaction: T
+  transaction: T,
 ) => void;
 
 export type SingleTransactionHandler =
@@ -120,7 +120,7 @@ export class WebSocketClient {
         node.socketSupport &&
         !node.outOfSync &&
         // Remove nodes without IP if 'ws' connection type
-        (wsType !== 'ws' || !node.isHttps || node.ip)
+        (wsType !== 'ws' || !node.isHttps || node.ip),
     );
 
     this.setConnection();
@@ -140,7 +140,7 @@ export class WebSocketClient {
 
     const node = this.chooseNode();
     logger.log(
-      `[Socket] Supported nodes: ${supportedCount}. Connecting to ${node}...`
+      `[Socket] Supported nodes: ${supportedCount}. Connecting to ${node}…`,
     );
     const connection = io(node, {
       reconnection: false,
@@ -152,16 +152,16 @@ export class WebSocketClient {
 
       connection.emit('address', admAddress);
       logger.info(
-        `[Socket] Connected to ${node} and subscribed to incoming transactions for ${admAddress}`
+        `[Socket] Connected to ${node} and subscribed to incoming transactions for ${admAddress}`,
       );
     });
 
     connection.on('disconnect', reason =>
-      logger.warn(`[Socket] Disconnected. Reason: ${reason}`)
+      logger.warn(`[Socket] Disconnected. Reason: ${reason}`),
     );
 
     connection.on('connect_error', error =>
-      logger.warn(`[Socket] Connection error: ${error}`)
+      logger.warn(`[Socket] Connection error: ${error}`),
     );
 
     connection.on('newTrans', (transaction: AnyTransaction) => {
@@ -169,7 +169,7 @@ export class WebSocketClient {
         return;
       }
 
-      this.handle(transaction);
+      void this.handle(transaction);
     });
 
     this.connection = connection;
@@ -197,9 +197,10 @@ export class WebSocketClient {
    */
   public off(handler: SingleTransactionHandler) {
     for (const handlers of Object.values(this.eventHandlers)) {
-      const index = (handlers as SingleTransactionHandler[]).indexOf(handler);
-      if (index !== -1) {
+      let index = (handlers as SingleTransactionHandler[]).indexOf(handler);
+      while (index !== -1) {
         handlers.splice(index, 1);
+        index = (handlers as SingleTransactionHandler[]).indexOf(handler);
       }
     }
 
@@ -215,11 +216,11 @@ export class WebSocketClient {
    */
   public on<T extends EventType>(
     types: T | T[],
-    handler: TransactionHandler<TransactionMap[T]>
+    handler: TransactionHandler<TransactionMap[T]>,
   ): this;
   public on<T extends EventType>(
     typesOrHandler: T | T[] | AnyTransactionHandler,
-    handler?: TransactionHandler<TransactionMap[T]>
+    handler?: TransactionHandler<TransactionMap[T]>,
   ) {
     if (handler === undefined) {
       if (typeof typesOrHandler === 'function') {
@@ -241,7 +242,7 @@ export class WebSocketClient {
   }
 
   /**
-   * Registers an event handler for Chatn Message transactions.
+   * Registers an event handler for Chat Message transactions.
    */
   public onMessage(handler: TransactionHandler<ChatMessageTransaction>) {
     return this.on(TransactionType.CHAT_MESSAGE, handler);
@@ -258,7 +259,7 @@ export class WebSocketClient {
    * Registers an event handler for Register Delegate transactions.
    */
   public onNewDelegate(
-    handler: TransactionHandler<RegisterDelegateTransaction>
+    handler: TransactionHandler<RegisterDelegateTransaction>,
   ) {
     return this.on(TransactionType.DELEGATE, handler);
   }
@@ -267,7 +268,7 @@ export class WebSocketClient {
    * Registers an event handler for Vote for Delegate transactions.
    */
   public onVoteForDelegate(
-    handler: TransactionHandler<VoteForDelegateTransaction>
+    handler: TransactionHandler<VoteForDelegateTransaction>,
   ) {
     return this.on(TransactionType.VOTE, handler);
   }
