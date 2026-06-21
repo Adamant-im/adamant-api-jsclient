@@ -1,0 +1,63 @@
+name: Publish to npm
+
+# Publishes the package to npm with build provenance when a GitHub Release is
+# published. Authentication uses npm Trusted Publishing (OIDC) — no token is
+# stored in the repository. The provenance attestation is what produces the
+# "Built and signed on GitHub Actions" badge on npmjs.com.
+#
+# One-time setup on npmjs.com (package Settings -> Trusted Publishing):
+#   - Publisher:        GitHub Actions
+#   - Organization:     Adamant-im
+#   - Repository:       adamant-api-jsclient
+#   - Workflow filename: publish.yml
+#   - Environment:      (leave empty)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required for OIDC Trusted Publishing and provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # Trusted Publishing (OIDC) requires npm >= 11.5.1; Node 22 ships with npm 10.
+      - name: Update npm
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify package version matches the release tag
+        if: github.event_name == 'release'
+        run: |
+          PKG_VERSION="v$(node -p "require('./package.json').version")"
+          TAG="${{ github.event.release.tag_name }}"
+          if [ "$PKG_VERSION" != "$TAG" ]; then
+            echo "::error::package.json version ($PKG_VERSION) does not match release tag ($TAG)"
+            exit 1
+          fi
+
+      - name: Build
+        run: pnpm run build
+
+      # `npm publish` runs the prepack build script and generates provenance.
+      # No NODE_AUTH_TOKEN is needed: OIDC Trusted Publishing supplies credentials.
+      - name: Publish to npm with provenance
+        run: npm publish --provenance --access public
