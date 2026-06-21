@@ -453,9 +453,30 @@ describe('AdamantApi query methods', () => {
     });
 
     expect(get).toHaveBeenLastCalledWith('transactions', {
-      types: [0, 8],
+      'and:types': [0, 8],
       returnUnconfirmed: 1,
       'and:type': 8,
+    });
+  });
+
+  test('combines top-level transaction filters with `and` by default', async () => {
+    const api = createApi();
+    const get = jest
+      .spyOn(api, 'get')
+      .mockResolvedValue({success: true} as never);
+
+    await api.getTransactions({
+      type: 0,
+      recipientId: 'U123456',
+      limit: 20,
+      orderBy: 'timestamp:desc',
+    });
+
+    expect(get).toHaveBeenLastCalledWith('transactions', {
+      'and:type': 0,
+      'and:recipientId': 'U123456',
+      limit: 20,
+      orderBy: 'timestamp:desc',
     });
   });
 });

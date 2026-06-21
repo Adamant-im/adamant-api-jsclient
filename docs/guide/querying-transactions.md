@@ -1,8 +1,63 @@
 # Querying Transactions
 
-This page covers query options that changed or were added with ADAMANT Node
-`v0.10.0`: multi-type filtering, unconfirmed transactions, and direct transfers
-in chats. For every method and option type, see the [API Reference](/api/).
+This page covers how transaction filters are combined, plus the query options
+that changed or were added with ADAMANT Node `v0.10.0`: multi-type filtering,
+unconfirmed transactions, and direct transfers in chats. For every method and
+option type, see the [API Reference](/api/).
+
+## Combining filters: `and` by default
+
+When you pass several filter conditions, `adamant-api` combines them with
+**`and`** — every condition must match:
+
+```ts
+import {TransactionType} from 'adamant-api';
+import {api} from './api.js';
+
+// type === SEND  AND  recipientId === 'U123...'
+const result = await api.getTransactions({
+  type: TransactionType.SEND,
+  recipientId: 'U123...',
+  limit: 20,
+  orderBy: 'timestamp:desc',
+});
+```
+
+::: warning Breaking change in v3
+The raw node
+[query language](https://docs.adamant.im/api/transactions-query-language.html#combine-filters-and-options)
+defaults to **`or`** for `/api/transactions`. Versions up to `2.x` passed
+top-level filters through unchanged, so they were OR-combined, which surprised
+developers. Since **v3**, this library prefixes top-level filters with `and:`
+for you, so multiple conditions are AND-combined by default.
+
+To restore the previous behavior for a query, wrap the fields in `or: { ... }`
+(see below).
+:::
+
+Pagination and control parameters — `limit`, `offset`, `orderBy`,
+`returnUnconfirmed`, `returnAsset`, `includeDirectTransfers`,
+`withoutDirectTransfers`, and `userId` — are not filters and are always sent
+as-is.
+
+### Opting into `or`
+
+Wrap fields in `or: { ... }` to OR them. You can mix a default-`and` top level
+with an `or` group; the node ANDs the top-level conditions with the OR group:
+
+```ts
+// type === CHAT_MESSAGE  AND  (senderId === 'U111'  OR  recipientId === 'U222')
+await api.getTransactions({
+  type: TransactionType.CHAT_MESSAGE,
+  or: {
+    senderId: 'U111',
+    recipientId: 'U222',
+  },
+});
+```
+
+An explicit `and: { ... }` wrapper is also still supported and is equivalent to
+passing those fields at the top level.
 
 ## Filtering by multiple transaction types
 

@@ -127,8 +127,24 @@ export type DelegateLookupOptions =
   | PublicKeyObject
   | AddressObject;
 
+/**
+ * A transaction query.
+ *
+ * Top-level filter conditions are combined with `and` by default — every
+ * condition must match. This differs from the raw node API, whose default is
+ * `or`. To opt into `or`, wrap fields in `or`; an explicit `and` wrapper is
+ * also supported and is equivalent to passing those fields at the top level.
+ *
+ * Control and pagination parameters (`limit`, `offset`, `orderBy`,
+ * `returnAsset`, `returnUnconfirmed`, the direct-transfer flags, and `userId`)
+ * are not filters and are always sent as-is.
+ *
+ * @see https://docs.adamant.im/api/transactions-query-language.html#combine-filters-and-options
+ */
 export type TransactionQuery<T extends object> = Partial<T> & {
+  /** Filter conditions combined with `or`. */
   or?: Partial<T>;
+  /** Filter conditions combined with `and` (the default for top-level fields). */
   and?: Partial<T>;
 };
 
