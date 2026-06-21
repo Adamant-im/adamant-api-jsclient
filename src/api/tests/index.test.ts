@@ -17,18 +17,19 @@ const recipientPublicKey = bytesToHex(
     'mirror noble ocean piano quantum river silver tiger unity velvet willow xenon',
   ).publicKey,
 );
+const createLogger = () => ({
+  error: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn(),
+  log: jest.fn(),
+});
 
 const createApi = (maxRetries = 0) =>
   new AdamantApi({
     nodes: ['https://node.example'],
     checkHealthAtStartup: false,
     maxRetries,
-    logger: {
-      error: jest.fn(),
-      warn: jest.fn(),
-      info: jest.fn(),
-      log: jest.fn(),
-    },
+    logger: createLogger(),
   });
 
 describe('AdamantApi HTTP requests', () => {
@@ -104,6 +105,7 @@ describe('AdamantApi HTTP requests', () => {
       nodes: ['https://old.example'],
       minVersion: '0.9.0',
       checkHealthAtStartup: false,
+      logger: createLogger(),
     });
 
     await api.chooseNode([
