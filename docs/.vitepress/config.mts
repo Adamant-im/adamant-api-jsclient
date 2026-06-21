@@ -93,8 +93,9 @@ export default defineConfig({
 
     editLink: {
       pattern:
-        'https://github.com/Adamant-im/adamant-api-jsclient/edit/master/docs/:path',
+        'https://github.com/Adamant-im/adamant-api-jsclient/edit/dev/docs/:path',
       text: 'Edit this page on GitHub',
+    }
     },
 
     search: {
