@@ -1,9 +1,9 @@
 import {io} from 'socket.io-client';
 import type {AnyTransaction} from '../../api/generated';
-import {TransactionType} from '../constants';
+import {MessageType, TransactionType} from '../constants';
 import type {ActiveNode} from '../healthCheck';
 import {Logger} from '../logger';
-import {WebSocketClient} from '../wsClient';
+import {AdamantWsConnectionError, WebSocketClient} from '../wsClient';
 
 jest.mock('socket.io-client', () => ({io: jest.fn()}));
 
@@ -18,6 +18,8 @@ const makeSocket = () => {
       listeners[event] = listener;
       return socket;
     }),
+    disconnect: jest.fn(),
+    removeAllListeners: jest.fn(),
     listeners,
   };
   function socket() {}
@@ -37,7 +39,12 @@ const node = (overrides: Partial<ActiveNode> = {}): ActiveNode => ({
 });
 
 const transaction = (type: TransactionType, recipientId = 'U123456') =>
-  ({type, recipientId}) as unknown as AnyTransaction;
+  ({
+    type,
+    recipientId,
+    senderId: 'U654321',
+    asset: type === TransactionType.CHAT_MESSAGE ? {chat: {type: 1}} : {},
+  }) as unknown as AnyTransaction;
 
 describe('WebSocketClient', () => {
   const output = {
@@ -81,7 +88,8 @@ describe('WebSocketClient', () => {
 
     socket.connected = true;
     client.reviseConnection([node({ip: '192.0.2.2'})]);
-    expect(io).toHaveBeenCalledTimes(1);
+    expect(io).toHaveBeenCalledTimes(2);
+    client.disconnect();
   });
 
   test('supports wss and random node selection', () => {
@@ -108,7 +116,7 @@ describe('WebSocketClient', () => {
     client.reviseConnection([node({socketSupport: false})]);
     expect(io).not.toHaveBeenCalled();
     expect(output.warn).toHaveBeenCalledWith(
-      '[Socket] No supported socket nodes at the moment.',
+      '[ADAMANT js-api Socket] No supported socket nodes at the moment.',
     );
   });
 
@@ -145,8 +153,8 @@ describe('WebSocketClient', () => {
     socket.listeners.newTrans(transaction(TransactionType.SEND, 'U999999'));
     await new Promise(resolve => setImmediate(resolve));
 
-    expect(all).toHaveBeenCalledTimes(5);
-    expect(send).toHaveBeenCalledTimes(2);
+    expect(all).toHaveBeenCalledTimes(6);
+    expect(send).toHaveBeenCalledTimes(4);
     expect(delegate).toHaveBeenCalledTimes(1);
     expect(vote).toHaveBeenCalledTimes(1);
     expect(message).toHaveBeenCalledTimes(1);
@@ -155,8 +163,140 @@ describe('WebSocketClient', () => {
     client.off(send).off(all);
     socket.listeners.newTrans(transaction(TransactionType.SEND));
     await new Promise(resolve => setImmediate(resolve));
-    expect(send).toHaveBeenCalledTimes(2);
-    expect(all).toHaveBeenCalledTimes(5);
+    expect(send).toHaveBeenCalledTimes(4);
+    expect(all).toHaveBeenCalledTimes(6);
+  });
+
+  test('subscribes to multiple addresses, transaction types and message types', () => {
+    const socket = makeSocket();
+    jest.mocked(io).mockReturnValue(socket as never);
+    const client = new WebSocketClient({
+      admAddress: 'U123456',
+      admAddresses: ['U654321', 'U123456'],
+      types: [TransactionType.SEND, TransactionType.CHAT_MESSAGE],
+      assetChatTypes: [MessageType.Chat, MessageType.Rich],
+      logger,
+    });
+
+    client.reviseConnection([node()]);
+    socket.listeners.connect();
+
+    expect(socket.emit).toHaveBeenCalledWith('address', ['U123456', 'U654321']);
+    expect(socket.emit).toHaveBeenCalledWith('types', [
+      TransactionType.SEND,
+      TransactionType.CHAT_MESSAGE,
+    ]);
+    expect(socket.emit).toHaveBeenCalledWith('assetChatTypes', [
+      MessageType.Chat,
+      MessageType.Rich,
+    ]);
+  });
+
+  test('dispatches chat asset types through convenience handlers', async () => {
+    const socket = makeSocket();
+    jest.mocked(io).mockReturnValue(socket as never);
+    const chat = jest.fn();
+    const rich = jest.fn();
+    const signal = jest.fn();
+    const client = new WebSocketClient({admAddress: 'U123456', logger});
+    client
+      .onChatMessage(chat)
+      .onRichMessage(rich)
+      .onSignalMessage(signal)
+      .reviseConnection([node()]);
+    socket.listeners.connect();
+
+    for (const messageType of [
+      MessageType.Chat,
+      MessageType.Rich,
+      MessageType.Signal,
+    ]) {
+      const message = transaction(TransactionType.CHAT_MESSAGE) as any;
+      message.asset.chat.type = messageType;
+      socket.listeners.newTrans(message);
+    }
+    await new Promise(resolve => setImmediate(resolve));
+
+    expect(chat).toHaveBeenCalledTimes(1);
+    expect(rich).toHaveBeenCalledTimes(1);
+    expect(signal).toHaveBeenCalledTimes(1);
+    expect(socket.emit).toHaveBeenCalledWith('assetChatTypes', [1, 2, 3]);
+  });
+
+  test('reconnects with lifecycle callbacks and supports manual disconnect', () => {
+    jest.useFakeTimers();
+    const first = makeSocket();
+    const second = makeSocket();
+    jest
+      .mocked(io)
+      .mockReturnValueOnce(first as never)
+      .mockReturnValueOnce(second as never);
+    const connected = jest.fn();
+    const reconnected = jest.fn();
+    const client = new WebSocketClient({
+      admAddress: 'U123456',
+      reconnectionDelay: 100,
+      logger,
+    })
+      .onConnection(connected)
+      .onReconnection(reconnected);
+
+    client.reviseConnection([node()]);
+    first.listeners.connect();
+    first.listeners.disconnect('transport close');
+    jest.advanceTimersByTime(100);
+    second.listeners.connect();
+
+    expect(connected).toHaveBeenCalledTimes(1);
+    expect(reconnected).toHaveBeenCalledTimes(1);
+    client.disconnect();
+    expect(second.removeAllListeners).toHaveBeenCalled();
+    expect(second.disconnect).toHaveBeenCalled();
+    jest.useRealTimers();
+  });
+
+  test('uses default reconnection logging and reports exhausted attempts', () => {
+    jest.useFakeTimers();
+    const first = makeSocket();
+    const second = makeSocket();
+    jest
+      .mocked(io)
+      .mockReturnValueOnce(first as never)
+      .mockReturnValueOnce(second as never);
+    const client = new WebSocketClient({
+      admAddress: 'U123456',
+      reconnectionDelay: 100,
+      logger,
+    });
+    client.reviseConnection([node()]);
+    first.listeners.connect();
+    first.listeners.disconnect('transport close');
+    jest.advanceTimersByTime(100);
+    second.listeners.connect();
+    expect(output.info).toHaveBeenCalledWith(
+      '[ADAMANT js-api Socket] Reconnected to ws://192.0.2.1:36667',
+    );
+    client.disconnect();
+
+    const failed = makeSocket();
+    jest.mocked(io).mockReturnValueOnce(failed as never);
+    const caught = jest.fn();
+    const exhausted = new WebSocketClient({
+      admAddress: 'U123456',
+      maxTries: 0,
+      logger,
+    }).catch(caught);
+    exhausted.reviseConnection([node()]);
+    failed.listeners.connect_error(new Error('offline'));
+    expect(caught).toHaveBeenCalledWith(
+      expect.objectContaining<Partial<AdamantWsConnectionError>>({
+        name: 'AdamantWsConnectionError',
+        reason: 'connection_error',
+        details: 'Error: offline',
+      }),
+    );
+    exhausted.disconnect();
+    jest.useRealTimers();
   });
 
   test('routes synchronous and asynchronous handler errors to catch()', async () => {
@@ -186,6 +326,6 @@ describe('WebSocketClient', () => {
     client.reviseConnection([node()]);
     socket.listeners.newTrans(transaction(TransactionType.SEND));
     await new Promise(resolve => setImmediate(resolve));
-    expect(output.error).toHaveBeenCalledWith('Error: handler failed');
+    expect(output.error).toHaveBeenCalledWith('[ADAMANT js-api Socket] Error: handler failed');
   });
 });

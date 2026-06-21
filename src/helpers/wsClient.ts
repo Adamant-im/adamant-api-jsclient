@@ -3,7 +3,7 @@ import {io, type Socket} from 'socket.io-client';
 import type {ActiveNode} from './healthCheck';
 import {Logger} from './logger';
 import {getRandomIntInclusive} from './validator';
-import {TransactionType} from './constants';
+import {MessageType, TransactionType} from './constants';
 import type {
   AnyTransaction,
   ChatMessageTransaction,
@@ -18,9 +18,18 @@ export type WsType = 'ws' | 'wss';
 
 export interface WsOptions {
   /**
-   * ADM address to subscribe to notifications
+   * ADM address to subscribe to. Kept for backward compatibility.
    */
-  admAddress: AdamantAddress;
+  admAddress?: AdamantAddress;
+
+  /** ADM addresses to subscribe to. */
+  admAddresses?: AdamantAddress[];
+
+  /** Transaction types to subscribe to. */
+  types?: number[];
+
+  /** `transaction.asset.chat.type` values to subscribe to. */
+  assetChatTypes?: number[];
 
   /**
    * Websocket type: `'wss'` or `'ws'`. `'wss'` is recommended.
@@ -32,10 +41,17 @@ export interface WsOptions {
    */
   useFastest?: boolean;
 
+  /** Maximum reconnection attempts. Default is `3`. */
+  maxTries?: number;
+
+  /** Delay between reconnection attempts in milliseconds. Default is `5000`. */
+  reconnectionDelay?: number;
+
   logger?: Logger;
 }
 
 type ErrorHandler = (error: unknown) => void;
+type ConnectionHandler = (connectedNode: string) => void;
 
 type TransactionMap = {
   [TransactionType.SEND]: TokenTransferTransaction;
@@ -60,6 +76,16 @@ export type SingleTransactionHandler =
 
 export type AnyTransactionHandler = TransactionHandler<AnyTransaction>;
 
+export class AdamantWsConnectionError extends Error {
+  constructor(
+    public readonly reason: 'connection_error' | 'disconnection',
+    public readonly details: string,
+  ) {
+    super(details);
+    this.name = 'AdamantWsConnectionError';
+  }
+}
+
 export class WebSocketClient {
   /**
    * Web socket client options.
@@ -71,6 +97,14 @@ export class WebSocketClient {
    */
   private connection?: Socket;
 
+  private reconnectTimer?: ReturnType<typeof setTimeout>;
+
+  private reconnectTry = 0;
+
+  private hasConnected = false;
+
+  private manuallyDisconnected = false;
+
   /**
    * List of nodes that are active, synced and support socket.
    */
@@ -79,7 +113,9 @@ export class WebSocketClient {
   private logger: Logger;
 
   private errorHandler: ErrorHandler;
-  private eventHandlers: {
+  private connectionHandler: ConnectionHandler;
+  private reconnectionHandler: ConnectionHandler;
+  private transactionHandlers: {
     [T in EventType]: TransactionHandler<TransactionMap[T]>[];
   } = {
     [TransactionType.SEND]: [],
@@ -88,18 +124,35 @@ export class WebSocketClient {
     [TransactionType.CHAT_MESSAGE]: [],
     [TransactionType.STATE]: [],
   };
+  private messageHandlers: Record<
+    MessageType,
+    TransactionHandler<ChatMessageTransaction>[]
+  > = {
+    [MessageType.Chat]: [],
+    [MessageType.Rich]: [],
+    [MessageType.Signal]: [],
+  };
 
   constructor(options: WsOptions) {
     this.logger = options.logger || new Logger();
     this.options = {
       wsType: 'ws',
+      useFastest: false,
+      maxTries: 3,
+      reconnectionDelay: 5000,
       ...options,
     };
 
     this.nodes = [];
 
     this.errorHandler = (error: unknown) => {
-      this.logger.error(`${error}`);
+      this.logger.error(`[ADAMANT js-api Socket] ${error}`);
+    };
+    this.connectionHandler = node => {
+      this.logger.info(`[ADAMANT js-api Socket] Connected to ${node}`);
+    };
+    this.reconnectionHandler = node => {
+      this.logger.info(`[ADAMANT js-api Socket] Reconnected to ${node}`);
     };
   }
 
@@ -123,7 +176,7 @@ export class WebSocketClient {
         (wsType !== 'ws' || !node.isHttps || node.ip),
     );
 
-    this.setConnection();
+    this.connect();
   }
 
   /**
@@ -134,13 +187,14 @@ export class WebSocketClient {
 
     const supportedCount = this.nodes.length;
     if (!supportedCount) {
-      logger.warn('[Socket] No supported socket nodes at the moment.');
+      logger.warn('[ADAMANT js-api Socket] No supported socket nodes at the moment.');
       return;
     }
 
     const node = this.chooseNode();
+    const isReconnection = this.hasConnected || this.reconnectTry > 0;
     logger.log(
-      `[Socket] Supported nodes: ${supportedCount}. Connecting to ${node}…`,
+      `[ADAMANT js-api Socket] Supported nodes: ${supportedCount}. ${isReconnection ? `Reconnecting (${this.reconnectTry}/${this.options.maxTries})` : 'Connecting'} to ${node}…`,
     );
     const connection = io(node, {
       reconnection: false,
@@ -148,31 +202,109 @@ export class WebSocketClient {
     });
 
     connection.on('connect', () => {
-      const {admAddress} = this.options;
+      this.reconnectTry = 0;
+      this.subscribe(connection);
 
-      connection.emit('address', admAddress);
-      logger.info(
-        `[Socket] Connected to ${node} and subscribed to incoming transactions for ${admAddress}`,
-      );
+      if (this.hasConnected) {
+        this.reconnectionHandler(node);
+      } else {
+        this.connectionHandler(node);
+      }
+      this.hasConnected = true;
     });
 
-    connection.on('disconnect', reason =>
-      logger.warn(`[Socket] Disconnected. Reason: ${reason}`),
-    );
-
-    connection.on('connect_error', error =>
-      logger.warn(`[Socket] Connection error: ${error}`),
-    );
-
-    connection.on('newTrans', (transaction: AnyTransaction) => {
-      if (transaction.recipientId !== this.options.admAddress) {
+    connection.on('disconnect', reason => {
+      if (this.manuallyDisconnected || reason === 'io client disconnect') {
         return;
       }
 
+      logger.warn(`[ADAMANT js-api Socket] Disconnected. Reason: ${reason}`);
+      this.scheduleReconnect('disconnection', String(reason));
+    });
+
+    connection.on('connect_error', error => {
+      logger.warn(`[ADAMANT js-api Socket] Connection error: ${error}`);
+      this.scheduleReconnect('connection_error', String(error));
+    });
+
+    connection.on('newTrans', (transaction: AnyTransaction) => {
       void this.handle(transaction);
     });
 
     this.connection = connection;
+  }
+
+  /** Connects using the current healthy-node list. */
+  public connect() {
+    this.manuallyDisconnected = false;
+
+    if (!this.connection) {
+      this.setConnection();
+    }
+
+    return this;
+  }
+
+  /** Disconnects and cancels pending reconnection attempts. */
+  public disconnect() {
+    this.manuallyDisconnected = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
+    this.connection?.removeAllListeners();
+    this.connection?.disconnect();
+    this.connection = undefined;
+    return this;
+  }
+
+  private subscribe(connection: Socket) {
+    const addresses = [
+      ...(this.options.admAddress ? [this.options.admAddress] : []),
+      ...(this.options.admAddresses ?? []),
+    ].filter((address, index, all) => all.indexOf(address) === index);
+
+    if (addresses.length) {
+      connection.emit(
+        'address',
+        addresses.length === 1 ? addresses[0] : addresses,
+      );
+    }
+
+    const transactionTypes =
+      this.options.types ?? nonEmptyEvents(this.transactionHandlers);
+    if (transactionTypes.length) {
+      connection.emit('types', transactionTypes);
+    }
+
+    const messageTypes =
+      this.options.assetChatTypes ?? nonEmptyEvents(this.messageHandlers);
+    if (messageTypes.length) {
+      connection.emit('assetChatTypes', messageTypes);
+    }
+  }
+
+  private scheduleReconnect(
+    reason: 'connection_error' | 'disconnection',
+    details: string,
+  ) {
+    if (this.manuallyDisconnected || this.reconnectTimer) {
+      return;
+    }
+
+    if (this.reconnectTry >= (this.options.maxTries ?? 3)) {
+      this.errorHandler(new AdamantWsConnectionError(reason, details));
+      return;
+    }
+
+    this.reconnectTry += 1;
+    this.connection?.removeAllListeners();
+    this.connection?.disconnect();
+    this.connection = undefined;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = undefined;
+      this.setConnection();
+    }, this.options.reconnectionDelay);
   }
 
   /**
@@ -192,11 +324,26 @@ export class WebSocketClient {
     return this;
   }
 
+  /** Registers a callback for the first successful connection. */
+  public onConnection(callback: ConnectionHandler) {
+    this.connectionHandler = callback;
+    return this;
+  }
+
+  /** Registers a callback for successful reconnections. */
+  public onReconnection(callback: ConnectionHandler) {
+    this.reconnectionHandler = callback;
+    return this;
+  }
+
   /**
    * Removes the handler from all types.
    */
   public off(handler: SingleTransactionHandler) {
-    for (const handlers of Object.values(this.eventHandlers)) {
+    for (const handlers of [
+      ...Object.values(this.transactionHandlers),
+      ...Object.values(this.messageHandlers),
+    ]) {
       let index = (handlers as SingleTransactionHandler[]).indexOf(handler);
       while (index !== -1) {
         handlers.splice(index, 1);
@@ -224,8 +371,8 @@ export class WebSocketClient {
   ) {
     if (handler === undefined) {
       if (typeof typesOrHandler === 'function') {
-        for (const trigger of Object.keys(this.eventHandlers)) {
-          this.eventHandlers[+trigger as EventType].push(typesOrHandler);
+        for (const trigger of Object.keys(this.transactionHandlers)) {
+          this.transactionHandlers[+trigger as EventType].push(typesOrHandler);
         }
       }
     } else {
@@ -234,7 +381,7 @@ export class WebSocketClient {
         : [typesOrHandler];
 
       for (const trigger of triggers) {
-        this.eventHandlers[trigger as T].push(handler);
+        this.transactionHandlers[trigger as T].push(handler);
       }
     }
 
@@ -244,8 +391,44 @@ export class WebSocketClient {
   /**
    * Registers an event handler for Chat Message transactions.
    */
-  public onMessage(handler: TransactionHandler<ChatMessageTransaction>) {
-    return this.on(TransactionType.CHAT_MESSAGE, handler);
+  public onMessage(handler: TransactionHandler<ChatMessageTransaction>): this;
+  public onMessage(
+    messageTypes: MessageType | MessageType[],
+    handler: TransactionHandler<ChatMessageTransaction>,
+  ): this;
+  public onMessage(
+    typesOrHandler:
+      | MessageType
+      | MessageType[]
+      | TransactionHandler<ChatMessageTransaction>,
+    handler?: TransactionHandler<ChatMessageTransaction>,
+  ) {
+    if (typeof typesOrHandler === 'function') {
+      return this.on(TransactionType.CHAT_MESSAGE, typesOrHandler);
+    }
+
+    const messageTypes = Array.isArray(typesOrHandler)
+      ? typesOrHandler
+      : [typesOrHandler];
+    for (const messageType of messageTypes) {
+      this.messageHandlers[messageType].push(handler!);
+    }
+    return this;
+  }
+
+  /** Registers a handler for plain chat messages. */
+  public onChatMessage(handler: TransactionHandler<ChatMessageTransaction>) {
+    return this.onMessage(MessageType.Chat, handler);
+  }
+
+  /** Registers a handler for rich messages. */
+  public onRichMessage(handler: TransactionHandler<ChatMessageTransaction>) {
+    return this.onMessage(MessageType.Rich, handler);
+  }
+
+  /** Registers a handler for signal messages. */
+  public onSignalMessage(handler: TransactionHandler<ChatMessageTransaction>) {
+    return this.onMessage(MessageType.Signal, handler);
   }
 
   /**
@@ -281,13 +464,24 @@ export class WebSocketClient {
   }
 
   private async handle<T extends EventType>(transaction: AnyTransaction) {
-    const handlers = this.eventHandlers[transaction.type as T];
+    const handlers = this.transactionHandlers[transaction.type as T] ?? [];
 
     for (const handler of handlers) {
       try {
         await handler(transaction as TransactionMap[T]);
       } catch (error) {
         this.errorHandler(error);
+      }
+    }
+
+    if (transaction.type === TransactionType.CHAT_MESSAGE) {
+      const messageType = transaction.asset.chat.type as MessageType;
+      for (const handler of this.messageHandlers[messageType] ?? []) {
+        try {
+          await handler(transaction);
+        } catch (error) {
+          this.errorHandler(error);
+        }
       }
     }
   }
@@ -324,3 +518,8 @@ export class WebSocketClient {
     return this.nodes[randomIndex];
   }
 }
+
+const nonEmptyEvents = (handlers: Record<string, unknown[]>) =>
+  Object.entries(handlers)
+    .filter(([, callbacks]) => callbacks.length > 0)
+    .map(([event]) => Number(event));

@@ -68,17 +68,17 @@ Do not place a passphrase, private key, decrypted message, or sensitive token in
 
 Use the narrowest entry point that fits the task:
 
-| Entry point | Purpose |
-| --- | --- |
-| `adamant-api` | ADM API and shared metadata |
-| `adamant-api/adm` | Explicit ADM-only SDK surface |
-| `adamant-api/api` | ADM HTTP client and generated API DTOs |
+| Entry point                | Purpose                                                 |
+| -------------------------- | ------------------------------------------------------- |
+| `adamant-api`              | ADM API and shared metadata                             |
+| `adamant-api/adm`          | Explicit ADM-only SDK surface                           |
+| `adamant-api/api`          | ADM HTTP client and generated API DTOs                  |
 | `adamant-api/transactions` | ADM transaction construction, hashing, signing, and IDs |
-| `adamant-api/metadata` | Bundled ADM and coin metadata |
-| `adamant-api/coins/btc` | Bitcoin wallet helper |
-| `adamant-api/coins/eth` | Ethereum wallet helper |
-| `adamant-api/coins/dash` | Dash wallet helper |
-| `adamant-api/coins/doge` | Dogecoin wallet helper |
+| `adamant-api/metadata`     | Bundled ADM and coin metadata                           |
+| `adamant-api/coins/btc`    | Bitcoin wallet helper                                   |
+| `adamant-api/coins/eth`    | Ethereum wallet helper                                  |
+| `adamant-api/coins/dash`   | Dash wallet helper                                      |
+| `adamant-api/coins/doge`   | Dogecoin wallet helper                                  |
 
 For example:
 
@@ -116,7 +116,7 @@ pnpm api-types:sync
 
 ## Reliability
 
-`AdamantApi` checks configured nodes through the node status endpoint and selects a live node at an actual blockchain height. When a request fails, the client retries and can switch to another healthy node instead of depending on a single endpoint.
+`AdamantApi` checks configured nodes through the node status endpoint and selects a live node at an actual blockchain height. Safe GET failures can be retried against another healthy node. POST requests are retried only when no HTTP response was received; an explicitly rejected POST is never replayed automatically, avoiding pointless retries for validation errors.
 
 Applications should provide several independently operated HTTPS nodes and handle returned errors. Malformed responses, timeouts, and partial network outages must not be treated as successful requests.
 
