@@ -21,5 +21,5 @@ module.exports = new Promise(resolve => api.onReady(resolve)).then(async () => {
     console.error(response.errorMessage);
   }
 
-  console.log('CommonJS live consumer finished.');
+  console.log('\nCommonJS live consumer finished.');
 });

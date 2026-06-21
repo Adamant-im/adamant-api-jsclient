@@ -187,7 +187,7 @@ console.log('CommonJS package imports passed.');
   console.log('\nRunning consumer.cjs…');
   await run(process.execPath, ['consumer.cjs'], consumerDirectory);
 
-  console.log('\nChecking TypeScript declarations…');
+  console.log('Checking TypeScript declarations…');
   await run(
     join(projectRoot, 'node_modules', '.bin', 'tsc'),
     ['--project', 'tsconfig.json'],

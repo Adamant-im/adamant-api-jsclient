@@ -22,4 +22,4 @@ if (response.success) {
   console.error(response.errorMessage);
 }
 
-console.log('ESM live consumer finished.');
+console.log('\nESM live consumer finished.');
