@@ -40,6 +40,7 @@ const api = new AdamantApi({
     'https://lake.adamant.im',
   ],
   checkHealthAtStartup: true,
+  minVersion: '0.8.0',
 });
 
 api.onReady(async () => {
@@ -52,6 +53,8 @@ api.onReady(async () => {
   }
 });
 ```
+
+`minVersion` is inclusive. During health checks, nodes below this ADAMANT Node version are reported and excluded from API and WebSocket selection.
 
 CommonJS remains supported:
 

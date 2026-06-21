@@ -236,6 +236,14 @@ export class AdamantApi extends NodeManager {
   ): Promise<AdamantApiResult<T>> {
     const {logger, maxRetries} = this;
 
+    if (!this.hasCompatibleNode) {
+      const minVersion = this.options.minVersion;
+      return {
+        success: false,
+        errorMessage: `No compatible ADAMANT nodes are available${minVersion ? `. Minimum required version is ${minVersion}` : ''}.`,
+      };
+    }
+
     const url = `${this.node}/api/${endpoint}`;
 
     try {
@@ -266,9 +274,7 @@ export class AdamantApi extends NodeManager {
         }.`;
 
         if (retryNo <= maxRetries) {
-          logger.log(
-            `${logMessage} Try ${retryNo}/${maxRetries}. Retrying…`,
-          );
+          logger.log(`${logMessage} Try ${retryNo}/${maxRetries}. Retrying…`);
 
           await this.updateNodes();
           return this.request<T>(method, endpoint, data, retryNo + 1);
@@ -897,7 +903,7 @@ export class AdamantApi extends NodeManager {
   }
 
   /**
-   * Get `confirmed`, `uncofirmed` and `queued` transactions count
+   * Get `confirmed`, `unconfirmed` and `queued` transactions count
    *
    * @nav Transactions
    */

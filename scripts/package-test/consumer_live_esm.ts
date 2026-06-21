@@ -10,6 +10,7 @@ const api = new AdamantApi({
     'https://lake.adamant.im',
   ],
   checkHealthAtStartup: true,
+  minVersion: '0.9.0',
 });
 
 await new Promise<void>(resolve => api.onReady(resolve));

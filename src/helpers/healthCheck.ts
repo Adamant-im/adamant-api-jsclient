@@ -1,4 +1,5 @@
 import axios from 'axios';
+import semver from 'semver';
 import {HEALTH_CHECK_TIMEOUT} from './constants';
 import {Logger} from './logger';
 import {unixTimestamp} from './time';
@@ -13,6 +14,8 @@ export interface NodeManagerOptions {
   timeout?: number;
   socket?: WebSocketClient;
   checkHealthAtStartup?: boolean;
+  /** Minimum supported ADAMANT Node version, compared inclusively. */
+  minVersion?: string;
 }
 
 export interface ActiveNode {
@@ -32,6 +35,21 @@ export interface ActiveNode {
 const CHECK_NODES_INTERVAL = 60 * 5 * 1000; // Update active nodes every 5 minutes
 const HEIGHT_EPSILON = 5; // Used to group nodes by height and choose synced
 
+const hasMinVersion = (version: string | undefined, minVersion?: string) => {
+  if (!minVersion) {
+    return true;
+  }
+
+  const coercedVersion = semver.coerce(version);
+  const coercedMinVersion = semver.coerce(minVersion);
+
+  if (!coercedVersion || !coercedMinVersion) {
+    return (version ?? '') >= minVersion;
+  }
+
+  return semver.gte(coercedVersion, coercedMinVersion);
+};
+
 /** Selects healthy, synchronized nodes and coordinates socket reconnection. */
 export class NodeManager {
   options: NodeManagerOptions;
@@ -40,6 +58,7 @@ export class NodeManager {
   public socket?: WebSocketClient;
 
   protected logger: Logger;
+  protected hasCompatibleNode = true;
 
   private onReadyCallback?: () => void;
 
@@ -121,8 +140,8 @@ export class NodeManager {
   async chooseNode(activeNodes: ActiveNode[], forceChangeActiveNode?: boolean) {
     const {logger, socket} = this;
 
-    const {length: activeNodesCount} = activeNodes;
-    if (!activeNodesCount) {
+    const respondingNodesCount = activeNodes.length;
+    if (!respondingNodesCount) {
       const totalNodesCount = this.options.nodes.length;
 
       logger.error(
@@ -131,26 +150,68 @@ export class NodeManager {
       return;
     }
 
+    const {minVersion} = this.options;
+    const compatibleNodes = activeNodes.filter(node =>
+      hasMinVersion(node.version, minVersion),
+    );
+    const incompatibleVersionCount =
+      respondingNodesCount - compatibleNodes.length;
+    const coercedMinVersion = semver.coerce(minVersion);
+    const minVersionLabel = minVersion
+      ? `v${coercedMinVersion?.version ?? minVersion.replace(/^v/, '')}`
+      : '';
+
+    if (incompatibleVersionCount) {
+      for (const node of activeNodes) {
+        if (!compatibleNodes.includes(node)) {
+          const nodeVersion = node.version
+            ? node.version.startsWith('v')
+              ? node.version
+              : `v${node.version}`
+            : 'unknown';
+          logger.warn(
+            `[ADAMANT js-api] Health check: Node ${node.node} version ${nodeVersion} is below minimum required version ${minVersionLabel}`,
+          );
+        }
+      }
+    }
+
+    const activeNodesCount = compatibleNodes.length;
+    if (!activeNodesCount) {
+      this.hasCompatibleNode = false;
+      const unavailableCount = this.options.nodes.length - respondingNodesCount;
+      const unavailableInfo = unavailableCount
+        ? ` ${unavailableCount} ${unavailableCount === 1 ? 'node did' : 'nodes did'} not respond.`
+        : '';
+
+      logger.error(
+        `[ADAMANT js-api] Health check: No compatible nodes available.${unavailableInfo} ${incompatibleVersionCount} ${incompatibleVersionCount === 1 ? 'node is' : 'nodes are'} below minimum required version ${minVersionLabel}.`,
+      );
+      return;
+    }
+
+    this.hasCompatibleNode = true;
+
     let outOfSyncCount = 0;
 
     if (activeNodesCount === 1) {
-      this.node = activeNodes[0].node;
+      this.node = compatibleNodes[0].node;
     } else if (activeNodesCount === 2) {
-      const [h0, h1] = activeNodes;
+      const [h0, h1] = compatibleNodes;
 
       this.node = h0.height > h1.height ? h0.node : h1.node;
 
       // Mark node outOfSync if needed
       if (h0.heightEpsilon > h1.heightEpsilon) {
-        activeNodes[1].outOfSync = true;
+        compatibleNodes[1].outOfSync = true;
         outOfSyncCount += 1;
       } else if (h0.heightEpsilon < h1.heightEpsilon) {
-        activeNodes[0].outOfSync = true;
+        compatibleNodes[0].outOfSync = true;
         outOfSyncCount += 1;
       }
     } else {
       // Removing lodash: const groups = _.groupBy(liveNodes, n => n.heightEpsilon);
-      const groups = activeNodes.reduce(
+      const groups = compatibleNodes.reduce(
         (grouped: {[heightEpsilon: number]: ActiveNode[]}, node) => {
           const {heightEpsilon} = node;
 
@@ -180,11 +241,11 @@ export class NodeManager {
       }
 
       // All the nodes from the biggestGroup list are considered to be in sync, all the others are not
-      for (const node of activeNodes) {
+      for (const node of compatibleNodes) {
         node.outOfSync = !biggestGroup.includes(node);
       }
 
-      outOfSyncCount = activeNodes.length - biggestGroup.length;
+      outOfSyncCount = compatibleNodes.length - biggestGroup.length;
 
       biggestGroup.sort((a, b) => a.ping - b.ping);
 
@@ -202,30 +263,35 @@ export class NodeManager {
       }
     }
 
-    socket?.reviseConnection(activeNodes);
+    socket?.reviseConnection(compatibleNodes);
 
     const {nodes} = this.options;
 
-    const unavailableCount = nodes.length - activeNodesCount;
+    const unavailableCount = nodes.length - respondingNodesCount;
     const supportedCount = activeNodesCount - outOfSyncCount;
+    const supportedNodeLabel = supportedCount === 1 ? 'node' : 'nodes';
 
     let nodesInfoString = '';
 
     if (unavailableCount) {
-      nodesInfoString += `, ${unavailableCount} nodes didn't respond`;
+      nodesInfoString += `, ${unavailableCount} ${unavailableCount === 1 ? "node didn't" : "nodes didn't"} respond`;
+    }
+
+    if (incompatibleVersionCount) {
+      nodesInfoString += `, ${incompatibleVersionCount} ${incompatibleVersionCount === 1 ? 'node is' : 'nodes are'} below minimum version ${minVersionLabel}`;
     }
 
     if (outOfSyncCount) {
-      nodesInfoString += `, ${outOfSyncCount} nodes are not synced`;
+      nodesInfoString += `, ${outOfSyncCount} ${outOfSyncCount === 1 ? 'node is' : 'nodes are'} not synced`;
     }
 
-    const activeNode = activeNodes.find(node => node.node === this.node);
+    const activeNode = compatibleNodes.find(node => node.node === this.node);
     const version = activeNode?.version
       ? ` (${activeNode.version.startsWith('v') ? activeNode.version : `v${activeNode.version}`})`
       : '';
 
     this.logger.log(
-      `[ADAMANT js-api] Health check: Found ${supportedCount} supported and synced nodes${nodesInfoString}. Active node is ${this.node}${version}.`,
+      `[ADAMANT js-api] Health check: Found ${supportedCount} supported and synced ${supportedNodeLabel}${nodesInfoString}. Active node is ${this.node}${version}.`,
     );
   }
 

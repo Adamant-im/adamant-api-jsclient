@@ -110,10 +110,51 @@ describe('NodeManager', () => {
     await manager.chooseNode([fast, slow, stale], true);
     expect(manager.node).toBe('https://slow');
     expect(output.log).toHaveBeenCalledWith(
-      expect.stringContaining("1 nodes didn't respond, 1 nodes are not synced"),
+      expect.stringContaining("1 node didn't respond, 1 node is not synced"),
     );
     expect(output.log).toHaveBeenLastCalledWith(
       expect.stringContaining('Active node is https://slow (v0.9.0).'),
+    );
+  });
+
+  test('excludes nodes below the minimum version', async () => {
+    const manager = new NodeManager(logger, {
+      nodes: ['https://old', 'https://current', 'https://offline'],
+      minVersion: '0.9.0',
+      checkHealthAtStartup: false,
+    });
+    const reviseConnection = jest.fn();
+    manager.socket = {reviseConnection} as unknown as WebSocketClient;
+    const old = activeNode('old', 100);
+    old.version = '0.8.0';
+    const current = activeNode('current', 100);
+    current.version = 'v0.9.0';
+
+    await manager.chooseNode([old, current]);
+
+    expect(manager.node).toBe('https://current');
+    expect(reviseConnection).toHaveBeenCalledWith([current]);
+    expect(output.warn).toHaveBeenCalledWith(
+      '[ADAMANT js-api] Health check: Node https://old version v0.8.0 is below minimum required version v0.9.0',
+    );
+    expect(output.log).toHaveBeenCalledWith(
+      "[ADAMANT js-api] Health check: Found 1 supported and synced node, 1 node didn't respond, 1 node is below minimum version v0.9.0. Active node is https://current (v0.9.0).",
+    );
+  });
+
+  test('reports when every responding node is below the minimum version', async () => {
+    const manager = new NodeManager(logger, {
+      nodes: ['https://old'],
+      minVersion: '0.9.0',
+      checkHealthAtStartup: false,
+    });
+    const old = activeNode('old', 100);
+    old.version = '0.8.0';
+
+    await manager.chooseNode([old]);
+
+    expect(output.error).toHaveBeenCalledWith(
+      '[ADAMANT js-api] Health check: No compatible nodes available. 1 node is below minimum required version v0.9.0.',
     );
   });
 

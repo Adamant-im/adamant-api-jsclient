@@ -70,8 +70,7 @@ describe('AdamantApi HTTP requests', () => {
     request.mockRejectedValueOnce(new AxiosError('offline'));
     await expect(api.get('status')).resolves.toEqual({
       success: false,
-      errorMessage:
-        'AxiosError: offline.',
+      errorMessage: 'AxiosError: offline.',
     });
 
     request.mockRejectedValueOnce(new Error('boom'));
@@ -98,6 +97,35 @@ describe('AdamantApi HTTP requests', () => {
       errorMessage:
         'connect ECONNREFUSED ::1:36666; connect ECONNREFUSED 127.0.0.1:36666.',
     });
+  });
+
+  test('does not request a node below the minimum version', async () => {
+    const api = new AdamantApi({
+      nodes: ['https://old.example'],
+      minVersion: '0.9.0',
+      checkHealthAtStartup: false,
+    });
+
+    await api.chooseNode([
+      {
+        node: 'https://old.example',
+        ping: 1,
+        baseURL: 'old.example',
+        isHttps: true,
+        height: 100,
+        heightEpsilon: 20,
+        socketSupport: true,
+        wsPort: 36667,
+        version: '0.8.0',
+      },
+    ]);
+
+    await expect(api.getBlocks()).resolves.toEqual({
+      success: false,
+      errorMessage:
+        'No compatible ADAMANT nodes are available. Minimum required version is 0.9.0.',
+    });
+    expect(request).not.toHaveBeenCalled();
   });
 });
 
