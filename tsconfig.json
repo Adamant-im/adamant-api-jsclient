@@ -4,11 +4,29 @@
     "lib": [],
     "target": "ESNext",
     "module": "CommonJS",
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "declaration": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "adamant-api": ["./src/index.ts"],
+      "adamant-api/adm": ["./src/adm/index.ts"],
+      "adamant-api/api": ["./src/api/index.ts"],
+      "adamant-api/transactions": ["./src/helpers/transactions/index.ts"],
+      "adamant-api/metadata": ["./src/metadata/index.ts"],
+      "adamant-api/coins/btc": ["./src/coins/btc.ts"],
+      "adamant-api/coins/eth": ["./src/coins/eth.ts"],
+      "adamant-api/coins/dash": ["./src/coins/dash.ts"],
+      "adamant-api/coins/doge": ["./src/coins/doge.ts"]
+    },
+    "types": ["node", "jest"],
+    "skipLibCheck": true,
+    "noEmit": true,
+    "rootDir": "."
   },
-  "include": ["src/index.ts", "types/*.d.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.json",
+    "examples/**/*.mts",
+    "types/*.d.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
 }

@@ -1,19 +1,10 @@
-export * from './api/index';
-export * from './coins/index';
-export * from './helpers/transactions/index';
-export * from './helpers/encryptor';
-export * from './helpers/constants';
-export * from './helpers/logger';
-export * from './helpers/wsClient';
-export * from './helpers/keys';
-export {
-  isPassphrase,
-  isAdmAddress,
-  isAdmPublicKey,
-  isAdmVoteForPublicKey,
-  isAdmVoteForAddress,
-  isAdmVoteForDelegateName,
-  validateMessage,
-  isDelegateName,
-  admToSats,
-} from './helpers/validator';
+/**
+ * Default `adamant-api` entry point: the full ADM SDK surface plus the bundled
+ * ADM and external-coin wallet metadata. Importing this entry point does not
+ * load coin-specific implementations.
+ *
+ * @module
+ */
+
+export * from './adm/index';
+export * from './metadata/index';

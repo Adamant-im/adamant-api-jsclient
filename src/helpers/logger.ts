@@ -1,28 +1,58 @@
 export enum LogLevel {
+  None = -1,
   Error,
   Warn,
   Info,
   Log,
+  Debug,
 }
 
 export type CustomLogger = Record<
   'error' | 'warn' | 'info' | 'log',
   (str: string) => void
->;
+> & {
+  /** Optional for backward compatibility; `log` is used as a fallback. */
+  debug?: (str: string) => void;
+};
 
-export const logLevels = ['error', 'warn', 'info', 'log'] as const;
+export const logLevels = ['error', 'warn', 'info', 'log', 'debug'] as const;
 
-export type LogLevelName = (typeof logLevels)[number];
+export type LogLevelName = 'none' | (typeof logLevels)[number];
+
+/**
+ * Logger threshold accepted by the SDK.
+ *
+ * Known level names receive type suggestions, while application-specific names
+ * such as `trace` are accepted and fall back to `log`.
+ */
+export type LogLevelInput = LogLevel | LogLevelName | (string & {});
+
+const normalizeLogLevel = (level: LogLevelInput): LogLevel => {
+  if (typeof level === 'number') {
+    return Number.isInteger(level) &&
+      level >= LogLevel.None &&
+      level <= LogLevel.Debug
+      ? level
+      : LogLevel.Log;
+  }
+
+  if (level === 'none') {
+    return LogLevel.None;
+  }
+
+  const knownLevel = logLevels.indexOf(level as (typeof logLevels)[number]);
+  return knownLevel === -1 ? LogLevel.Log : knownLevel;
+};
 
 export class Logger {
   logger: CustomLogger;
   level: LogLevel;
 
   constructor(
-    level: LogLevel | LogLevelName = LogLevel.Log,
-    logger: CustomLogger = console
+    level: LogLevelInput = LogLevel.Log,
+    logger: CustomLogger = console,
   ) {
-    this.level = typeof level === 'number' ? level : logLevels.indexOf(level);
+    this.level = normalizeLogLevel(level);
     this.logger = logger;
   }
 
@@ -47,6 +77,13 @@ export class Logger {
   log(message: string) {
     if (this.level >= LogLevel.Log) {
       this.logger.log(message);
+    }
+  }
+
+  debug(message: string) {
+    if (this.level >= LogLevel.Debug) {
+      const debug = this.logger.debug ?? this.logger.log;
+      debug.call(this.logger, message);
     }
   }
 }

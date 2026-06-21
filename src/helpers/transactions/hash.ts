@@ -10,6 +10,11 @@ import {KeyPair} from '../keys';
 
 export interface BasicTransaction {
   timestamp: number;
+  /**
+   * Optional millisecond-precision time. Excluded from {@link getBytes}, so it
+   * never affects the transaction hash, ID, or signature.
+   */
+  timestampMs?: number;
   amount: number;
   senderPublicKey: string;
   senderId: string;
@@ -83,7 +88,7 @@ export type SignedTransaction = SomeTransaction & {
 
 export function getHash(
   trs: PossiblySignedTransaction,
-  options = {skipSignature: true}
+  options = {skipSignature: true},
 ) {
   const hash = crypto
     .createHash('sha256')
@@ -114,7 +119,7 @@ export function getAssetBytes(transaction: PossiblySignedTransaction) {
 
 export function getBytes(
   transaction: PossiblySignedTransaction,
-  skipSignature = true
+  skipSignature = true,
 ) {
   const result = getAssetBytes(transaction);
 
@@ -251,7 +256,7 @@ export function chatGetBytes(trs: ChatTransaction) {
 export function sign(hash: Buffer, keypair: KeyPair) {
   const sign = sodium.crypto_sign_detached(
     hash,
-    Buffer.from(keypair.privateKey)
+    Buffer.from(keypair.privateKey),
   );
 
   return sign;

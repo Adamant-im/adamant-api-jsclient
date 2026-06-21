@@ -1,108 +1,119 @@
-# Contributing Guide
+# Contributing to ADAMANT JavaScript API
 
-Before submitting your contribution, please make sure to take a moment and read through the following guidelines:
+Thank you for improving `adamant-api`. Changes should protect cryptographic correctness, node reliability, public API compatibility, and contributor clarity.
 
-- [Code of Conduct](./CODE_OF_CONDUCT.md)
-- [Issue Reporting Guidelines](#issue-reporting-guidelines)
-- [Pull Request Guidelines](#pull-request-guidelines)
-- [Development Setup](#development-setup)
-- [Scripts](#scripts)
-- [Project Structure](#project-structure)
-- [Contributing Tests](#contributing-tests)
+## Before you start
 
-## Issue Reporting Guidelines
+- Search [existing issues](https://github.com/Adamant-im/adamant-api-jsclient/issues) before opening a new one.
+- Use a concise issue prefix such as `[Bug]`, `[Feat]`, `[Refactor]`, `[Docs]`, `[Test]`, or `[Chore]`.
+- Base work on `dev` and target `dev` in pull requests. `master` represents stable releases.
+- Keep changes focused. Protocol, transaction-byte, signing, hashing, and encryption changes require explicit coordinated work.
+- Never commit or log passphrases, mnemonic seeds, private keys, decrypted payloads, or sensitive tokens.
 
-- Always use [GitHub Issues](https://github.com/Adamant-im/adamant-api-jsclient/issues) to create new issues.
+All repository artifacts—including code, comments, documentation, commits, issues, and pull requests—must be written in English.
 
-## Pull Request Guidelines
+## Development setup
 
-- The master branch is just a snapshot of the latest stable release. All development should be done in dedicated branches. Do not submit PRs against the master branch.
+Use Node.js 22 or newer and the pnpm version declared in `package.json`:
 
-- Checkout a topic branch from a base branch, e.g. `dev`, and merge back against that branch.
-
-- If adding a new feature add accompanying test case.
-
-- It's OK to have multiple small commits as you work on the PR - GitHub can automatically squash them before merging.
-
-- Make sure tests pass!
-
-- Commit messages must follow the [commit message convention](https://github.com/angular/angular/blob/68a6a07/CONTRIBUTING.md#commit). Commit messages are automatically validated before commit (by invoking [Git Hooks](https://git-scm.com/docs/githooks) via [husky](https://github.com/typicode/husky)).
-
-- No need to worry about code style as long as you have installed the dev dependencies - modified files are automatically formatted with Prettier on commit (by invoking [Git Hooks](https://git-scm.com/docs/githooks) via [husky](https://github.com/typicode/husky)).
-
-## Development Setup
-
-You will need [Node.js](https://nodejs.org) **version 18+** and [pnpm](https://pnpm.io/).
-
-After cloning the repo, run:
-
-```bash
-$ pnpm i # install the dependencies of the project
+```sh
+git clone https://github.com/Adamant-im/adamant-api-jsclient.git
+cd adamant-api-jsclient
+git switch dev
+corepack enable
+pnpm install
 ```
 
-A high level overview of tools used:
+Create a dedicated branch and keep commits compatible with Conventional Commits:
 
-- [Jest](https://jestjs.io) for unit testing
-- [gts](https://github.com/google/gts) for code formatting
-
-## Scripts
-
-### `npm run lint`
-
-The `lint` script runs linter.
-
-```bash
-# lint files
-$ npm run lint
-# fix linter errors
-$ npm run fix
+```sh
+git switch -c feat/short-description
 ```
 
-### `npm run test`
+## Validation
 
-The `test` script simply calls the `jest` binary, so all [Jest CLI Options](https://jestjs.io/docs/en/cli) can be used. Some examples:
+Pull requests must include tests for new features and bug fixes. Tests are collocated with the code in `tests` directories. Choose the smallest focused test while developing, then run the complete baseline before submitting:
 
-```bash
-# run all tests
-$ npm run test
-
-# run all tests under the runtime-core package
-$ npm run test -- runtime-core
-
-# run tests in a specific file
-$ npm run test -- fileName
-
-# run a specific test in a specific file
-$ npm run test -- fileName -t 'test name'
+```sh
+pnpm build
+pnpm test
+pnpm lint
 ```
 
-### Generating API types
+Also run these checks when relevant:
 
-To generate API types, run the following commands in the [`adamant-schema`](https://github.com/Adamant-im/adamant-schema/)'s master branch with the latest commit:
-
-```bash
-# build OpenAPI schema
-$ npm run bundle
-# generate typescript from the schema
-$ npx swagger-typescript-api -p ./dist/schema.json -o ./dist -n generated.ts --no-client
+```sh
+pnpm metadata:check  # wallet metadata or coin changes
+pnpm test:package    # package exports or declaration changes
+pnpm audit           # dependency changes
+pnpm fix             # apply project formatting and safe lint fixes
 ```
 
-Then, copy `dist/generated.ts` to `adamant-api-jsclient` at `src/api/generated.ts`.
+Report the exact commands run and any skipped or blocked validation in the pull request. Changes to key derivation, encryption, or transactions must preserve the established test vectors.
 
-## Project Structure
+## Project structure
 
-- **`src`**: contains the source code
+- `src/adm/`: explicit ADM-only public surface
+- `src/api/`: `AdamantApi`, request helpers, and generated DTOs
+- `src/helpers/`: keys, encryption, transactions, health checks, sockets, and shared utilities
+- `src/coins/`: optional BTC, ETH, DASH, and DOGE implementations
+- `src/metadata/`: generated wallet metadata and its typed public API
+- `scripts/`: repository maintenance and deterministic generation tools
+- `examples/`: small usage examples
 
-  - **`api`**: contains group of methods and methods for the API.
+Keep optional coin dependencies behind `adamant-api/coins/*` entry points. The package root and `adamant-api/adm` must not import coin implementations.
 
-    - **`genearated.ts`**: contains auto-generated types for API.
+## Generated API types
 
-  - **`coins`**: contains group of utils for coins.
+Do not hand-edit `src/api/generated.ts` for routine schema updates. It is generated from the pinned [`adamant-schema`](https://github.com/Adamant-im/adamant-schema) revision in `scripts/sync-api-types.mjs`.
 
-  - **`helpers`**: contains utilities shared across the entire codebase.
+```sh
+pnpm api-types:check
+pnpm api-types:sync
+```
 
-    - **`tests`**: contains tests for the helpers directory.
+To update the DTOs, review and change the pinned commit in the script, run `pnpm api-types:sync`, inspect the generated diff, and run the full validation suite. The generated file records both the schema revision and generator version.
 
-## Contributing Tests
+## Wallet metadata
 
-Unit tests are collocated with the code being tested inside directories named `tests`. Consult the [Jest docs](https://jestjs.io/docs/en/using-matchers) and existing test cases for how to write new test specs. Here are some additional guidelines:
+`src/metadata/wallets.json` is generated from the pinned [`adamant-wallets`](https://github.com/Adamant-im/adamant-wallets) revision in `scripts/sync-wallet-metadata.mjs`.
+
+To update it:
+
+1. Review the intended upstream revision and change the pinned commit in the script.
+2. Run `pnpm metadata:sync`.
+3. Review the generated diff and confirm it is limited to intended metadata.
+4. Run `pnpm metadata:check`, `pnpm build`, `pnpm test`, and `pnpm lint`.
+
+Address regexes, decimals, symbols, explorer links, and wallet-facing blockchain definitions should remain aligned with `adamant-wallets`.
+
+## Documentation site
+
+The documentation site at [js.docs.adamant.im](https://js.docs.adamant.im) is built with [VitePress](https://vitepress.dev). It has two parts:
+
+- **Guides** — hand-written Markdown in `docs/guide/` (plus the landing page `docs/index.md` and the VitePress config in `docs/.vitepress/config.mts`).
+- **API Reference** — generated from source TSDoc comments by [TypeDoc](https://typedoc.org) into `docs/api/` (configured in `typedoc.json`). This directory is generated and gitignored; never edit it by hand. To change the reference, edit the doc comments in `src/`.
+
+Run and build the site locally:
+
+```sh
+pnpm docs:api      # regenerate the API reference from src/ TSDoc into docs/api
+pnpm docs:dev      # generate the reference, then start the dev server (hot reload)
+pnpm docs:build    # generate the reference and build the static site
+pnpm docs:preview  # preview the built static site
+```
+
+`pnpm docs:dev` serves the site at `http://localhost:5173` by default. `docs:dev` and `docs:build` run `docs:api` first, so the API Reference is always regenerated from the current source.
+
+When you change a public export or its TSDoc, run `pnpm docs:api` (or `pnpm docs:dev`) to see the regenerated reference. When you add or rename a guide page, update the sidebar in `docs/.vitepress/config.mts`. The site is deployed to GitHub Pages automatically on push to `master` and on release by `.github/workflows/docs.yml`; you do not deploy it manually.
+
+## Pull requests
+
+- Use a title in `Type: Short summary` form, for example `Refactor: Add modular coin entry points`.
+- Link related issues explicitly.
+- Explain public API or import-path changes and include migration examples.
+- Update documentation when behavior, exports, setup, or workflows change.
+- Keep dependency additions minimal and explain cryptography or networking dependencies.
+- Ensure hooks, compile, tests, lint, and relevant generated-file checks pass.
+
+Small reviewable commits are welcome; maintainers may squash them when merging.

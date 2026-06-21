@@ -7,9 +7,7 @@ interface TransformBufferOptions {
   size?: number | 'auto';
 }
 
-type EndianMap = {
-  [K in Endian]: 'big' | 'little';
-};
+type EndianMap = Record<Endian, 'big' | 'little'>;
 
 const endianMap: EndianMap = {
   1: 'big',
@@ -32,7 +30,7 @@ export const fromBuffer = (buf: Buffer, opts: TransformBufferOptions = {}) => {
 
 export const toBuffer = (
   bignumber: BigNumber,
-  opts: TransformBufferOptions | 'mpint' = {}
+  opts: TransformBufferOptions | 'mpint' = {},
 ) => {
   if (typeof opts === 'string') {
     return toMpintBuffer(bignumber);
@@ -56,7 +54,7 @@ export function resolveEndian(opts: TransformBufferOptions): Endian {
 
 export function resolveSize(
   opts: TransformBufferOptions,
-  defaultSize: number
+  defaultSize: number,
 ): number {
   return opts.size === 'auto' ? Math.ceil(defaultSize) : opts.size || 1;
 }
@@ -64,7 +62,7 @@ export function resolveSize(
 export function validateBufferLength(buf: Buffer, size: number) {
   if (buf.length % size !== 0) {
     throw new RangeError(
-      `Buffer length (${buf.length}) must be a multiple of size (${size})`
+      `Buffer length (${buf.length}) must be a multiple of size (${size})`,
     );
   }
 }
@@ -72,7 +70,7 @@ export function validateBufferLength(buf: Buffer, size: number) {
 export function bufferToHexArray(
   buf: Buffer,
   size: number,
-  endian: Endian
+  endian: Endian,
 ): string[] {
   const hex: string[] = [];
 

@@ -1,11 +1,14 @@
+/**
+ * ADM HTTP client (`AdamantApi`): resilient node access with health checks,
+ * retries, and failover; typed request options; and the generated ADAMANT API
+ * DTO types.
+ *
+ * @module
+ */
+
 import axios, {AxiosError} from 'axios';
 import {NodeManager, NodeManagerOptions} from '../helpers/healthCheck';
-import {
-  Logger,
-  type CustomLogger,
-  type LogLevel,
-  type LogLevelName,
-} from '../helpers/logger';
+import {Logger, type CustomLogger, type LogLevelInput} from '../helpers/logger';
 import {
   AdamantApiResult,
   admToSats,
@@ -25,6 +28,7 @@ import {DEFAULT_GET_REQUEST_RETRIES, MessageType} from '../helpers/constants';
 
 import type {
   DelegateDto,
+  CreateNewAccountResponseDto,
   GetAccountBalanceResponseDto,
   GetAccountInfoResponseDto,
   GetAccountPublicKeyResponseDto,
@@ -34,6 +38,7 @@ import type {
   GetBroadhashResponseDto,
   GetChatMessagesResponseDto,
   GetChatRoomsResponseDto,
+  GetChatTransactionsResponseDto,
   GetDelegateResponseDto,
   GetDelegateStatsResponseDto,
   GetDelegatesCountResponseDto,
@@ -48,6 +53,7 @@ import type {
   GetNodeStatusResponseDto,
   GetNodeVersionResponseDto,
   GetPeersResponseDto,
+  GetPeerInfoResponseDto,
   GetPingStatusResponseDto,
   GetQueuedTransactionsResponseDto,
   GetRewardResponseDto,
@@ -61,7 +67,12 @@ import type {
   GetUnconfirmedTransactionByIdResponseDto,
   GetUnconfirmedTransactionsResponseDto,
   GetVotersResponseDto,
+  GetKVSResponseDto,
+  RegisterTransactionRequestBody,
+  RegisterTransactionResponseDto,
   SearchDelegateResponseDto,
+  SetKVSRequestBody,
+  SetKVSResponseDto,
 } from './generated';
 import {
   createAddressFromPublicKey,
@@ -105,8 +116,30 @@ export type AddressOrPublicKeyObject = AddressObject | PublicKeyObject;
  */
 export type UsernameOrPublicKeyObject = UsernameObject | PublicKeyObject;
 
+/** Object that identifies a delegate by username, public key, or address. */
+export type DelegateLookupOptions =
+  | UsernameObject
+  | PublicKeyObject
+  | AddressObject;
+
+/**
+ * A transaction query.
+ *
+ * Top-level filter conditions are combined with `and` by default — every
+ * condition must match. This differs from the raw node API, whose default is
+ * `or`. To opt into `or`, wrap fields in `or`; an explicit `and` wrapper is
+ * also supported and is equivalent to passing those fields at the top level.
+ *
+ * Control and pagination parameters (`limit`, `offset`, `orderBy`,
+ * `returnAsset`, `returnUnconfirmed`, the direct-transfer flags, and `userId`)
+ * are not filters and are always sent as-is.
+ *
+ * @see https://docs.adamant.im/api/transactions-query-language.html#combine-filters-and-options
+ */
 export type TransactionQuery<T extends object> = Partial<T> & {
+  /** Filter conditions combined with `or`. */
   or?: Partial<T>;
+  /** Filter conditions combined with `and` (the default for top-level fields). */
   and?: Partial<T>;
 };
 
@@ -122,27 +155,79 @@ export interface GetDelegatesOptions {
   offset?: number;
 }
 
+export interface GetPeersOptions {
+  limit?: number;
+  offset?: number;
+  os?: string;
+  ip?: string;
+}
+
+/**
+ * Query parameters shared by the transaction-style endpoints:
+ * `/api/transactions`, `/api/chats/get`, `/api/chatrooms`, and
+ * `/api/states/get`.
+ *
+ * Two things to keep in mind:
+ *
+ * 1. **Filter combination.** Top-level filter conditions are combined with
+ *    `and` by default — see {@link TransactionQuery} to opt into `or`. Control
+ *    and pagination fields (`limit`, `offset`, `orderBy`, `returnUnconfirmed`)
+ *    are never treated as filters.
+ * 2. **Endpoint support varies.** The node does not reject unknown query
+ *    fields, but each endpoint only *applies* a subset of these in its SQL, so
+ *    passing a field an endpoint ignores simply has no effect. The applicable
+ *    filters were verified against the node's per-module query builders, not
+ *    just the docs. Amount filters (`minAmount` / `maxAmount`) are honored only
+ *    by `/api/transactions` and are therefore declared on
+ *    {@link TransactionsOptions} rather than here.
+ *
+ * @see https://docs.adamant.im/api/transactions-query-language.html
+ * @see https://github.com/Adamant-im/adamant/blob/dev/modules/transactions.js
+ */
 export interface TransactionQueryParameters {
-  blockId?: number;
+  returnUnconfirmed?: 1 | 0;
+  blockId?: string;
   fromHeight?: number;
   toHeight?: number;
-  minAmount?: number;
-  maxAmount?: number;
+  fromTimestamp?: number;
+  toTimestamp?: number;
+  minFee?: number;
+  maxFee?: number;
+  minConfirmations?: number;
   senderId?: string;
   recipientId?: string;
   inId?: string;
+  isIn?: string;
   limit?: number;
   offset?: number;
   orderBy?: string;
 }
 
-// parameters that available for /api/chatrooms
+/**
+ * Options for the chat endpoints: `/api/chatrooms` (`getChats`,
+ * `getChatMessages`) and the legacy `/api/chats/get` (`getChatTransactions`).
+ *
+ * Verified against the node query builders, these endpoints apply only `type`,
+ * `senderId`, `recipientId`, the direct-transfer toggle, and pagination —
+ * plus `userId` on `/api/chatrooms`, and `isIn` / `inId` and `fromHeight` on
+ * `/api/chats/get`. Other inherited fields (most range filters) are accepted
+ * by the node but not applied, so they have no effect. Amount filters are
+ * excluded at the type level (they belong to {@link TransactionsOptions}).
+ */
 export interface ChatroomsOptions extends TransactionQueryParameters {
   type?: number;
-  withoutDirectTransfers?: boolean;
+  userId?: string;
+  includeDirectTransfers?: boolean | 1 | 0;
+  /** @deprecated Use `includeDirectTransfers` instead. */
+  withoutDirectTransfers?: boolean | 1 | 0;
 }
 
-// parameters that available for /api/transactions
+/**
+ * Options for `/api/transactions` (`getTransactions`, `getTransaction`). This
+ * is the most permissive endpoint: it applies the full filter set, including
+ * the amount filters (`minAmount` / `maxAmount`) that the chat and KVS
+ * endpoints do not support.
+ */
 export interface TransactionsOptions extends TransactionQueryParameters {
   senderIds?: string[];
   recipientIds?: string[];
@@ -153,6 +238,25 @@ export interface TransactionsOptions extends TransactionQueryParameters {
   type?: number;
   types?: number[];
   returnAsset?: 1 | 0;
+  // Amount filters are supported only by `/api/transactions`, not by
+  // `/api/chats/get`, `/api/chatrooms`, or `/api/states/get`.
+  minAmount?: number;
+  maxAmount?: number;
+}
+
+/**
+ * Options for `/api/states/get` (`getKVS`).
+ *
+ * Verified against the node query builder, this endpoint applies `type`,
+ * `key`, `keyIds`, `senderId`, `senderIds`, and `fromHeight`, plus pagination.
+ * It does not support amount filters (excluded at the type level) and ignores
+ * `recipientId`.
+ */
+export interface KVSOptions extends TransactionQueryParameters {
+  senderIds?: string[];
+  key?: string;
+  keyIds?: string[];
+  type?: number;
 }
 
 export interface AdamantApiOptions extends NodeManagerOptions {
@@ -162,13 +266,101 @@ export interface AdamantApiOptions extends NodeManagerOptions {
   timeout?: number;
 
   logger?: CustomLogger;
-  logLevel?: LogLevel | LogLevelName;
+  /**
+   * Logging threshold. Only `none` disables logging. Unknown string values,
+   * including `debug` and `trace`, fall back to the most verbose `log` level.
+   */
+  logLevel?: LogLevelInput;
 }
 
 const publicKeysCache: {
   [address: string]: string;
 } = {};
 
+const formatAxiosError = (error: AxiosError) => {
+  const aggregateErrors =
+    typeof error.cause === 'object' &&
+    error.cause !== null &&
+    'errors' in error.cause &&
+    Array.isArray(error.cause.errors)
+      ? error.cause.errors
+      : undefined;
+
+  if (aggregateErrors) {
+    const pending: unknown[] = [...aggregateErrors];
+    const messages: string[] = [];
+
+    while (pending.length) {
+      const cause = pending.shift();
+
+      if (
+        typeof cause === 'object' &&
+        cause !== null &&
+        'errors' in cause &&
+        Array.isArray(cause.errors)
+      ) {
+        pending.push(...cause.errors);
+      } else if (cause instanceof Error && cause.message.trim()) {
+        messages.push(cause.message.trim());
+      } else if (cause !== undefined) {
+        messages.push(String(cause));
+      }
+    }
+
+    if (messages.length) {
+      return [...new Set(messages)].join('; ');
+    }
+  }
+
+  if (error.message.trim()) {
+    return `${error.name}: ${error.message.trim()}`;
+  }
+
+  return error.code ? `${error.name} (${error.code})` : error.name;
+};
+
+const responseErrorMessage = (data: unknown) => {
+  if (typeof data === 'string') {
+    return data.trim();
+  }
+
+  if (typeof data === 'object' && data !== null) {
+    const record = data as Record<string, unknown>;
+    for (const key of ['errorMessage', 'error', 'message'] as const) {
+      if (typeof record[key] === 'string') {
+        return record[key].trim();
+      }
+    }
+  }
+
+  return '';
+};
+
+const normalizeApiResponse = <T>(data: unknown): AdamantApiResult<T> => {
+  if (
+    typeof data === 'object' &&
+    data !== null &&
+    'success' in data &&
+    data.success === false
+  ) {
+    return {
+      success: false,
+      errorMessage:
+        responseErrorMessage(data) ||
+        'ADAMANT Node returned an unsuccessful response without an error message',
+    };
+  }
+
+  return data as AdamantApiResult<T>;
+};
+
+/**
+ * Resilient client for the public ADAMANT Node HTTP API.
+ *
+ * The client inherits node health checks and failover from the internal
+ * `NodeManager` and returns structured API results instead of exposing raw
+ * Axios errors.
+ */
 export class AdamantApi extends NodeManager {
   maxRetries: number;
 
@@ -184,9 +376,17 @@ export class AdamantApi extends NodeManager {
     method: 'GET' | 'POST',
     endpoint: string,
     data: unknown,
-    retryNo = 1
+    retryNo = 1,
   ): Promise<AdamantApiResult<T>> {
     const {logger, maxRetries} = this;
+
+    if (!this.hasCompatibleNode) {
+      const minVersion = this.options.minVersion;
+      return {
+        success: false,
+        errorMessage: `No compatible ADAMANT nodes are available${minVersion ? `. Minimum required version is ${minVersion}` : ''}.`,
+      };
+    }
 
     const url = `${this.node}/api/${endpoint}`;
 
@@ -203,23 +403,33 @@ export class AdamantApi extends NodeManager {
             }),
       });
 
-      return response.data;
+      return normalizeApiResponse<T>(response.data);
     } catch (error) {
       if (error instanceof AxiosError) {
         const {response} = error;
 
         const nodeStatus = response?.status
-          ? `Request to ${url} failed with ${response.status} status code`
-          : `Node ${url} hasn't returned its status`;
+          ? `Request to ${url} failed with HTTP ${response.status}`
+          : `Request to ${url} failed`;
+        const errorDetails = formatAxiosError(error);
 
-        const logMessage = `[ADAMANT js-api] Get-request: ${nodeStatus}, ${error}${
-          response?.data ? '. Message: ' + response.data.toString().trim() : ''
+        const responseMessage = responseErrorMessage(response?.data);
+        const logMessage = `[ADAMANT js-api] ${method} request: ${nodeStatus}. ${errorDetails}${
+          responseMessage ? '. Message: ' + responseMessage : ''
         }.`;
 
-        if (retryNo <= maxRetries) {
-          logger.log(
-            `${logMessage} Try ${retryNo} of ${maxRetries}. Retrying…`
-          );
+        // A received HTTP response proves that the node is reachable. Retrying a
+        // rejected POST can duplicate a transaction, while 4xx and structured API
+        // errors are not recoverable by switching nodes. Unstructured GET 5xx
+        // failures may safely fail over to another node.
+        const shouldRetry =
+          !response ||
+          (method === 'GET' &&
+            response.status >= 500 &&
+            responseMessage === '');
+
+        if (shouldRetry && retryNo <= maxRetries) {
+          logger.log(`${logMessage} Try ${retryNo}/${maxRetries}. Retrying…`);
 
           await this.updateNodes();
           return this.request<T>(method, endpoint, data, retryNo + 1);
@@ -229,7 +439,7 @@ export class AdamantApi extends NodeManager {
 
         return {
           success: false,
-          errorMessage: `${error}`,
+          errorMessage: `${responseMessage || errorDetails}.`,
         };
       }
 
@@ -243,7 +453,7 @@ export class AdamantApi extends NodeManager {
   /**
    * Makes GET request to ADAMANT network.
    *
-   * @details `endpoint` should be in `'accounts/getPublicKey'` format, excluding `'/api/'`
+   * `endpoint` should be in `'accounts/getPublicKey'` format, excluding `'/api/'`.
    */
   async get<T>(endpoint: string, params?: unknown) {
     return this.request<T>('GET', endpoint, params);
@@ -252,7 +462,7 @@ export class AdamantApi extends NodeManager {
   /**
    * Makes POST request to ADAMANT network.
    *
-   * @details `endpoint` should be in `'accounts/getPublicKey'` format, excluding `'/api/'`
+   * `endpoint` should be in `'accounts/getPublicKey'` format, excluding `'/api/'`.
    */
   async post<T>(endpoint: string, options: unknown) {
     return this.request<T>('POST', endpoint, options);
@@ -271,7 +481,7 @@ export class AdamantApi extends NodeManager {
       'accounts/getPublicKey',
       {
         address,
-      }
+      },
     );
 
     if (response.success) {
@@ -282,9 +492,18 @@ export class AdamantApi extends NodeManager {
     }
 
     this.logger.warn(
-      `[ADAMANT js-api] Failed to get public key for ${address}. ${response.errorMessage}.`
+      `[ADAMANT js-api] Failed to get public key for ${address}. ${response.errorMessage}.`,
     );
     return '';
+  }
+
+  /** Initializes an account from a public key without transmitting a secret. */
+  async createAccount(publicKey: string) {
+    if (!isAdmPublicKey(publicKey)) {
+      return badParameter('publicKey', publicKey);
+    }
+
+    return this.post<CreateNewAccountResponseDto>('accounts/new', {publicKey});
   }
 
   /**
@@ -322,7 +541,7 @@ export class AdamantApi extends NodeManager {
     message: string,
     type = MessageType.Chat,
     amount?: number,
-    isAmountInADM?: boolean
+    isAmountInADM?: boolean,
   ) {
     if (!isPassphrase(passphrase)) {
       return badParameter('passphrase');
@@ -340,7 +559,7 @@ export class AdamantApi extends NodeManager {
 
       try {
         address = createAddressFromPublicKey(publicKey);
-      } catch (error) {
+      } catch {
         return badParameter('addressOrPublicKey', addressOrPublicKey);
       }
     } else {
@@ -354,7 +573,7 @@ export class AdamantApi extends NodeManager {
     const result = validateMessage(message, type);
 
     if (!result.success) {
-      return badParameter('message', message, result.error);
+      return badParameter('message', message, result.errorMessage);
     }
 
     let amountInSat: number | undefined;
@@ -407,7 +626,7 @@ export class AdamantApi extends NodeManager {
     passphrase: string,
     addressOrPublicKey: string,
     amount: number,
-    isAmountInADM = true
+    isAmountInADM = true,
   ) {
     if (!isPassphrase(passphrase)) {
       return badParameter('passphrase');
@@ -424,7 +643,7 @@ export class AdamantApi extends NodeManager {
 
       try {
         address = createAddressFromPublicKey(addressOrPublicKey);
-      } catch (error) {
+      } catch {
         return badParameter('addressOrPublicKey', addressOrPublicKey);
       }
     }
@@ -506,13 +725,13 @@ export class AdamantApi extends NodeManager {
 
           if (!response.success) {
             this.logger.warn(
-              `[ADAMANT js-api] Failed to get list of delegates. ${response.errorMessage}.`
+              `[ADAMANT js-api] Failed to get list of delegates. ${response.errorMessage}.`,
             );
 
             return badParameter(
               'votes',
               vote,
-              'unable to retrieve the delegates list'
+              'unable to retrieve the delegates list',
             );
           }
 
@@ -538,13 +757,13 @@ export class AdamantApi extends NodeManager {
 
         if (!response.success) {
           this.logger.warn(
-            `[ADAMANT js-api] Failed to get public key for ${vote}. ${response.errorMessage}.`
+            `[ADAMANT js-api] Failed to get public key for ${vote}. ${response.errorMessage}.`,
           );
 
           return badParameter(
             'votes',
             name,
-            "unable to retrieve the delegate's public key"
+            "unable to retrieve the delegate's public key",
           );
         }
 
@@ -560,7 +779,7 @@ export class AdamantApi extends NodeManager {
         return badParameter(
           'votes',
           name,
-          "the vote doesn't look like public key, address or delegate name"
+          "the vote doesn't look like public key, address or delegate name",
         );
       }
 
@@ -570,7 +789,7 @@ export class AdamantApi extends NodeManager {
     const data = {
       keyPair,
       votes: Object.keys(uniqueVotes).map(
-        name => `${uniqueVotes[name]}${name}`
+        name => `${uniqueVotes[name]}${name}`,
       ),
     };
 
@@ -583,7 +802,7 @@ export class AdamantApi extends NodeManager {
    * Get account information by ADAMANT address or Public Key
    */
   async getAccountInfo(
-    options: AddressOrPublicKeyObject
+    options: AddressOrPublicKeyObject,
   ): Promise<AdamantApiResult<GetAccountInfoResponseDto>> {
     return this.get('accounts', options);
   }
@@ -616,11 +835,12 @@ export class AdamantApi extends NodeManager {
    */
   async getChats(
     address: string,
-    options?: TransactionQuery<ChatroomsOptions>
+    options?: TransactionQuery<ChatroomsOptions>,
   ) {
+    this.warnDeprecatedDirectTransferFilter(options);
     return this.get<GetChatRoomsResponseDto>(
       `chatrooms/${address}`,
-      transformTransactionQuery(options)
+      transformTransactionQuery(options),
     );
   }
 
@@ -630,11 +850,24 @@ export class AdamantApi extends NodeManager {
   async getChatMessages(
     address1: string,
     address2: string,
-    query?: TransactionQuery<ChatroomsOptions>
+    query?: TransactionQuery<ChatroomsOptions>,
   ) {
+    this.warnDeprecatedDirectTransferFilter(query);
     return this.get<GetChatMessagesResponseDto>(
       `chatrooms/${address1}/${address2}`,
-      transformTransactionQuery(query)
+      transformTransactionQuery(query),
+    );
+  }
+
+  /**
+   * Gets chat transactions through the legacy `/api/chats/get` endpoint.
+   * @deprecated Use {@link getChats} or {@link getChatMessages} instead.
+   */
+  async getChatTransactions(options?: TransactionQuery<ChatroomsOptions>) {
+    this.warnDeprecatedDirectTransferFilter(options);
+    return this.get<GetChatTransactionsResponseDto>(
+      'chats/get',
+      transformTransactionQuery(options),
     );
   }
 
@@ -648,7 +881,7 @@ export class AdamantApi extends NodeManager {
   /**
    * Get delegate info by `username` or `publicKey`
    */
-  async getDelegate(options: UsernameOrPublicKeyObject) {
+  async getDelegate(options: DelegateLookupOptions) {
     return this.get<GetDelegateResponseDto>('delegates/get', options);
   }
 
@@ -674,7 +907,7 @@ export class AdamantApi extends NodeManager {
   async getDelegateStats(generatorPublicKey: string) {
     return this.get<GetDelegateStatsResponseDto>(
       'delegates/forging/getForgedByAccount',
-      {generatorPublicKey}
+      {generatorPublicKey},
     );
   }
 
@@ -712,8 +945,13 @@ export class AdamantApi extends NodeManager {
   /**
    * Gets list of connected peer nodes
    */
-  async getPeers() {
-    return this.get<GetPeersResponseDto>('peers');
+  async getPeers(options?: GetPeersOptions) {
+    return this.get<GetPeersResponseDto>('peers', options);
+  }
+
+  /** Finds a peer known to the active node. */
+  async getPeer(ip: string, port: number) {
+    return this.get<GetPeerInfoResponseDto>('peers/get', {ip, port});
   }
 
   /**
@@ -824,14 +1062,32 @@ export class AdamantApi extends NodeManager {
     return this.get<GetNodeStatusResponseDto>('node/status');
   }
 
+  /** Fetches ADAMANT KVS transactions. */
+  async getKVS(options?: TransactionQuery<KVSOptions>) {
+    return this.get<GetKVSResponseDto>(
+      'states/get',
+      transformTransactionQuery(options),
+    );
+  }
+
+  /** Broadcasts an already-created and signed KVS transaction. */
+  async setKVS(request: SetKVSRequestBody) {
+    return this.post<SetKVSResponseDto>('states/store', request);
+  }
+
   /**
    * Returns list of transactions
    */
   async getTransactions(options?: TransactionQuery<TransactionsOptions>) {
     return this.get<GetTransactionsResponseDto>(
       'transactions',
-      transformTransactionQuery(options)
+      transformTransactionQuery(options),
     );
+  }
+
+  /** Broadcasts an already-created and signed transaction. */
+  async sendTransaction(request: RegisterTransactionRequestBody) {
+    return this.post<RegisterTransactionResponseDto>('transactions', request);
   }
 
   /**
@@ -839,7 +1095,7 @@ export class AdamantApi extends NodeManager {
    */
   async getTransaction(
     id: string,
-    options?: TransactionQuery<TransactionsOptions>
+    options?: TransactionQuery<TransactionsOptions>,
   ) {
     return this.get<GetTransactionByIdResponseDto>('transactions/get', {
       id,
@@ -848,9 +1104,7 @@ export class AdamantApi extends NodeManager {
   }
 
   /**
-   * Get `confirmed`, `uncofirmed` and `queued` transactions count
-   *
-   * @nav Transactions
+   * Get `confirmed`, `unconfirmed` and `queued` transactions count
    */
   async getTransactionsCount() {
     return this.get<GetTransactionsCountResponseDto>('transactions/count');
@@ -869,7 +1123,7 @@ export class AdamantApi extends NodeManager {
   async getQueuedTransaction(id: string) {
     return this.get<GetQueuedTransactionsResponseDto>(
       'transactions/queued/get',
-      {id}
+      {id},
     );
   }
 
@@ -878,7 +1132,7 @@ export class AdamantApi extends NodeManager {
    */
   async getUnconfirmedTransactions() {
     return this.get<GetUnconfirmedTransactionsResponseDto>(
-      'transactions/unconfirmed'
+      'transactions/unconfirmed',
     );
   }
 
@@ -888,8 +1142,22 @@ export class AdamantApi extends NodeManager {
   async getUnconfirmedTransaction(id: string) {
     return this.get<GetUnconfirmedTransactionByIdResponseDto>(
       'transactions/unconfirmed/get',
-      {id}
+      {id},
     );
+  }
+
+  private warnDeprecatedDirectTransferFilter(
+    options?: TransactionQuery<ChatroomsOptions>,
+  ) {
+    if (
+      options?.withoutDirectTransfers !== undefined ||
+      options?.and?.withoutDirectTransfers !== undefined ||
+      options?.or?.withoutDirectTransfers !== undefined
+    ) {
+      this.logger.warn(
+        '[ADAMANT js-api] `withoutDirectTransfers` is deprecated. Use `includeDirectTransfers` instead.',
+      );
+    }
   }
 }
 

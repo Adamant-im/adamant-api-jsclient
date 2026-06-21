@@ -15,7 +15,7 @@ export const isNumeric = (str: unknown): str is string =>
 
 export const parseJsonSafe = (json: string) => {
   try {
-    const result = JSON.parse(json);
+    const result = JSON.parse(json) as unknown;
 
     return {
       result,
@@ -50,7 +50,7 @@ export const isAdmPublicKey = (publicKey: unknown): publicKey is string =>
 const RE_ADM_VOTE_FOR_PUBLIC_KEY = /^(\+|-)[a-fA-F0-9]{64}$/;
 
 export const isAdmVoteForPublicKey = (
-  publicKey: unknown
+  publicKey: unknown,
 ): publicKey is string =>
   typeof publicKey === 'string' && RE_ADM_VOTE_FOR_PUBLIC_KEY.test(publicKey);
 
@@ -62,7 +62,7 @@ export const isAdmVoteForAddress = (address: unknown) =>
 const RE_ADM_VOTE_FOR_DELEGATE_NAME = /^(\+|-)([a-z0-9!@$&_]{1,20})$/;
 
 export const isAdmVoteForDelegateName = (
-  delegateName: unknown
+  delegateName: unknown,
 ): delegateName is string =>
   typeof delegateName === 'string' &&
   RE_ADM_VOTE_FOR_DELEGATE_NAME.test(delegateName);
@@ -72,47 +72,52 @@ export const isIntegerAmount = (amount: number) => Number.isSafeInteger(amount);
 export const isStringAmount = (amount: string) => isNumeric(amount);
 
 export const isMessageType = (
-  messageType: number
+  messageType: number,
 ): messageType is MessageTypes => [1, 2, 3].includes(messageType);
 
 export const validateMessage = (
   message: string,
-  messageType: MessageType = MessageType.Chat
+  messageType: MessageType = MessageType.Chat,
 ) => {
   if (typeof message !== 'string') {
     return {
       success: false,
-      error: 'Message should be a string',
+      errorMessage: 'Message should be a string',
     };
   }
 
-  if ([MessageType.Rich, MessageType.Signal].includes(messageType)) {
+  if ([MessageType.Rich].includes(messageType)) {
     const data = parseJsonSafe(message);
 
     const {success, result} = data;
-    if (!success || typeof result !== 'object') {
+    if (!success || typeof result !== 'object' || result === null) {
       return {
         success: false,
-        error: "For rich and signal message, 'message' should be a JSON string",
+        errorMessage: "For rich message, 'message' should be a JSON string",
       };
     }
 
-    const typeInLowerCase = result.type?.toLowerCase();
-    if (
-      typeInLowerCase?.includes('_transaction') &&
-      typeInLowerCase !== result.type
-    ) {
-      return {
-        success: false,
-        error: "Value '<coin>_transaction' must be in lower case",
-      };
-    }
+    if ('type' in result && typeof result.type === 'string') {
+      const typeInLowerCase = result.type.toLowerCase();
+      if (typeInLowerCase.endsWith('_transaction')) {
+        if (typeInLowerCase !== result.type) {
+          return {
+            success: false,
+            errorMessage: "Value '<coin>_transaction' must be in lower case",
+          };
+        }
 
-    if (typeof result.amount !== 'string' || !isStringAmount(result.amount)) {
-      return {
-        success: false,
-        error: "Field 'amount' must be a string, representing a number",
-      };
+        if (
+          'amount' in result &&
+          (typeof result.amount !== 'string' || !isStringAmount(result.amount))
+        ) {
+          return {
+            success: false,
+            errorMessage:
+              "Field 'amount' must be a string, representing a number",
+          };
+        }
+      }
     }
   }
 
@@ -130,14 +135,20 @@ export const admToSats = (amount: number) =>
 export const badParameter = (
   name: string,
   value?: unknown,
-  message?: string
+  message?: string,
 ) => ({
   success: false,
-  error: `Wrong '${name}' parameter${value ? `: ${value}` : ''}${
+  errorMessage: `Wrong '${name}' parameter${value ? `: ${value}` : ''}${
     message ? `. Error: ${message}` : ''
   }`,
 });
 
+/**
+ * Result returned by ADAMANT API operations.
+ *
+ * Expected validation, node, and transport failures resolve to a discriminated
+ * result with a single `errorMessage` field instead of throwing.
+ */
 export type AdamantApiResult<T> =
   | (Omit<T, 'success'> & {success: true})
   | {

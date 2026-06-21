@@ -1,7 +1,7 @@
 declare module 'coininfo' {
   export interface Network {
     messagePrefix: string;
-    bech32: string;
+    bech32?: string;
     bip32: Bip32;
     pubKeyHash: number;
     scriptHash: number;

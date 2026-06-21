@@ -57,7 +57,7 @@ export const utf8ArrayToStr = (array: Uint8Array) => {
         char2 = array[i++];
         char3 = array[i++];
         out += String.fromCharCode(
-          ((c & 0x0f) << 12) | ((char2 & 0x3f) << 6) | ((char3 & 0x3f) << 0)
+          ((c & 0x0f) << 12) | ((char2 & 0x3f) << 6) | ((char3 & 0x3f) << 0),
         );
         break;
     }
@@ -66,10 +66,11 @@ export const utf8ArrayToStr = (array: Uint8Array) => {
   return out;
 };
 
+/** Encrypts a message for an ADM recipient using the established NaCl format. */
 export const encodeMessage = (
   msg: string,
   keypair: KeyPair,
-  recipientPublicKey: Uint8Array | string
+  recipientPublicKey: Uint8Array | string,
 ) => {
   const nonce = Buffer.allocUnsafe(24);
   sodium.randombytes(nonce);
@@ -97,11 +98,12 @@ export const encodeMessage = (
   };
 };
 
+/** Decrypts an ADM chat payload and returns an empty string on auth failure. */
 export const decodeMessage = (
   message: string,
   senderPublicKey: Uint8Array | string,
   keyPairOrPassphrase: string | KeyPair,
-  nonce: string
+  nonce: string,
 ) => {
   const keypair =
     typeof keyPairOrPassphrase === 'string'
@@ -123,7 +125,7 @@ export const decodeMessage = (
 
   if (!(publicKey instanceof Uint8Array)) {
     throw new Error(
-      'decodeMessage: senderPublicKey should be a string or an instance of Uint8Array'
+      'decodeMessage: senderPublicKey should be a string or an instance of Uint8Array',
     );
   }
 
@@ -140,7 +142,7 @@ export const decodeMessage = (
     hexToBytes(message),
     hexToBytes(nonce),
     DHPublicKey,
-    DHSecretKey
+    DHSecretKey,
   );
 
   return decrypted ? utf8ArrayToStr(decrypted) : '';

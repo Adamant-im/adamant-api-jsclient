@@ -1,4 +1,13 @@
+import {MessageType} from '../constants';
 import * as validator from '../validator';
+
+describe('isEndpoint', () => {
+  test('accepts API paths and rejects non-path values', () => {
+    expect(validator.isEndpoint('/api/status')).toBe(true);
+    expect(validator.isEndpoint('api/status')).toBe(false);
+    expect(validator.isEndpoint(undefined)).toBe(false);
+  });
+});
 
 describe('isNumeric', () => {
   test('should return false for a number', () => {
@@ -126,24 +135,24 @@ describe('isAdmPublicKey', () => {
   test('should return false for a string that contains `L`', () => {
     expect(
       validator.isAdmPublicKey(
-        'Le003f782cd1c1c84a6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        'Le003f782cd1c1c84a6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(false);
   });
 
   test('should return true for a public key that starts with a number', () => {
     expect(
       validator.isAdmPublicKey(
-        '4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        '4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(true);
   });
 
   test('should return true for a public key that starts with a letter', () => {
     expect(
       validator.isAdmPublicKey(
-        'e4003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        'e4003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(true);
   });
 });
@@ -171,31 +180,31 @@ describe('isAdmVoteForAddress', () => {
 
   test('should return false for a string that starts with `L`', () => {
     expect(validator.isAdmVoteForAddress('L01234561293812931283918239')).toBe(
-      false
+      false,
     );
   });
 
   test('should return false for an address that starts with a number', () => {
     expect(validator.isAdmVoteForAddress('0U1234561293812931283918239')).toBe(
-      false
+      false,
     );
   });
 
   test('should return false for an address that starts with a letter', () => {
     expect(validator.isAdmVoteForAddress('U01234561293812931283918239')).toBe(
-      false
+      false,
     );
   });
 
   test('should return true for an address with a plus', () => {
     expect(validator.isAdmVoteForAddress('+U01234561293812931283918239')).toBe(
-      true
+      true,
     );
   });
 
   test('should return true for an address with a minus', () => {
     expect(validator.isAdmVoteForAddress('+U01234561293812931283918239')).toBe(
-      true
+      true,
     );
   });
 });
@@ -224,40 +233,40 @@ describe('isAdmVoteForPublicKey', () => {
   test('should return false for a string that starts with `L`', () => {
     expect(
       validator.isAdmVoteForPublicKey(
-        '+L4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        '+L4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(false);
   });
 
   test('should return false for a public key that starts with a number', () => {
     expect(
       validator.isAdmVoteForPublicKey(
-        '4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        '4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(false);
   });
 
   test('should return false for a public key that starts with a letter', () => {
     expect(
       validator.isAdmVoteForPublicKey(
-        'e4003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        'e4003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(false);
   });
 
   test('should return true for a public key with a plus', () => {
     expect(
       validator.isAdmVoteForPublicKey(
-        '+4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        '+4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(true);
   });
 
   test('should return true for a public key with a minus', () => {
     expect(
       validator.isAdmVoteForPublicKey(
-        '+4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432'
-      )
+        '+4e003f782cd1c1c84A6767a871321af2ecdb3da8d8f6b8d1f13179835b6ec432',
+      ),
     ).toBe(true);
   });
 });
@@ -289,7 +298,7 @@ describe('isAdmVoteForDelegateName', () => {
 
   test('should return false for a too long delegate name', () => {
     expect(
-      validator.isAdmVoteForDelegateName('+e003f782cd1c1c84A6767a871321af2e')
+      validator.isAdmVoteForDelegateName('+e003f782cd1c1c84A6767a871321af2e'),
     ).toBe(false);
   });
 
@@ -324,57 +333,64 @@ describe('validateMessage', () => {
   });
 
   test('should return false for an empty string rich message', () => {
-    expect(validator.validateMessage('', 2).success).toBe(false);
+    expect(validator.validateMessage('', MessageType.Rich).success).toBe(false);
   });
 
-  test('should return false for an empty string signal message', () => {
-    expect(validator.validateMessage('', 3).success).toBe(false);
+  test('should return true for an empty string signal message', () => {
+    expect(validator.validateMessage('', MessageType.Signal).success).toBe(
+      true,
+    );
   });
 
-  test('should return false for an empty json rich message', () => {
-    expect(validator.validateMessage('{}', 2).success).toBe(false);
+  test('should return true for an empty json rich message', () => {
+    expect(validator.validateMessage('{}', MessageType.Rich).success).toBe(
+      true,
+    );
   });
 
-  test('should return false for an empty json signal message', () => {
-    expect(validator.validateMessage('{}', 3).success).toBe(false);
+  test('should return true for an empty json signal message', () => {
+    expect(validator.validateMessage('{}', MessageType.Signal).success).toBe(
+      true,
+    );
   });
 
   test('should return true for a json rich message with the given amount', () => {
-    expect(validator.validateMessage('{"amount": "0.13"}', 2).success).toBe(
-      true
-    );
+    expect(
+      validator.validateMessage('{"amount": "0.13"}', MessageType.Rich).success,
+    ).toBe(true);
   });
 
   test('should return true for a json signal message with the given amount', () => {
-    expect(validator.validateMessage('{"amount": "0.13"}', 3).success).toBe(
-      true
-    );
+    expect(
+      validator.validateMessage('{"amount": "0.13"}', MessageType.Signal)
+        .success,
+    ).toBe(true);
   });
 
-  test('should return false for a json rich message with upercase coin name', () => {
+  test('should return false for a json rich message with uppercase coin name', () => {
     expect(
       validator.validateMessage(
         '{"amount": "0.13", "type": "ETH_transaction"}',
-        2
-      ).success
+        MessageType.Rich,
+      ).success,
     ).toBe(false);
   });
 
-  test('should return false for a json signal message with upercase coin name', () => {
+  test('should return true for a json signal message with uppercase coin name', () => {
     expect(
       validator.validateMessage(
         '{"amount": "0.13", "type": "ETH_transaction"}',
-        3
-      ).success
-    ).toBe(false);
+        MessageType.Signal,
+      ).success,
+    ).toBe(true);
   });
 
   test('should return true for a json rich message with lowercase coin name', () => {
     expect(
       validator.validateMessage(
         '{"amount": "0.13", "type": "eth_transaction"}',
-        2
-      ).success
+        MessageType.Rich,
+      ).success,
     ).toBe(true);
   });
 
@@ -382,9 +398,34 @@ describe('validateMessage', () => {
     expect(
       validator.validateMessage(
         '{"amount": "0.13", "type": "eth_transaction"}',
-        3
-      ).success
+        MessageType.Signal,
+      ).success,
     ).toBe(true);
+  });
+
+  test('should return true for a push notification signal message', () => {
+    expect(
+      validator.validateMessage(
+        '{"token": "DeviceToken","provider":"apns","action":"add"}',
+        MessageType.Signal,
+      ).success,
+    ).toBe(true);
+  });
+
+  test('should allow a string signal message', () => {
+    expect(
+      validator.validateMessage('not a json string', MessageType.Signal)
+        .success,
+    ).toBe(true);
+  });
+
+  test('should NOT allow a string rich message', () => {
+    expect(
+      validator.validateMessage('not a json string', MessageType.Rich),
+    ).toEqual({
+      success: false,
+      errorMessage: "For rich message, 'message' should be a JSON string",
+    });
   });
 });
 

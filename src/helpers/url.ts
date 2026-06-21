@@ -30,7 +30,7 @@ export const retrieveIP = async (url: string) => {
         return address;
       }
     }
-  } catch (error) {
+  } catch {
     return;
   }
 };

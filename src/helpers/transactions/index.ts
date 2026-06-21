@@ -1,3 +1,10 @@
+/**
+ * Build, hash, and sign ADM transactions (token transfer, chat message, KVS
+ * state, delegate registration, and vote), and compute transaction IDs.
+ *
+ * @module
+ */
+
 import {signTransaction} from './hash';
 
 import {createAddressFromPublicKey} from '../keys';
@@ -19,6 +26,16 @@ export type AnyTransactionData = (
 
 export interface BasicTransactionData {
   keyPair: KeyPair;
+  /**
+   * Optional transaction time in milliseconds since the ADAMANT epoch.
+   *
+   * When provided, the second-precision `timestamp` is derived from it with
+   * `Math.floor(timestampMs / 1000)`. The field is attached to the transaction
+   * but is excluded from the signed bytes, so it stays backward compatible:
+   * older nodes ignore it, while upgraded nodes persist it for
+   * millisecond-precision ordering.
+   */
+  timestampMs?: number;
 }
 
 export interface SendTransactionData extends BasicTransactionData {
@@ -50,27 +67,36 @@ export interface StateTransactionData extends BasicTransactionData {
 interface BasicTransaction<T extends TransactionType> {
   type: T;
   timestamp: number;
+  timestampMs?: number;
   amount: number;
   senderPublicKey: string;
   senderId: AdamantAddress;
   asset: {};
 }
 
+/** Builds the unsigned fields shared by ADM transactions. */
 export const createBasicTransaction = <T extends TransactionType>(
-  data: AnyTransactionData
+  data: AnyTransactionData,
 ): BasicTransaction<T> => {
+  const {timestampMs} = data;
+
   const transaction = {
     type: data.transactionType as T,
-    timestamp: getEpochTime(),
+    timestamp:
+      timestampMs !== undefined
+        ? Math.floor(timestampMs / 1000)
+        : getEpochTime(),
     amount: 0,
     senderPublicKey: data.keyPair.publicKey.toString('hex'),
     senderId: createAddressFromPublicKey(data.keyPair.publicKey),
     asset: {},
+    ...(timestampMs !== undefined ? {timestampMs} : {}),
   };
 
   return transaction;
 };
 
+/** Creates and signs an ADM token transfer transaction. */
 export const createSendTransaction = (data: SendTransactionData) => {
   const details = {
     ...data,
@@ -92,6 +118,7 @@ export const createSendTransaction = (data: SendTransactionData) => {
   };
 };
 
+/** Creates and signs an ADM key-value state transaction. */
 export const createStateTransaction = (data: StateTransactionData) => {
   const details = {
     ...data,
@@ -118,6 +145,7 @@ export const createStateTransaction = (data: StateTransactionData) => {
   };
 };
 
+/** Creates and signs an encrypted ADM chat transaction envelope. */
 export const createChatTransaction = (data: ChatTransactionData) => {
   const details = {
     ...data,
@@ -145,6 +173,7 @@ export const createChatTransaction = (data: ChatTransactionData) => {
   };
 };
 
+/** Creates and signs an ADM delegate registration transaction. */
 export const createDelegateTransaction = (data: DelegateTransactionData) => {
   const details = {
     ...data,
@@ -170,6 +199,7 @@ export const createDelegateTransaction = (data: DelegateTransactionData) => {
   };
 };
 
+/** Creates and signs an ADM delegate vote transaction. */
 export const createVoteTransaction = (data: VoteTransactionData) => {
   const details = {
     ...data,

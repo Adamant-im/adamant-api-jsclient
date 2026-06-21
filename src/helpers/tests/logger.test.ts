@@ -215,3 +215,82 @@ describe('logger: error', () => {
     logger.error('error');
   });
 });
+
+describe('logger: level normalization', () => {
+  const createMockLogger = () => ({
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    log: jest.fn(),
+    debug: jest.fn(),
+  });
+
+  test.each(['none', LogLevel.None])('disables all output for %s', level => {
+    const output = createMockLogger();
+    const logger = new Logger(level, output);
+
+    logger.error('error');
+    logger.warn('warn');
+    logger.info('info');
+    logger.log('log');
+    logger.debug('debug');
+
+    expect(logger.level).toBe(LogLevel.None);
+    expect(output.error).not.toHaveBeenCalled();
+    expect(output.warn).not.toHaveBeenCalled();
+    expect(output.info).not.toHaveBeenCalled();
+    expect(output.log).not.toHaveBeenCalled();
+    expect(output.debug).not.toHaveBeenCalled();
+  });
+
+  test('debug is a distinct, more verbose level', () => {
+    const output = createMockLogger();
+    const logger = new Logger('debug', output);
+
+    logger.log('log');
+    logger.debug('debug');
+
+    expect(logger.level).toBe(LogLevel.Debug);
+    expect(output.log).toHaveBeenCalledWith('log');
+    expect(output.debug).toHaveBeenCalledWith('debug');
+  });
+
+  test('debug falls back to log for backward-compatible custom loggers', () => {
+    const output = {
+      error: jest.fn(),
+      warn: jest.fn(),
+      info: jest.fn(),
+      log: jest.fn(),
+    };
+    const logger = new Logger('debug', output);
+
+    logger.debug('debug');
+
+    expect(output.log).toHaveBeenCalledWith('debug');
+  });
+
+  test.each(['trace', 'unknown'])('%s falls back to log', level => {
+    const output = createMockLogger();
+    const logger = new Logger(level, output);
+
+    logger.log('log');
+    logger.debug('debug');
+
+    expect(logger.level).toBe(LogLevel.Log);
+    expect(output.log).toHaveBeenCalledWith('log');
+    expect(output.debug).not.toHaveBeenCalled();
+  });
+
+  test.each([-2, 5, Number.NaN])(
+    'invalid numeric level %s falls back to log',
+    level => {
+      const output = createMockLogger();
+      const logger = new Logger(level, output);
+
+      logger.log('log');
+
+      expect(logger.level).toBe(LogLevel.Log);
+      expect(output.log).toHaveBeenCalledWith('log');
+    },
+  );
+});
