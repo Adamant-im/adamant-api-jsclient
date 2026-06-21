@@ -122,6 +122,14 @@ pnpm api-types:sync
 
 Applications should provide several independently operated HTTPS nodes and handle returned errors. Malformed responses, timeouts, and partial network outages must not be treated as successful requests.
 
+## Error handling
+
+Expected validation, node, and transport failures resolve to a single result
+shape: `{success: false, errorMessage: string}`. Check `response.success`
+before reading response data. Node-specific `error` and `message` fields are
+normalized to `errorMessage`; application code does not need to check multiple
+error fields. See the [error-handling guide](https://js.docs.adamant.im/guide/error-handling).
+
 ## Development
 
 ```sh

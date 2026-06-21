@@ -82,7 +82,7 @@ export const validateMessage = (
   if (typeof message !== 'string') {
     return {
       success: false,
-      error: 'Message should be a string',
+      errorMessage: 'Message should be a string',
     };
   }
 
@@ -93,7 +93,7 @@ export const validateMessage = (
     if (!success || typeof result !== 'object' || result === null) {
       return {
         success: false,
-        error: "For rich message, 'message' should be a JSON string",
+        errorMessage: "For rich message, 'message' should be a JSON string",
       };
     }
 
@@ -103,7 +103,7 @@ export const validateMessage = (
         if (typeInLowerCase !== result.type) {
           return {
             success: false,
-            error: "Value '<coin>_transaction' must be in lower case",
+            errorMessage: "Value '<coin>_transaction' must be in lower case",
           };
         }
 
@@ -113,7 +113,8 @@ export const validateMessage = (
         ) {
           return {
             success: false,
-            error: "Field 'amount' must be a string, representing a number",
+            errorMessage:
+              "Field 'amount' must be a string, representing a number",
           };
         }
       }
@@ -137,11 +138,17 @@ export const badParameter = (
   message?: string,
 ) => ({
   success: false,
-  error: `Wrong '${name}' parameter${value ? `: ${value}` : ''}${
+  errorMessage: `Wrong '${name}' parameter${value ? `: ${value}` : ''}${
     message ? `. Error: ${message}` : ''
   }`,
 });
 
+/**
+ * Result returned by ADAMANT API operations.
+ *
+ * Expected validation, node, and transport failures resolve to a discriminated
+ * result with a single `errorMessage` field instead of throwing.
+ */
 export type AdamantApiResult<T> =
   | (Omit<T, 'success'> & {success: true})
   | {

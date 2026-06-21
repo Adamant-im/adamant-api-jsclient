@@ -55,6 +55,27 @@ describe('AdamantApi HTTP requests', () => {
     });
   });
 
+  test.each([
+    [{success: false, errorMessage: 'Canonical error'}, 'Canonical error'],
+    [{success: false, error: 'Legacy node error'}, 'Legacy node error'],
+    [{success: false, message: 'Node message'}, 'Node message'],
+    [
+      {success: false},
+      'ADAMANT Node returned an unsuccessful response without an error message',
+    ],
+  ])(
+    'normalizes unsuccessful HTTP 200 responses to errorMessage',
+    async (data, errorMessage) => {
+      const api = createApi();
+      request.mockResolvedValueOnce({data});
+
+      await expect(api.get('example')).resolves.toEqual({
+        success: false,
+        errorMessage,
+      });
+    },
+  );
+
   test('refreshes nodes and retries Axios failures', async () => {
     const api = createApi(1);
     jest.spyOn(api, 'updateNodes').mockResolvedValue();
@@ -219,8 +240,9 @@ describe('AdamantApi transaction methods', () => {
     const post = jest
       .spyOn(api, 'post')
       .mockResolvedValue({success: true} as never);
-    await expect(api.newDelegate('short', 'delegate')).resolves.toMatchObject({
+    await expect(api.newDelegate('short', 'delegate')).resolves.toEqual({
       success: false,
+      errorMessage: "Wrong 'passphrase' parameter",
     });
     await expect(
       api.newDelegate(passphrase, 'INVALID NAME'),

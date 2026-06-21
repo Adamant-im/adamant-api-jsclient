@@ -424,7 +424,7 @@ describe('validateMessage', () => {
       validator.validateMessage('not a json string', MessageType.Rich),
     ).toEqual({
       success: false,
-      error: "For rich message, 'message' should be a JSON string",
+      errorMessage: "For rich message, 'message' should be a JSON string",
     });
   });
 });

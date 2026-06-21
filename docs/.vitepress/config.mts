@@ -58,6 +58,7 @@ export default defineConfig({
           items: [
             {text: 'Getting Started', link: '/guide/getting-started'},
             {text: 'Library Initialization', link: '/guide/library-initialization'},
+            {text: 'Error Handling', link: '/guide/error-handling'},
             {text: 'Modular Imports', link: '/guide/modular-imports'},
             {text: 'Reliability', link: '/guide/reliability'},
           ],

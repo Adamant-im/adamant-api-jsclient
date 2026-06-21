@@ -10,6 +10,10 @@ Applications should provide several independently operated HTTPS nodes and
 handle returned errors. Malformed responses, timeouts, and partial network
 outages must not be treated as successful requests.
 
+All expected failures use the normalized
+`{success: false, errorMessage: string}` result. See
+[Error Handling](./error-handling) for the complete contract and examples.
+
 ## Health checks and node selection
 
 - Nodes are probed via `/api/node/status`, which since ADAMANT Node v0.9.0

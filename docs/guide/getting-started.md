@@ -69,6 +69,7 @@ logs.
 ## Where to next
 
 - [Library Initialization](./library-initialization) — full configuration options
+- [Error Handling](./error-handling) — handle validation, node, and network failures
 - [Modular Imports](./modular-imports) — pick the narrowest entry point
 - [ADM Key Pairs](./adm-key-pairs) — create accounts and derive keys
 - [Forming & Signing Transactions](./transactions) — build and sign transactions

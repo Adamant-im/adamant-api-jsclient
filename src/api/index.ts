@@ -337,6 +337,24 @@ const responseErrorMessage = (data: unknown) => {
   return '';
 };
 
+const normalizeApiResponse = <T>(data: unknown): AdamantApiResult<T> => {
+  if (
+    typeof data === 'object' &&
+    data !== null &&
+    'success' in data &&
+    data.success === false
+  ) {
+    return {
+      success: false,
+      errorMessage:
+        responseErrorMessage(data) ||
+        'ADAMANT Node returned an unsuccessful response without an error message',
+    };
+  }
+
+  return data as AdamantApiResult<T>;
+};
+
 /**
  * Resilient client for the public ADAMANT Node HTTP API.
  *
@@ -386,7 +404,7 @@ export class AdamantApi extends NodeManager {
             }),
       });
 
-      return response.data;
+      return normalizeApiResponse<T>(response.data);
     } catch (error) {
       if (error instanceof AxiosError) {
         const {response} = error;
@@ -556,7 +574,7 @@ export class AdamantApi extends NodeManager {
     const result = validateMessage(message, type);
 
     if (!result.success) {
-      return badParameter('message', message, result.error);
+      return badParameter('message', message, result.errorMessage);
     }
 
     let amountInSat: number | undefined;
