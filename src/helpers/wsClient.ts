@@ -140,7 +140,7 @@ export class WebSocketClient {
 
     const node = this.chooseNode();
     logger.log(
-      `[Socket] Supported nodes: ${supportedCount}. Connecting to ${node}...`,
+      `[Socket] Supported nodes: ${supportedCount}. Connecting to ${node}…`,
     );
     const connection = io(node, {
       reconnection: false,

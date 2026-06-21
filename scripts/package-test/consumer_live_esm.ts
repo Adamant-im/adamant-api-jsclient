@@ -1,5 +1,7 @@
 import {AdamantApi} from 'adamant-api';
 
+console.log('\nESM live consumer started.');
+
 const api = new AdamantApi({
   nodes: [
     'http://localhost:36666',
@@ -10,8 +12,14 @@ const api = new AdamantApi({
   checkHealthAtStartup: true,
 });
 
+await new Promise<void>(resolve => api.onReady(resolve));
+
 const response = await api.getBlocks();
 
 if (response.success) {
-  console.log(response.blocks);
+  console.log(response.blocks[0]);
+} else {
+  console.error(response.errorMessage);
 }
+
+console.log('ESM live consumer finished.');

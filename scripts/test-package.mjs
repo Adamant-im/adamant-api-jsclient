@@ -1,4 +1,4 @@
-import {execFileSync} from 'node:child_process';
+import {spawn} from 'node:child_process';
 import {
   copyFileSync,
   mkdirSync,
@@ -36,17 +36,37 @@ const liveCommonJsConsumerFixture = join(
 );
 
 const run = (command, args, cwd) =>
-  execFileSync(command, args, {
-    cwd,
-    stdio: 'inherit',
+  new Promise((resolvePromise, rejectPromise) => {
+    const child = spawn(command, args, {
+      cwd,
+      stdio: 'inherit',
+    });
+
+    child.once('error', rejectPromise);
+    child.once('exit', (code, signal) => {
+      if (code === 0) {
+        resolvePromise();
+        return;
+      }
+
+      rejectPromise(
+        new Error(
+          `${command} exited with ${code ?? `signal ${signal ?? 'unknown'}`}`,
+        ),
+      );
+    });
   });
 
 try {
   mkdirSync(packedDirectory);
   mkdirSync(consumerDirectory);
 
-  console.log('Packing the current working tree...');
-  run('pnpm', ['pack', '--pack-destination', packedDirectory], projectRoot);
+  console.log('Packing the current working tree…');
+  await run(
+    'pnpm',
+    ['pack', '--pack-destination', packedDirectory],
+    projectRoot,
+  );
 
   const archives = readdirSync(packedDirectory).filter(file =>
     file.endsWith('.tgz'),
@@ -71,8 +91,8 @@ try {
     )}\n`,
   );
 
-  console.log('Installing the local archive into a temporary project...');
-  run(
+  console.log('Installing the local archive into a temporary project…');
+  await run(
     'npm',
     [
       'install',
@@ -137,31 +157,38 @@ console.log('CommonJS package imports passed.');
     )}\n`,
   );
 
-  console.log('\nTesting the installed package...');
-  run(
+  console.log('\nRunning consumer.ts…');
+  await run(
     process.execPath,
     ['--experimental-strip-types', 'consumer.ts'],
     consumerDirectory,
   );
-  run(
+  console.log('\nRunning consumer_live_esm.ts…');
+  await run(
     process.execPath,
     [
       '--experimental-strip-types',
+      '--input-type=module',
       '--eval',
-      "import('./consumer_live_esm.ts').then(() => process.exit(0))",
+      "await import('./consumer_live_esm.ts'); process.exit(0)",
     ],
     consumerDirectory,
   );
-  run(
+  console.log('\nRunning consumer_live_common.js…');
+  await run(
     process.execPath,
     [
+      '--input-type=module',
       '--eval',
-      "Promise.resolve(require('./consumer_live_common.js')).then(() => process.exit(0))",
+      "const {createRequire} = await import('node:module'); const require = createRequire(import.meta.url); await require('./consumer_live_common.js'); process.exit(0)",
     ],
     commonJsConsumerDirectory,
   );
-  run(process.execPath, ['consumer.cjs'], consumerDirectory);
-  run(
+  console.log('\nRunning consumer.cjs…');
+  await run(process.execPath, ['consumer.cjs'], consumerDirectory);
+
+  console.log('\nChecking TypeScript declarations…');
+  await run(
     join(projectRoot, 'node_modules', '.bin', 'tsc'),
     ['--project', 'tsconfig.json'],
     consumerDirectory,

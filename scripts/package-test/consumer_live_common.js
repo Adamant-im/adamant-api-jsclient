@@ -1,5 +1,7 @@
 const {AdamantApi} = require('adamant-api');
 
+console.log('\nCommonJS live consumer started.');
+
 const api = new AdamantApi({
   nodes: [
     'http://localhost:36666',
@@ -10,8 +12,14 @@ const api = new AdamantApi({
   checkHealthAtStartup: true,
 });
 
-module.exports = api.getBlocks().then(response => {
+module.exports = new Promise(resolve => api.onReady(resolve)).then(async () => {
+  const response = await api.getBlocks();
+
   if (response.success) {
-    console.log(response.blocks);
+    console.log(response.blocks[0]);
+  } else {
+    console.error(response.errorMessage);
   }
+
+  console.log('CommonJS live consumer finished.');
 });
