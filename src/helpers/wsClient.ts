@@ -161,6 +161,16 @@ export class WebSocketClient {
       ...options,
     };
 
+    if (
+      this.options.direction !== 'allDirections' &&
+      !this.options.admAddress &&
+      !this.options.admAddresses?.length
+    ) {
+      this.logger.warn(
+        '[ADAMANT js-api Socket] `direction` filter is set but no addresses are subscribed; all transactions will be discarded.',
+      );
+    }
+
     this.nodes = [];
 
     this.errorHandler = (error: unknown) => {

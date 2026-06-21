@@ -63,11 +63,7 @@ interface WsOptions {
    */
   useFastest?: boolean;
 
-  /**
-   * Max attempts to reconnect to the websocket. Until the connection is
-   * established, transactions are pulled from the node's REST API.
-   * Default is `3`.
-   */
+  /** Max attempts to reconnect to the websocket. Default is `3`. */
   maxTries?: number;
 
   /** Delay before reconnection, in ms. Default is `5000`. */
@@ -104,8 +100,10 @@ const ws = new WebSocketClient({
 ```
 
 Use the singular `admAddress` for a single account, or `admAddresses` for
-several. While the socket is (re)connecting, transactions are pulled from the
-node's REST API so nothing is missed.
+several. The WebSocket client delivers live events only and does not backfill
+transactions missed while disconnected. Applications that require gap-free
+processing should reconcile transaction history through the REST API after a
+reconnection.
 
 ### Filtering by transaction direction
 
@@ -153,7 +151,7 @@ function onConnection(callback: ConnectionHandler): this;
 ```
 
 ```ts
-// wss://clown.adamant.im:36665
+// wss://clown.adamant.im
 ws.onConnection(connectedNode => console.log(connectedNode));
 ```
 
@@ -168,7 +166,7 @@ function onReconnection(callback: ConnectionHandler): this;
 ```
 
 ```ts
-// wss://endless.adamant.im:36665
+// wss://endless.adamant.im
 ws.onReconnection(connectedNode => console.log(connectedNode));
 ```
 

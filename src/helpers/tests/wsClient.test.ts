@@ -112,6 +112,14 @@ describe('WebSocketClient', () => {
     expect(io).toHaveBeenCalledWith('wss://second.example', expect.any(Object));
   });
 
+  test('warns when a direction filter is configured without addresses', () => {
+    new WebSocketClient({direction: 'incoming', logger});
+
+    expect(output.warn).toHaveBeenCalledWith(
+      '[ADAMANT js-api Socket] `direction` filter is set but no addresses are subscribed; all transactions will be discarded.',
+    );
+  });
+
   test('refreshes the healthy-node list without replacing a live socket', () => {
     jest.useFakeTimers();
     const first = makeSocket();
