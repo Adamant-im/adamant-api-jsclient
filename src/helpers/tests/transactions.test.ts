@@ -5,6 +5,8 @@ import {
   createSendTransaction,
   createStateTransaction,
   createVoteTransaction,
+  getHash,
+  getTransactionId,
 } from '../transactions/index';
 import {mocked} from './mock-data/address';
 
@@ -14,7 +16,7 @@ beforeAll(() => {
 });
 
 /**
- * Expected timestamp accross all the created transactions.
+ * Expected timestamp across all the created transactions.
  */
 const timestamp = 109234800;
 
@@ -148,6 +150,47 @@ describe('Create chat transaction', () => {
       },
       signature: expectedSignature,
     });
+  });
+});
+
+describe('timestampMs handling', () => {
+  const {recipientId, amount} = mocked;
+
+  // 109234800 seconds since the ADAMANT epoch, with a millisecond remainder.
+  const timestampMs = timestamp * 1000 + 123;
+
+  test('attaches timestampMs and derives the second-precision timestamp', () => {
+    const transaction = createSendTransaction({
+      recipientId,
+      amount,
+      keyPair,
+      timestampMs,
+    });
+
+    expect(transaction.timestampMs).toBe(timestampMs);
+    expect(transaction.timestamp).toBe(timestamp);
+    expect(transaction.timestamp).toBe(Math.floor(timestampMs / 1000));
+  });
+
+  test('excludes timestampMs from the signature, hash, and id', () => {
+    const withMs = createSendTransaction({
+      recipientId,
+      amount,
+      keyPair,
+      timestampMs,
+    });
+    const withoutMs = createSendTransaction({recipientId, amount, keyPair});
+
+    // Same second, so the signed bytes are identical and the signature matches.
+    expect(withMs.signature).toBe(withoutMs.signature);
+    expect(getHash(withMs)).toEqual(getHash(withoutMs));
+    expect(getTransactionId(withMs)).toBe(getTransactionId(withoutMs));
+  });
+
+  test('omits timestampMs when it is not provided', () => {
+    const transaction = createSendTransaction({recipientId, amount, keyPair});
+
+    expect('timestampMs' in transaction).toBe(false);
   });
 });
 

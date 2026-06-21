@@ -10,6 +10,11 @@ import {KeyPair} from '../keys';
 
 export interface BasicTransaction {
   timestamp: number;
+  /**
+   * Optional millisecond-precision time. Excluded from {@link getBytes}, so it
+   * never affects the transaction hash, ID, or signature.
+   */
+  timestampMs?: number;
   amount: number;
   senderPublicKey: string;
   senderId: string;
