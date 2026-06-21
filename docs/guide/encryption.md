@@ -1,7 +1,7 @@
 # Encrypting and Decrypting Messages
 
-[Messages](https://github.com/Adamant-im/adamant/wiki/Message-Types) and
-[KVS records](https://github.com/Adamant-im/adamant/wiki/Storing-Data-in-KVS)
+[Messages](https://docs.adamant.im/api-types/message-types.html) and
+[KVS records](https://docs.adamant.im/essentials/storing-data-in-kvs.html)
 are encrypted using Curve25519, Salsa20, and Poly1305
 ([NaCl box](https://nacl.cr.yp.to/box.html) and
 [NaCl secretbox](https://nacl.cr.yp.to/secretbox.html) cipher algorithms
@@ -16,7 +16,7 @@ KVS records:
 
 Further reading:
 
-- [Encrypting and Decrypting Messages — details](https://github.com/Adamant-im/adamant/wiki/Encrypting-and-Decrypting-Messages)
+- [Encrypting and Decrypting Messages — details](https://docs.adamant.im/essentials/encrypting-messages.html)
 - [Encryption overview in ADAMANT Messenger](https://medium.com/adamant-im/encryption-overview-in-adamant-messenger-878ecec1ff78)
 
 ## `decodeMessage()`

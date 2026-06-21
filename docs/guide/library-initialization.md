@@ -45,6 +45,13 @@ const api = new AdamantApi({
   checkHealthAtStartup: false, // default is `true`
 
   /**
+   * Minimum ADAMANT Node version (inclusive). During health checks, nodes
+   * running an older version are reported and excluded from both API and
+   * WebSocket selection. Omit to accept any version.
+   */
+  minVersion: '0.8.0', // default is unset
+
+  /**
    * 'none' (-1) < 'error' (0) < 'warn' (1) < 'info' (2) < 'log' (3).
    */
   logLevel: 'info', // default is `3` ('log')

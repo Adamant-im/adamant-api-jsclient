@@ -12,13 +12,13 @@ to the ADAMANT network:
 Further reading:
 
 - [AIP 10: General transaction structure for API calls](https://aips.adamant.im/AIPS/aip-10)
-- [Transaction Types](https://github.com/Adamant-im/adamant/wiki/Transaction-Types)
-- [Signing Transactions](https://github.com/Adamant-im/adamant/wiki/Signing-Transactions)
+- [Transaction Types](https://docs.adamant.im/api-types/transaction-types.html)
+- [Signing Transactions](https://docs.adamant.im/essentials/signing-transactions.html)
 
 ## `TransactionType`
 
 `TransactionType` is an enum whose values represent
-[Transaction Types](https://github.com/Adamant-im/adamant/wiki/Transaction-Types).
+[Transaction Types](https://docs.adamant.im/api-types/transaction-types.html).
 
 ```ts
 export enum TransactionType {
@@ -52,7 +52,7 @@ _See [WebSocket Connections](./websocket)._
 ## `createSendTransaction()`
 
 Forms and signs a type `0`
-([Token Transfer](https://github.com/Adamant-im/adamant/wiki/Transaction-Types#type-0-token-transfer-transaction))
+([Token Transfer](https://docs.adamant.im/api-types/transaction-types.html#type-0-token-transfer-transaction))
 transaction.
 
 ```ts
@@ -84,7 +84,7 @@ createSendTransaction({
 ## `createStateTransaction()`
 
 Forms and signs a type `9`
-([Store data in KVS](https://github.com/Adamant-im/adamant/wiki/Transaction-Types#type-9-store-data-in-kvs-transaction))
+([Store data in KVS](https://docs.adamant.im/api-types/transaction-types.html#type-9-store-data-in-kvs-transaction))
 transaction.
 
 ```ts
@@ -113,7 +113,7 @@ createStateTransaction({
 ## `createChatTransaction()`
 
 Forms and signs a type `8`
-([Chat Message](https://github.com/Adamant-im/adamant/wiki/Transaction-Types#type-8-chatmessage-transaction))
+([Chat Message](https://docs.adamant.im/api-types/transaction-types.html#type-8-chatmessage-transaction))
 transaction.
 
 ```ts
@@ -157,7 +157,7 @@ createChatTransaction({
 ## `createDelegateTransaction()`
 
 Forms and signs a type `2`
-([Delegate Registration](https://github.com/Adamant-im/adamant/wiki/Transaction-Types#type-2-delegate-registration-transaction))
+([Delegate Registration](https://docs.adamant.im/api-types/transaction-types.html#type-2-delegate-registration-transaction))
 transaction.
 
 ```ts
@@ -187,7 +187,7 @@ createDelegateTransaction({
 ## `createVoteTransaction()`
 
 Forms and signs a type `3`
-([Vote For Delegate](https://github.com/Adamant-im/adamant/wiki/Transaction-Types#type-3-vote-for-delegate-transaction))
+([Vote For Delegate](https://docs.adamant.im/api-types/transaction-types.html#type-3-vote-for-delegate-transaction))
 transaction.
 
 ```ts
@@ -213,6 +213,42 @@ createVoteTransaction({
   ],
 });
 ```
+
+## Millisecond-precision timestamps
+
+ADAMANT Node `v0.10.0` adds an optional millisecond-precision `timestampMs`
+field on transactions. Every builder accepts an optional `timestampMs`:
+
+```ts
+import {createSendTransaction, createKeypairFromPassphrase} from 'adamant-api';
+import {getEpochTimeMs} from 'adamant-api';
+
+const keyPair = createKeypairFromPassphrase('apple banana...');
+
+createSendTransaction({
+  keyPair,
+  recipientId: 'U123...',
+  amount: 1000000,
+  timestampMs: getEpochTimeMs(), // optional, millisecond-precision
+});
+```
+
+::: warning Signing semantics are unchanged
+`timestampMs` is **attached to the transaction object but excluded from the
+signed bytes**. The transaction hash, ID, and signature are computed exactly as
+before, so they are unchanged whether or not you pass `timestampMs`.
+:::
+
+Key points:
+
+- **Opt-in and backward compatible.** Omit `timestampMs` and behavior is
+  identical to earlier versions. It is safe to send to nodes that predate
+  `v0.10.0` — they ignore the extra field; upgraded nodes persist it.
+- **The second-precision `timestamp` is derived** from `timestampMs` as
+  `Math.floor(timestampMs / 1000)`, so the two always agree within the same
+  second. If you pass neither, the current epoch time is used.
+- Use `getEpochTimeMs()` to obtain an ADAMANT-epoch millisecond timestamp, and
+  `getEpochTime()` for the second-precision value.
 
 For the complete, generated type signatures of each helper, see the
 [API Reference](/api/).

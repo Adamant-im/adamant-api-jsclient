@@ -7,7 +7,7 @@ supported external wallets.
 
 This is the convenient way to interact with the ADAMANT blockchain for
 JavaScript and TypeScript developers. See also the
-[ADAMANT Node Direct API](https://github.com/Adamant-im/adamant/wiki/) and the
+[ADAMANT Node Direct API](https://docs.adamant.im) and the
 [information for developers](https://adamant.im/devs/).
 
 ## Requirements

@@ -14,6 +14,7 @@
   ],
   "entryPointStrategy": "resolve",
   "tsconfig": "tsconfig.json",
+  "exclude": ["**/tests/**", "**/*.test.ts", "src/api/generated.ts"],
   "out": "docs/api",
   "readme": "none",
   "githubPages": false,
@@ -25,5 +26,10 @@
   "parametersFormat": "table",
   "useCodeBlocks": true,
   "expandObjects": true,
-  "docsRoot": "docs"
+  "docsRoot": "docs",
+  "validation": {
+    "notExported": false,
+    "invalidLink": true,
+    "notDocumented": false
+  }
 }

@@ -76,6 +76,29 @@ Example:
 const ws = new WebSocketClient({admAddress: 'U1234567890', useFastest: true});
 ```
 
+### Subscribing to multiple addresses and types
+
+Since ADAMANT Node `v0.8.4`/`v0.9.0`, a single client can subscribe to several
+addresses, several transaction types, and several chat asset (message) types at
+once:
+
+```ts
+import {WebSocketClient, TransactionType, MessageType} from 'adamant-api';
+
+const ws = new WebSocketClient({
+  // Watch several accounts with one connection
+  admAddresses: ['U1234567890', 'U0987654321'],
+  // Only these transaction types
+  types: [TransactionType.SEND, TransactionType.CHAT_MESSAGE],
+  // Of chat messages, only these asset (message) types
+  assetChatTypes: [MessageType.Chat, MessageType.Rich],
+});
+```
+
+Use the singular `admAddress` for a single account, or `admAddresses` for
+several. While the socket is (re)connecting, transactions are pulled from the
+node's REST API so nothing is missed.
+
 ## Connection lifecycle
 
 ### `.connect()` / `.disconnect()`

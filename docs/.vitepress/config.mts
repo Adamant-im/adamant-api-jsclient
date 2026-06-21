@@ -68,6 +68,7 @@ export default defineConfig({
             {text: 'ADM Key Pairs', link: '/guide/adm-key-pairs'},
             {text: 'Encrypting & Decrypting Messages', link: '/guide/encryption'},
             {text: 'Forming & Signing Transactions', link: '/guide/transactions'},
+            {text: 'Querying Transactions', link: '/guide/querying-transactions'},
             {text: 'Calculating Transaction ID', link: '/guide/transaction-id'},
             {text: 'WebSocket Connections', link: '/guide/websocket'},
           ],
@@ -102,7 +103,7 @@ export default defineConfig({
 
     footer: {
       message: 'Released under the GPL-3.0 License.',
-      copyright: 'ADAMANT Foundation',
+      copyright: 'ADAMANT developer community',
     },
   },
 });

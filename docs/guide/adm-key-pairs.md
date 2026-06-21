@@ -2,7 +2,7 @@
 
 The library can create a new ADAMANT account — a passphrase, key pair (public
 key and private key), and ADAMANT address. Read more
-[about ADAMANT accounts and key pairs](https://github.com/Adamant-im/adamant/wiki/Generating-ADAMANT-account-and-key-pair).
+[about ADAMANT accounts and key pairs](https://docs.adamant.im/essentials/generating-account.html).
 
 - [`createNewPassphrase()`](#createnewpassphrase)
 - [`makeKeypairFromHash()`](#makekeypairfromhash)

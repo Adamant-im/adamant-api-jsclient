@@ -1,7 +1,8 @@
 # Calculating Transaction ID
 
-The algorithm for calculating the transaction ID is described in the
-[ADAMANT Node source](https://github.com/Adamant-im/adamant/blob/95df4fc5d50f6ef3b7eeee0993ac64405777d7b9/logic/transaction.js#L212).
+The transaction ID is derived from the signed transaction. The signing and
+hashing algorithm is described in
+[Signing Transactions](https://docs.adamant.im/essentials/signing-transactions.html).
 
 ## `getTransactionId()`
 

@@ -1,3 +1,11 @@
+/**
+ * ADM HTTP client (`AdamantApi`): resilient node access with health checks,
+ * retries, and failover; typed request options; and the generated ADAMANT API
+ * DTO types.
+ *
+ * @module
+ */
+
 import axios, {AxiosError} from 'axios';
 import {NodeManager, NodeManagerOptions} from '../helpers/healthCheck';
 import {
@@ -269,8 +277,9 @@ const responseErrorMessage = (data: unknown) => {
 /**
  * Resilient client for the public ADAMANT Node HTTP API.
  *
- * The client inherits node health checks and failover from {@link NodeManager}
- * and returns structured API results instead of exposing raw Axios errors.
+ * The client inherits node health checks and failover from the internal
+ * `NodeManager` and returns structured API results instead of exposing raw
+ * Axios errors.
  */
 export class AdamantApi extends NodeManager {
   maxRetries: number;
@@ -364,7 +373,7 @@ export class AdamantApi extends NodeManager {
   /**
    * Makes GET request to ADAMANT network.
    *
-   * @details `endpoint` should be in `'accounts/getPublicKey'` format, excluding `'/api/'`
+   * `endpoint` should be in `'accounts/getPublicKey'` format, excluding `'/api/'`.
    */
   async get<T>(endpoint: string, params?: unknown) {
     return this.request<T>('GET', endpoint, params);
@@ -373,7 +382,7 @@ export class AdamantApi extends NodeManager {
   /**
    * Makes POST request to ADAMANT network.
    *
-   * @details `endpoint` should be in `'accounts/getPublicKey'` format, excluding `'/api/'`
+   * `endpoint` should be in `'accounts/getPublicKey'` format, excluding `'/api/'`.
    */
   async post<T>(endpoint: string, options: unknown) {
     return this.request<T>('POST', endpoint, options);
@@ -1016,8 +1025,6 @@ export class AdamantApi extends NodeManager {
 
   /**
    * Get `confirmed`, `unconfirmed` and `queued` transactions count
-   *
-   * @nav Transactions
    */
   async getTransactionsCount() {
     return this.get<GetTransactionsCountResponseDto>('transactions/count');

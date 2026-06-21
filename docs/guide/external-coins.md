@@ -1,7 +1,7 @@
 # External Coin Wallets
 
 ADAMANT lets you
-[store and send other cryptocurrencies in-chat](https://github.com/Adamant-im/adamant/wiki/Storing-Data-in-KVS).
+[store and send other cryptocurrencies in-chat](https://docs.adamant.im/essentials/storing-data-in-kvs.html).
 Their addresses and private keys are derived deterministically from the
 account's ADM key pair. The library provides per-coin modules through dedicated
 subpath imports.

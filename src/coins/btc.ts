@@ -1,3 +1,10 @@
+/**
+ * Bitcoin wallet helper: deterministic P2PKH key and address derivation from an
+ * ADAMANT passphrase, plus address validation.
+ *
+ * @module
+ */
+
 import * as bitcoin from 'bitcoinjs-lib';
 import {ECPairFactory} from 'ecpair';
 import * as tinysecp from 'tiny-secp256k1';
