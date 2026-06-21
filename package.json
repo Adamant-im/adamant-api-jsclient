@@ -94,7 +94,7 @@
     "prepare": "husky",
     "clean": "node -e \"require('fs').rmSync('dist', {recursive: true, force: true})\"",
     "compile": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p scripts/package-test/tsconfig.json",
     "build": "npm run clean && npm run compile",
     "fix": "gts fix",
     "api-types:sync": "node scripts/sync-api-types.mjs",

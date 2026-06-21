@@ -15,11 +15,24 @@ const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const temporaryRoot = mkdtempSync(join(tmpdir(), 'adamant-api-package-'));
 const packedDirectory = join(temporaryRoot, 'packed');
 const consumerDirectory = join(temporaryRoot, 'consumer');
+
 const consumerFixture = join(
   projectRoot,
   'scripts',
   'package-test',
   'consumer.ts',
+);
+const liveEsmConsumerFixture = join(
+  projectRoot,
+  'scripts',
+  'package-test',
+  'consumer_live_esm.ts',
+);
+const liveCommonJsConsumerFixture = join(
+  projectRoot,
+  'scripts',
+  'package-test',
+  'consumer_live_common.js',
 );
 
 const run = (command, args, cwd) =>
@@ -73,6 +86,21 @@ try {
   );
 
   copyFileSync(consumerFixture, join(consumerDirectory, 'consumer.ts'));
+  copyFileSync(
+    liveEsmConsumerFixture,
+    join(consumerDirectory, 'consumer_live_esm.ts'),
+  );
+
+  const commonJsConsumerDirectory = join(consumerDirectory, 'commonjs');
+  mkdirSync(commonJsConsumerDirectory);
+  copyFileSync(
+    liveCommonJsConsumerFixture,
+    join(commonJsConsumerDirectory, 'consumer_live_common.js'),
+  );
+  writeFileSync(
+    join(commonJsConsumerDirectory, 'package.json'),
+    `${JSON.stringify({private: true, type: 'commonjs'}, null, 2)}\n`,
+  );
 
   writeFileSync(
     join(consumerDirectory, 'consumer.cjs'),
@@ -102,7 +130,7 @@ console.log('CommonJS package imports passed.');
           types: ['node'],
           typeRoots: [join(projectRoot, 'node_modules', '@types')],
         },
-        include: ['consumer.ts'],
+        include: ['consumer.ts', 'consumer_live_esm.ts'],
       },
       null,
       2,
@@ -114,6 +142,23 @@ console.log('CommonJS package imports passed.');
     process.execPath,
     ['--experimental-strip-types', 'consumer.ts'],
     consumerDirectory,
+  );
+  run(
+    process.execPath,
+    [
+      '--experimental-strip-types',
+      '--eval',
+      "import('./consumer_live_esm.ts').then(() => process.exit(0))",
+    ],
+    consumerDirectory,
+  );
+  run(
+    process.execPath,
+    [
+      '--eval',
+      "Promise.resolve(require('./consumer_live_common.js')).then(() => process.exit(0))",
+    ],
+    commonJsConsumerDirectory,
   );
   run(process.execPath, ['consumer.cjs'], consumerDirectory);
   run(

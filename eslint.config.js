@@ -9,7 +9,7 @@ module.exports = [
     files: ['**/*.ts'],
     languageOptions: {
       parserOptions: {
-        project: ['./tsconfig.json'],
+        project: ['./tsconfig.json', './scripts/package-test/tsconfig.json'],
         tsconfigRootDir: __dirname,
       },
     },
@@ -25,6 +25,16 @@ module.exports = [
     languageOptions: {
       globals: {
         __dirname: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+      },
+    },
+  },
+  {
+    files: ['scripts/package-test/consumer_live_common.js'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
         module: 'readonly',
         require: 'readonly',
       },

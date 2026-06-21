@@ -26,7 +26,6 @@
     "src/**/*.ts",
     "src/**/*.json",
     "examples/**/*.mts",
-    "scripts/package-test/**/*.ts",
     "types/*.d.ts"
   ],
   "exclude": ["node_modules", "dist"]
