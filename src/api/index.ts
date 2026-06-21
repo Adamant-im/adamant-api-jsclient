@@ -167,6 +167,28 @@ export interface GetPeersOptions {
   ip?: string;
 }
 
+/**
+ * Query parameters shared by the transaction-style endpoints:
+ * `/api/transactions`, `/api/chats/get`, `/api/chatrooms`, and
+ * `/api/states/get`.
+ *
+ * Two things to keep in mind:
+ *
+ * 1. **Filter combination.** Top-level filter conditions are combined with
+ *    `and` by default — see {@link TransactionQuery} to opt into `or`. Control
+ *    and pagination fields (`limit`, `offset`, `orderBy`, `returnUnconfirmed`)
+ *    are never treated as filters.
+ * 2. **Endpoint support varies.** The node does not reject unknown query
+ *    fields, but each endpoint only *applies* a subset of these in its SQL, so
+ *    passing a field an endpoint ignores simply has no effect. The applicable
+ *    filters were verified against the node's per-module query builders, not
+ *    just the docs. Amount filters (`minAmount` / `maxAmount`) are honored only
+ *    by `/api/transactions` and are therefore declared on
+ *    {@link TransactionsOptions} rather than here.
+ *
+ * @see https://docs.adamant.im/api/transactions-query-language.html
+ * @see https://github.com/Adamant-im/adamant/blob/dev/modules/transactions.js
+ */
 export interface TransactionQueryParameters {
   returnUnconfirmed?: 1 | 0;
   blockId?: string;
@@ -186,7 +208,17 @@ export interface TransactionQueryParameters {
   orderBy?: string;
 }
 
-// parameters that available for /api/chatrooms
+/**
+ * Options for the chat endpoints: `/api/chatrooms` (`getChats`,
+ * `getChatMessages`) and the legacy `/api/chats/get` (`getChatTransactions`).
+ *
+ * Verified against the node query builders, these endpoints apply only `type`,
+ * `senderId`, `recipientId`, the direct-transfer toggle, and pagination —
+ * plus `userId` on `/api/chatrooms`, and `isIn` / `inId` and `fromHeight` on
+ * `/api/chats/get`. Other inherited fields (most range filters) are accepted
+ * by the node but not applied, so they have no effect. Amount filters are
+ * excluded at the type level (they belong to {@link TransactionsOptions}).
+ */
 export interface ChatroomsOptions extends TransactionQueryParameters {
   type?: number;
   userId?: string;
@@ -195,7 +227,12 @@ export interface ChatroomsOptions extends TransactionQueryParameters {
   withoutDirectTransfers?: boolean | 1 | 0;
 }
 
-// parameters that available for /api/transactions
+/**
+ * Options for `/api/transactions` (`getTransactions`, `getTransaction`). This
+ * is the most permissive endpoint: it applies the full filter set, including
+ * the amount filters (`minAmount` / `maxAmount`) that the chat and KVS
+ * endpoints do not support.
+ */
 export interface TransactionsOptions extends TransactionQueryParameters {
   senderIds?: string[];
   recipientIds?: string[];
@@ -212,6 +249,14 @@ export interface TransactionsOptions extends TransactionQueryParameters {
   maxAmount?: number;
 }
 
+/**
+ * Options for `/api/states/get` (`getKVS`).
+ *
+ * Verified against the node query builder, this endpoint applies `type`,
+ * `key`, `keyIds`, `senderId`, `senderIds`, and `fromHeight`, plus pagination.
+ * It does not support amount filters (excluded at the type level) and ignores
+ * `recipientId`.
+ */
 export interface KVSOptions extends TransactionQueryParameters {
   senderIds?: string[];
   key?: string;

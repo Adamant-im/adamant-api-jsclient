@@ -61,29 +61,34 @@ passing those fields at the top level.
 
 ## Filter support is endpoint-specific
 
-Not every filter is valid on every endpoint — see the node
-[query language](https://docs.adamant.im/api/transactions-query-language.html).
+Not every filter is valid on every endpoint. The node does not reject unknown
+query fields, but each endpoint only *applies* a subset of them — passing a
+filter an endpoint ignores simply has no effect. The table below was verified
+against the node's per-endpoint query builders, not just the
+[query-language docs](https://docs.adamant.im/api/transactions-query-language.html).
+
 The most important difference: **amount filters (`minAmount` / `maxAmount`) are
-supported only by `/api/transactions`.** The SDK enforces this at the type
-level, so they are a compile error on the chat and KVS methods:
+honored only by `/api/transactions`.** The SDK enforces this at the type level,
+so they are a compile error on the chat and KVS methods:
 
 ```ts
 await api.getTransactions({minAmount: 1000}); // OK
 
-// @ts-expect-error `/api/chats/get` has no amount filter
+// @ts-expect-error `/api/chats/get` does not apply amount filters
 await api.getChatTransactions({minAmount: 1000});
 ```
 
-| Method (endpoint)                              | Typical filters                                  |
-| ---------------------------------------------- | ------------------------------------------------ |
-| `getTransactions` (`/api/transactions`)        | all, including `minAmount` / `maxAmount`, `types`|
-| `getChatTransactions` (`/api/chats/get`)       | `senderId`, `recipientId`, `type`, height range  |
-| `getChats` / `getChatMessages` (`/api/chatrooms`) | `type`, plus `userId` / direct-transfer options |
-| `getKVS` (`/api/states/get`)                   | `key`, `keyIds`, `senderId`, `senderIds`, `type` |
+| Method (endpoint)                                 | Filters the node actually applies                                                  |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `getTransactions` (`/api/transactions`)           | the full set, including `minAmount` / `maxAmount`, `types`, height & time ranges    |
+| `getChatTransactions` (`/api/chats/get`)          | `type`, `senderId`, `recipientId`, `inId` / `isIn`, `fromHeight`                    |
+| `getChats` / `getChatMessages` (`/api/chatrooms`) | `type`, `senderId`, `recipientId`, `userId`, plus the direct-transfer toggle        |
+| `getKVS` (`/api/states/get`)                      | `type`, `key`, `keyIds`, `senderId`, `senderIds`, `fromHeight`                       |
 
-The SDK only type-guards the amount filters; for other endpoint-specific
-limitations it forwards what you pass, and the node ignores filters it does not
-support for that endpoint.
+All endpoints also accept the pagination/control options (`limit`, `offset`,
+`orderBy`, `returnUnconfirmed`; `returnAsset` on `/api/transactions`). Beyond
+the amount filters, the SDK does not strip endpoint-inappropriate fields — it
+forwards what you pass, and the node ignores anything it does not apply.
 
 ## Filtering by multiple transaction types
 
