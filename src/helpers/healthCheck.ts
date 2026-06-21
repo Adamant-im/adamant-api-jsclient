@@ -25,6 +25,7 @@ export interface ActiveNode {
   heightEpsilon: number;
   socketSupport: boolean;
   wsPort: number;
+  version?: string;
   outOfSync?: boolean;
 }
 
@@ -218,8 +219,13 @@ export class NodeManager {
       nodesInfoString += `, ${outOfSyncCount} nodes are not synced`;
     }
 
+    const activeNode = activeNodes.find(node => node.node === this.node);
+    const version = activeNode?.version
+      ? ` (${activeNode.version.startsWith('v') ? activeNode.version : `v${activeNode.version}`})`
+      : '';
+
     this.logger.log(
-      `[ADAMANT js-api] Health check: Found ${supportedCount} supported and synced nodes${nodesInfoString}. Active node is ${this.node}.`,
+      `[ADAMANT js-api] Health check: Found ${supportedCount} supported and synced nodes${nodesInfoString}. Active node is ${this.node}${version}.`,
     );
   }
 
@@ -258,7 +264,7 @@ export class NodeManager {
         continue;
       }
 
-      const {wsClient, network} = response;
+      const {version, wsClient, network} = response;
 
       const socketSupport = wsClient.enabled;
       const wsPort = wsClient.port;
@@ -273,6 +279,7 @@ export class NodeManager {
         heightEpsilon: Math.round(height / HEIGHT_EPSILON),
         socketSupport,
         wsPort,
+        version: version.version,
       });
     }
 

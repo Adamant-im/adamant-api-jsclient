@@ -15,6 +15,7 @@ const activeNode = (name: string, height: number, ping = 10): ActiveNode => ({
   heightEpsilon: Math.round(height / 5),
   socketSupport: true,
   wsPort: 36667,
+  version: '0.9.0',
 });
 
 describe('NodeManager', () => {
@@ -111,6 +112,9 @@ describe('NodeManager', () => {
     expect(output.log).toHaveBeenCalledWith(
       expect.stringContaining("1 nodes didn't respond, 1 nodes are not synced"),
     );
+    expect(output.log).toHaveBeenLastCalledWith(
+      expect.stringContaining('Active node is https://slow (v0.9.0).'),
+    );
   });
 
   test('checks nodes and retains parsed health and socket data', async () => {
@@ -124,6 +128,7 @@ describe('NodeManager', () => {
       .mockResolvedValueOnce({
         success: true,
         network: {height: 101},
+        version: {version: '0.9.0'},
         wsClient: {enabled: true, port: 36667},
       } as never)
       .mockResolvedValueOnce({success: false} as never);
@@ -137,6 +142,7 @@ describe('NodeManager', () => {
       heightEpsilon: 20,
       socketSupport: true,
       wsPort: 36667,
+      version: '0.9.0',
     });
     expect(output.log).toHaveBeenCalledWith(
       expect.stringContaining("offline.example hasn't returned its status"),
