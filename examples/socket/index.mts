@@ -3,8 +3,8 @@ import {
   TransactionType,
   decodeMessage,
   WebSocketClient,
-  ChatMessageTransaction,
 } from 'adamant-api';
+import type {ChatMessageTransaction} from 'adamant-api';
 
 const nodes = [
   'http://localhost:36666',

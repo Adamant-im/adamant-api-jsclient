@@ -4,7 +4,7 @@ import * as tinysecp from 'tiny-secp256k1';
 
 import coininfo from 'coininfo';
 import {coinMetadata} from '../metadata/index';
-import {toECPairNetwork} from './ecpairNetwork';
+import {toECPairNetwork, type UtxoWalletKeys} from './ecpairNetwork';
 
 const RE_DOGE_ADDRESS = new RegExp(coinMetadata.DOGE.regexAddress);
 
@@ -14,7 +14,7 @@ const ecpairNetwork = toECPairNetwork(network, 'doge');
 /** Deterministic Dogecoin wallet derivation and address validation helpers. */
 export const doge = {
   metadata: coinMetadata.DOGE,
-  keys: (passphrase: string) => {
+  keys: (passphrase: string): UtxoWalletKeys => {
     const pwHash = bitcoin.crypto.sha256(Buffer.from(passphrase));
 
     const ECPairAPI = ECPairFactory(tinysecp);

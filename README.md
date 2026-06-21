@@ -119,7 +119,17 @@ corepack enable
 pnpm install
 pnpm build
 pnpm test
+pnpm test:package
 pnpm lint
+```
+
+`pnpm test:package` packs the current working tree and installs its tarball into a temporary consumer project. It verifies CommonJS and ESM imports, package subpaths, runtime helpers, and TypeScript declarations without using the published npm version.
+
+Run the deterministic transaction ID example directly on Node.js 22 or newer:
+
+```sh
+pnpm build
+node --experimental-strip-types examples/getId/index.mts
 ```
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for repository conventions, testing expectations, generated files, and pull request guidance.
@@ -135,6 +145,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for repository conventions, testing exp
 - [ADAMANT wallet metadata](https://github.com/Adamant-im/adamant-wallets)
 - [ADAMANT blockchain explorer](https://explorer.adamant.im/)
 - [Package documentation and examples](https://github.com/Adamant-im/adamant-api-jsclient/wiki)
+- [Changelog and releases](https://github.com/Adamant-im/adamant-api-jsclient/releases)
 - [Issues and feature requests](https://github.com/Adamant-im/adamant-api-jsclient/issues)
 
 ## License

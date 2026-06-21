@@ -11,6 +11,6 @@
     "noEmit": true,
     "rootDir": "."
   },
-  "include": ["src/**/*.ts", "src/**/*.json", "examples/**/*.ts", "types/*.d.ts"],
+  "include": ["src/**/*.ts", "src/**/*.json", "examples/**/*.mts", "types/*.d.ts"],
   "exclude": ["node_modules", "dist"]
 }

@@ -44,6 +44,7 @@ Also run these checks when relevant:
 
 ```sh
 pnpm metadata:check  # wallet metadata or coin changes
+pnpm test:package    # package exports or declaration changes
 pnpm audit           # dependency changes
 pnpm fix             # apply project formatting and safe lint fixes
 ```

@@ -89,6 +89,7 @@
   ],
   "scripts": {
     "test": "jest",
+    "test:package": "node scripts/test-package.mjs",
     "lint": "gts lint",
     "prepare": "husky",
     "clean": "node -e \"require('fs').rmSync('dist', {recursive: true, force: true})\"",
