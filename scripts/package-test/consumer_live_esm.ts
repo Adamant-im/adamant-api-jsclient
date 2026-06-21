@@ -7,6 +7,7 @@ const api = new AdamantApi({
     'https://clown.adamant.im',
     'https://lake.adamant.im',
   ],
+  checkHealthAtStartup: true,
 });
 
 const response = await api.getBlocks();
