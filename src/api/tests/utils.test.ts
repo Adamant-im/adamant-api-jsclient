@@ -1,4 +1,8 @@
-import {transformTransactionQuery} from '../utils';
+import {
+  getUnsupportedTransactionQueryControls,
+  hasMixedTransactionQueryGroups,
+  transformTransactionQuery,
+} from '../utils';
 
 describe('transformTransactionQuery', () => {
   it('returns an empty object for an undefined query', () => {
@@ -87,7 +91,7 @@ describe('transformTransactionQuery', () => {
     });
   });
 
-  it('passes control and pagination parameters through unchanged', () => {
+  it('passes transaction controls through and strips chat-only controls', () => {
     const transformed = transformTransactionQuery({
       limit: 20,
       offset: 40,
@@ -104,8 +108,26 @@ describe('transformTransactionQuery', () => {
       orderBy: 'timestamp:desc',
       returnUnconfirmed: 1,
       returnAsset: 1,
+    });
+  });
+
+  it('passes only the controls supported by chat endpoints', () => {
+    const transformed = transformTransactionQuery(
+      {
+        type: 8,
+        returnAsset: 1,
+        includeDirectTransfers: true,
+        userId: 'U123456',
+        and: {withoutDirectTransfers: false},
+      },
+      'chatrooms',
+    );
+
+    expect(transformed).toStrictEqual({
+      'and:type': 8,
       includeDirectTransfers: true,
       userId: 'U123456',
+      withoutDirectTransfers: false,
     });
   });
 
@@ -141,5 +163,78 @@ describe('transformTransactionQuery', () => {
       'or:recipientId': 'U222',
       limit: 10,
     });
+  });
+
+  it('preserves object insertion order for flat mixed logical groups', () => {
+    const andThenOr = transformTransactionQuery({
+      and: {senderId: 'U111'},
+      or: {recipientId: 'U222'},
+    });
+    const orThenAnd = transformTransactionQuery({
+      or: {recipientId: 'U222'},
+      and: {senderId: 'U111'},
+    });
+
+    expect(Object.keys(andThenOr)).toEqual(['and:senderId', 'or:recipientId']);
+    expect(Object.keys(orThenAnd)).toEqual(['or:recipientId', 'and:senderId']);
+  });
+});
+
+describe('getUnsupportedTransactionQueryControls', () => {
+  it('deduplicates unsupported controls across query groups', () => {
+    expect(
+      getUnsupportedTransactionQueryControls(
+        {
+          returnAsset: 1,
+          and: {returnAsset: 1, includeDirectTransfers: true},
+          or: {userId: 'U123456'},
+        },
+        'chats',
+      ),
+    ).toEqual(['returnAsset', 'userId']);
+  });
+
+  it('does not report controls supported by the selected endpoint', () => {
+    expect(
+      getUnsupportedTransactionQueryControls(
+        {
+          returnAsset: 1,
+          limit: 10,
+        },
+        'transactions',
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe('hasMixedTransactionQueryGroups', () => {
+  it('detects explicit and implicit AND filters combined with OR filters', () => {
+    expect(
+      hasMixedTransactionQueryGroups({
+        type: 8,
+        or: {recipientId: 'U222'},
+      }),
+    ).toBe(true);
+    expect(
+      hasMixedTransactionQueryGroups({
+        and: {senderId: 'U111'},
+        or: {recipientId: 'U222'},
+      }),
+    ).toBe(true);
+  });
+
+  it('ignores controls and single-operator queries', () => {
+    expect(
+      hasMixedTransactionQueryGroups({
+        limit: 10,
+        or: {recipientId: 'U222'},
+      }),
+    ).toBe(false);
+    expect(
+      hasMixedTransactionQueryGroups({
+        type: 8,
+        and: {senderId: 'U111'},
+      }),
+    ).toBe(false);
   });
 });

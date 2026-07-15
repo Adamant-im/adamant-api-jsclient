@@ -7,6 +7,8 @@ import {MessageType, TransactionType} from './constants';
 import type {
   AnyTransaction,
   ChatMessageTransaction,
+  ClientWebSocketBalanceChange,
+  ClientWebSocketNewBlock,
   KVSTransaction,
   RegisterDelegateTransaction,
   TokenTransferTransaction,
@@ -93,6 +95,29 @@ export type SingleTransactionHandler =
 
 export type AnyTransactionHandler = TransactionHandler<AnyTransaction>;
 
+export const balanceFields = ['balance', 'unconfirmedBalance'] as const;
+
+/** Public account balance field supported by ADAMANT Node subscriptions. */
+export type BalanceField = (typeof balanceFields)[number];
+
+export type BalanceChangeHandler = (
+  change: ClientWebSocketBalanceChange,
+) => void | Promise<void>;
+
+export type NewBlockHandler = (
+  block: ClientWebSocketNewBlock,
+) => void | Promise<void>;
+
+export type SingleWebSocketHandler =
+  | SingleTransactionHandler
+  | BalanceChangeHandler
+  | NewBlockHandler;
+
+interface BalanceHandlerSubscription {
+  fields: Set<BalanceField>;
+  handler: BalanceChangeHandler;
+}
+
 export class AdamantWsConnectionError extends Error {
   constructor(
     public readonly reason: 'connection_error' | 'disconnection',
@@ -132,6 +157,8 @@ export class WebSocketClient {
   private errorHandler: ErrorHandler;
   private connectionHandler: ConnectionHandler;
   private reconnectionHandler: ConnectionHandler;
+  private blockHandlers: NewBlockHandler[] = [];
+  private balanceHandlers: BalanceHandlerSubscription[] = [];
   private transactionHandlers: {
     [T in EventType]: TransactionHandler<TransactionMap[T]>[];
   } = {
@@ -261,6 +288,17 @@ export class WebSocketClient {
       void this.handle(transaction);
     });
 
+    connection.on(
+      'newBlock',
+      (block: ClientWebSocketNewBlock) => void this.handleBlock(block),
+    );
+
+    connection.on(
+      'balances/change',
+      (change: ClientWebSocketBalanceChange) =>
+        void this.handleBalanceChange(change),
+    );
+
     this.connection = connection;
   }
 
@@ -299,10 +337,7 @@ export class WebSocketClient {
   }
 
   private subscribe(connection: Socket) {
-    const addresses = [
-      ...(this.options.admAddress ? [this.options.admAddress] : []),
-      ...(this.options.admAddresses ?? []),
-    ].filter((address, index, all) => all.indexOf(address) === index);
+    const addresses = this.getSubscribedAddresses();
 
     if (addresses.length) {
       connection.emit(
@@ -321,6 +356,39 @@ export class WebSocketClient {
       this.options.assetChatTypes ?? nonEmptyEvents(this.messageHandlers);
     if (messageTypes.length) {
       connection.emit('assetChatTypes', messageTypes);
+    }
+
+    this.emitBalanceSubscription(connection, addresses);
+
+    if (this.blockHandlers.length) {
+      connection.emit('blocks', true);
+    }
+  }
+
+  private getSubscribedAddresses() {
+    return [
+      ...(this.options.admAddress ? [this.options.admAddress] : []),
+      ...(this.options.admAddresses ?? []),
+    ].filter((address, index, all) => all.indexOf(address) === index);
+  }
+
+  private emitBalanceSubscription(
+    connection: Socket,
+    addresses = this.getSubscribedAddresses(),
+  ) {
+    const subscribedBalanceFields = [
+      ...new Set(
+        this.balanceHandlers.flatMap(subscription => [...subscription.fields]),
+      ),
+    ];
+    if (subscribedBalanceFields.length) {
+      if (addresses.length) {
+        connection.emit('balances', subscribedBalanceFields);
+      } else {
+        this.logger.warn(
+          '[ADAMANT js-api Socket] Balance handlers are registered but no addresses are subscribed; balance changes cannot be delivered.',
+        );
+      }
     }
   }
 
@@ -382,18 +450,39 @@ export class WebSocketClient {
   }
 
   /**
-   * Removes the handler from all types.
+   * Removes the handler from all transaction, block, and balance event types.
    */
-  public off(handler: SingleTransactionHandler) {
+  public off(handler: SingleWebSocketHandler) {
+    const removesBlockHandler = this.blockHandlers.includes(
+      handler as NewBlockHandler,
+    );
+
     for (const handlers of [
       ...Object.values(this.transactionHandlers),
       ...Object.values(this.messageHandlers),
+      this.blockHandlers,
     ]) {
-      let index = (handlers as SingleTransactionHandler[]).indexOf(handler);
+      let index = (handlers as SingleWebSocketHandler[]).indexOf(handler);
       while (index !== -1) {
         handlers.splice(index, 1);
-        index = (handlers as SingleTransactionHandler[]).indexOf(handler);
+        index = (handlers as SingleWebSocketHandler[]).indexOf(handler);
       }
+    }
+
+    this.balanceHandlers = this.balanceHandlers.filter(
+      subscription => subscription.handler !== handler,
+    );
+
+    // Node balance-field subscriptions are additive and expose no unsubscribe
+    // operation. Removed handlers stop local delivery; the remote subscription
+    // is discarded when this socket disconnects.
+
+    if (
+      removesBlockHandler &&
+      this.blockHandlers.length === 0 &&
+      this.connection?.connected
+    ) {
+      this.connection.emit('blocks', false);
     }
 
     return this;
@@ -506,6 +595,84 @@ export class WebSocketClient {
    */
   public onKVS(handler: TransactionHandler<KVSTransaction>) {
     return this.on(TransactionType.STATE, handler);
+  }
+
+  /**
+   * Registers a handler for compact headers of newly applied blocks.
+   *
+   * Registering a handler opts the socket in to the node's `newBlock` event.
+   */
+  public onNewBlock(handler: NewBlockHandler) {
+    this.blockHandlers.push(handler);
+
+    if (this.connection?.connected) {
+      this.connection.emit('blocks', true);
+    }
+
+    return this;
+  }
+
+  /**
+   * Registers a handler for current absolute confirmed and unconfirmed balances
+   * after a change. Payload values replace previous values; they are not deltas.
+   * At least one ADM address must be configured on the client.
+   */
+  public onBalanceChange(handler: BalanceChangeHandler): this;
+  /** Registers a handler for selected public balance fields. */
+  public onBalanceChange(
+    fields: BalanceField | BalanceField[],
+    handler: BalanceChangeHandler,
+  ): this;
+  public onBalanceChange(
+    fieldsOrHandler: BalanceField | BalanceField[] | BalanceChangeHandler,
+    handler?: BalanceChangeHandler,
+  ) {
+    const fields =
+      typeof fieldsOrHandler === 'function'
+        ? balanceFields
+        : Array.isArray(fieldsOrHandler)
+          ? fieldsOrHandler
+          : [fieldsOrHandler];
+    const callback =
+      typeof fieldsOrHandler === 'function' ? fieldsOrHandler : handler!;
+
+    this.balanceHandlers.push({fields: new Set(fields), handler: callback});
+
+    if (this.connection?.connected) {
+      this.emitBalanceSubscription(this.connection);
+    }
+
+    return this;
+  }
+
+  private async handleBlock(block: ClientWebSocketNewBlock) {
+    await this.callHandlers(this.blockHandlers, block);
+  }
+
+  private async handleBalanceChange(change: ClientWebSocketBalanceChange) {
+    const changedFields = balanceFields.filter(
+      field => change[field] !== undefined,
+    );
+    const handlers = this.balanceHandlers
+      .filter(subscription =>
+        changedFields.some(field => subscription.fields.has(field)),
+      )
+      .map(subscription => subscription.handler);
+
+    await this.callHandlers(handlers, change);
+  }
+
+  private async callHandlers<T>(
+    handlers: Array<(event: T) => void | Promise<void>>,
+    event: T,
+  ) {
+    for (const handler of handlers) {
+      try {
+        await handler(event);
+      } catch (error) {
+        this.errorHandler(error);
+      }
+    }
   }
 
   private async handle<T extends EventType>(transaction: AnyTransaction) {

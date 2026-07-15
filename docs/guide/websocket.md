@@ -130,6 +130,59 @@ behavior. A transaction between two different addresses in `admAddresses`
 matches both `incoming` and `outgoing`. Direction filtering requires at least
 one `admAddress` or `admAddresses` entry.
 
+## Blocks and balance changes
+
+ADAMANT Node `v0.10.2` adds opt-in block and account-balance events. Registering
+the corresponding SDK handler sends the subscription after every connection,
+so reconnecting to the same or another healthy node restores it automatically.
+
+### `.onNewBlock()`
+
+Registers a handler for compact headers of newly applied blocks and opts the
+socket in to the node's `newBlock` event:
+
+```ts
+ws.onNewBlock(block => {
+  console.log(block.height, block.id, block.numberOfTransactions);
+});
+```
+
+The payload includes `id`, `height`, `timestamp`, `generatorPublicKey`,
+`numberOfTransactions`, `totalAmount`, `totalFee`, and `reward`. It is a live
+notification, not a backfill: blocks applied while the client is disconnected
+must be reconciled through `getBlocks()`.
+
+### `.onBalanceChange()`
+
+Registers a handler for current confirmed and/or unconfirmed balances. Balance
+subscriptions require at least one `admAddress` or `admAddresses` value:
+
+```ts
+const ws = new WebSocketClient({
+  admAddresses: ['U1234567890', 'U0987654321'],
+});
+
+// Both supported fields
+ws.onBalanceChange(change => {
+  console.log(change.address, change.balance, change.unconfirmedBalance);
+});
+
+// Only confirmed-balance changes
+ws.onBalanceChange('balance', change => {
+  console.log(change.address, change.balance);
+});
+```
+
+You can also pass `['balance', 'unconfirmedBalance']` explicitly. Each included
+value is the account's current absolute balance after the node processes the
+change, not an amount added to or subtracted from the previous balance. Replace
+the cached value with it; do not apply it as a delta. Values are decimal strings
+in 1/10^8 ADM units.
+
+The node emits no initial snapshot and may include only the fields that changed.
+An omitted field is unchanged, not zero. Fetch `getAccountBalance()` first when
+the application needs a starting value.
+
 ## Connection lifecycle
 
 ### `.connect()` / `.disconnect()`
@@ -233,10 +286,12 @@ ws.on(TransactionType.SEND, sendTransactionHandler);
 
 ### `.off()`
 
-Removes a handler from all types.
+Removes a handler from all transaction, block, and balance event types. Removing
+the last block handler also disables the node-side block subscription for the
+current socket.
 
 ```ts
-function off(handler: SingleTransactionHandler): this;
+function off(handler: SingleWebSocketHandler): this;
 ```
 
 ```ts

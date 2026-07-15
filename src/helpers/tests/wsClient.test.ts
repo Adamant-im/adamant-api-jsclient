@@ -232,6 +232,128 @@ describe('WebSocketClient', () => {
     ]);
   });
 
+  test('subscribes to and dispatches new blocks and balance changes', async () => {
+    const socket = makeSocket();
+    jest.mocked(io).mockReturnValue(socket as never);
+    const blockHandler = jest.fn();
+    const balanceHandler = jest.fn();
+    const unconfirmedHandler = jest.fn();
+    const client = new WebSocketClient({admAddress: 'U123456', logger})
+      .onNewBlock(blockHandler)
+      .onBalanceChange('balance', balanceHandler)
+      .onBalanceChange('unconfirmedBalance', unconfirmedHandler);
+
+    client.reviseConnection([node()]);
+    socket.listeners.connect();
+
+    expect(socket.emit).toHaveBeenCalledWith('balances', [
+      'balance',
+      'unconfirmedBalance',
+    ]);
+    expect(socket.emit).toHaveBeenCalledWith('blocks', true);
+
+    const block = {
+      id: '1739739671268673627',
+      height: 53532078,
+      timestamp: 278966175,
+      generatorPublicKey:
+        '24636735d64711f91f7680bb348662bc74f7b3446e66702369527e3882dd30d6',
+      numberOfTransactions: 2,
+      totalAmount: 10000000,
+      totalFee: 100000,
+      reward: 10000000,
+    };
+    socket.listeners.newBlock(block);
+    socket.listeners['balances/change']({
+      address: 'U123456',
+      balance: '100000000',
+    });
+    await new Promise(resolve => setImmediate(resolve));
+
+    expect(blockHandler).toHaveBeenCalledWith(block);
+    expect(balanceHandler).toHaveBeenCalledWith({
+      address: 'U123456',
+      balance: '100000000',
+    });
+    expect(unconfirmedHandler).not.toHaveBeenCalled();
+
+    socket.listeners['balances/change']({
+      address: 'U123456',
+      unconfirmedBalance: '99900000',
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    expect(unconfirmedHandler).toHaveBeenCalledTimes(1);
+
+    socket.connected = true;
+    client.off(blockHandler).off(balanceHandler).off(unconfirmedHandler);
+    expect(socket.emit).toHaveBeenCalledWith('blocks', false);
+    socket.listeners.newBlock(block);
+    socket.listeners['balances/change']({
+      address: 'U123456',
+      balance: '200000000',
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    expect(blockHandler).toHaveBeenCalledTimes(1);
+    expect(balanceHandler).toHaveBeenCalledTimes(1);
+  });
+
+  test('updates only balance fields when adding a handler to a live socket', () => {
+    const socket = makeSocket();
+    jest.mocked(io).mockReturnValue(socket as never);
+    const client = new WebSocketClient({
+      admAddress: 'U123456',
+      types: [TransactionType.SEND],
+      assetChatTypes: [MessageType.Chat],
+      logger,
+    });
+
+    client.reviseConnection([node()]);
+    socket.connected = true;
+    socket.emit.mockClear();
+
+    client.onBalanceChange('balance', jest.fn());
+
+    expect(socket.emit.mock.calls).toEqual([['balances', ['balance']]]);
+  });
+
+  test('warns when balance handlers have no subscribed addresses', () => {
+    const socket = makeSocket();
+    jest.mocked(io).mockReturnValue(socket as never);
+    const client = new WebSocketClient({logger}).onBalanceChange(jest.fn());
+
+    client.reviseConnection([node()]);
+    socket.listeners.connect();
+
+    expect(output.warn).toHaveBeenCalledWith(
+      '[ADAMANT js-api Socket] Balance handlers are registered but no addresses are subscribed; balance changes cannot be delivered.',
+    );
+    expect(socket.emit).not.toHaveBeenCalledWith('balances', expect.anything());
+  });
+
+  test('routes block and balance handler errors to catch()', async () => {
+    const socket = makeSocket();
+    jest.mocked(io).mockReturnValue(socket as never);
+    const caught = jest.fn();
+    const client = new WebSocketClient({admAddress: 'U123456', logger})
+      .onNewBlock(() => {
+        throw new Error('block handler failed');
+      })
+      .onBalanceChange(async () =>
+        Promise.reject(new Error('balance handler failed')),
+      )
+      .catch(caught);
+
+    client.reviseConnection([node()]);
+    socket.listeners.newBlock({height: 1});
+    socket.listeners['balances/change']({
+      address: 'U123456',
+      balance: '1',
+    });
+    await new Promise(resolve => setImmediate(resolve));
+
+    expect(caught).toHaveBeenCalledTimes(2);
+  });
+
   test('dispatches chat asset types through convenience handlers', async () => {
     const socket = makeSocket();
     jest.mocked(io).mockReturnValue(socket as never);

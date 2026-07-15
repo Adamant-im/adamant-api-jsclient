@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Schema source: https://github.com/Adamant-im/adamant-schema/tree/8432b267a847864d3dd3218f59991159b9a6a3f6
+// Schema source: https://github.com/Adamant-im/adamant-schema/tree/8ac55f0db203f90210e569b62824f817e1b3e268
 // Bundler: @redocly/cli@2.34.0
 // Generator: swagger-typescript-api@13.12.2
 /* tslint:disable */
@@ -11,6 +11,23 @@
  * ## SOURCE: https://github.com/acacode/swagger-typescript-api ##
  * ---------------------------------------------------------------
  */
+
+export type ClientWebSocketAddressSubscription = AddressSubscription;
+
+export type ClientWebSocketTransactionTypeSubscription =
+  TransactionTypeSubscription;
+
+export type ClientWebSocketChatTypeSubscription = ChatTypeSubscription;
+
+export type ClientWebSocketBalanceSubscription = BalanceSubscription;
+
+export type ClientWebSocketBlockSubscription = BlockSubscription;
+
+export type ClientWebSocketNewTransaction = QueuedTransaction;
+
+export type ClientWebSocketBalanceChange = BalanceChangeEvent;
+
+export type ClientWebSocketNewBlock = NewBlockEvent;
 
 /** @example {"account":{"address":"U777355171330060015","unconfirmedBalance":"4509718944753","balance":"4509718944753","publicKey":"a9407418dafb3c8aeee28f3263fd55bae0f528a5697a9df0e77e6568b19dfe34","unconfirmedSignature":0,"secondSignature":0,"secondPublicKey":null,"multisignatures":[],"u_multisignatures":[]},"success":true,"nodeTimestamp":58030181} */
 export interface GetAccountInfoResponseDto {
@@ -34,6 +51,31 @@ export interface GetAccountPublicKeyResponseDto {
   /** 256 bit public key of ADAMANT address in hex format */
   publicKey: PublicKey;
   success: boolean;
+  nodeTimestamp: number;
+}
+
+/** @example {"accounts":[{"address":"U777355171330060015","balance":"4509718944753","publicKey":"a9407418dafb3c8aeee28f3263fd55bae0f528a5697a9df0e77e6568b19dfe34","username":"adamant_delegate","isDelegate":1}],"count":254,"limit":100,"offset":0,"success":true,"nodeTimestamp":63205623} */
+export interface GetTopAccountsResponseDto {
+  /** Non-zero-balance accounts sorted by confirmed balance descending and address ascending for equal balances. */
+  accounts: GetTopAccountDto[];
+  /**
+   * Total number of non-zero-balance accounts matching the filter before pagination.
+   * @example 254
+   */
+  count: number;
+  /**
+   * Normalized page size used by the node.
+   * @example 100
+   */
+  limit: number;
+  /**
+   * Normalized offset used by the node.
+   * @example 0
+   */
+  offset: number;
+  /** @example true */
+  success: boolean;
+  /** @example 63205623 */
   nodeTimestamp: number;
 }
 
@@ -510,6 +552,29 @@ export interface AccountDto {
   u_multisignatures: string[];
 }
 
+/**
+ * ADAMANT address
+ * @example "U8916295525136600565"
+ */
+export type AdamantAddress = string;
+
+/** @example {"address":"U777355171330060015","balance":"4509718944753","publicKey":"a9407418dafb3c8aeee28f3263fd55bae0f528a5697a9df0e77e6568b19dfe34","username":"adamant_delegate","isDelegate":1} */
+export interface GetTopAccountDto {
+  /** ADAMANT address */
+  address: AdamantAddress;
+  /**
+   * Confirmed ADM balance in 1/10^8 ADM units.
+   * @format int64
+   */
+  balance: string;
+  /** 256 bit public key of the ADAMANT address in hex format, or `null` when the account has not published it yet. */
+  publicKey: string | null;
+  /** Delegate username, or `null` when the account is not a delegate. */
+  username: string | null;
+  /** Whether the account is registered as a delegate. */
+  isDelegate: 0 | 1;
+}
+
 /** @example {"id":"11114690216332606721","version":0,"timestamp":61741820,"height":10873829,"previousBlock":"11483763337863654141","numberOfTransactions":1,"totalAmount":10000000,"totalFee":50000000,"reward":45000000,"payloadLength":117,"payloadHash":"f7c0fa338a3a848119cad999d8035ab3fcb3d274a4555e141ebeb86205e41345","generatorPublicKey":"134a5de88c7da1ec71e75b5250d24168c6c6e3965ff16bd71497bd015d40ea6a","generatorId":"U3238410389688281135","blockSignature":"18607b15417a6b0a56b4c74cacd713ad7a10df16ec3ab45a697fa72b6f811f9213d895b7e0fbca71cf74323d60148d0991668e5368386408f4d841496ed2280d","confirmations":1093,"totalForged":"95000000"} */
 export interface BlockInfoDto {
   /** @format int64 */
@@ -525,6 +590,7 @@ export interface BlockInfoDto {
   reward: number;
   payloadLength: number;
   payloadHash: string;
+  generatorPublicKey: string;
   generatorId: string;
   blockSignature: string;
   confirmations: number;
@@ -605,12 +671,6 @@ export type ChatMessageTransaction = BaseTransaction & {
   asset: ChatMessageAsset;
 };
 
-/**
- * ADAMANT address
- * @example "U8916295525136600565"
- */
-export type AdamantAddress = string;
-
 export interface ChatParticipant {
   /** ADAMANT address */
   address: AdamantAddress;
@@ -654,7 +714,7 @@ export interface DelegateDto {
   /** Vote weight (Fair Delegate System) */
   votesWeight: string;
   /** Count of produced blocks */
-  producedlocks?: number;
+  producedblocks: number;
   /** Count of missed blocks */
   missedblocks: number;
   /** Current position in the Delegates List */
@@ -970,3 +1030,97 @@ export type RegisterAnyTransaction =
   | RegisterKVSTransaction
   | RegisterChatMessageTransaction
   | RegisterNewDelegateTransaction;
+
+/**
+ * One ADAMANT address or a list of addresses. The node validates values at runtime and stores accepted addresses in uppercase; this schema does not perform that validation or normalization.
+ * @example ["U1234567890123456","U6543210987654321"]
+ */
+export type AddressSubscription = AdamantAddress | AdamantAddress[];
+
+/**
+ * One transaction type or a list of transaction types to add to the socket subscription.
+ * @example [0,8]
+ */
+export type TransactionTypeSubscription = number | number[];
+
+/**
+ * One asset.chat.type value or a list of values to add to the socket subscription. This WebSocket contract follows the node's complete chat transaction type range (0-3), independently of REST chat endpoints that expose narrower query filters.
+ * @example [1,2,3]
+ */
+export type ChatTypeSubscription = number | number[];
+
+/**
+ * One public balance field or a list of fields to add to the socket subscription. At least one address subscription is required before balance changes can be delivered.
+ * @example ["balance","unconfirmedBalance"]
+ */
+export type BalanceSubscription =
+  | "balance"
+  | "unconfirmedBalance"
+  | ("balance" | "unconfirmedBalance")[];
+
+/**
+ * A scalar boolean that enables or disables newBlock events for the socket.
+ * @example true
+ */
+export type BlockSubscription = boolean;
+
+/**
+ * Current values for the subscribed public balance fields that changed. No initial snapshot is emitted. Values are decimal strings in 1/10^8 ADM units.
+ * @example {"address":"U1234567890123456","balance":"100000000","unconfirmedBalance":"99900000"}
+ */
+export type BalanceChangeEvent = {
+  /** ADAMANT address */
+  address: AdamantAddress;
+  /**
+   * Confirmed account balance.
+   * @pattern ^[0-9]+$
+   */
+  balance?: string;
+  /**
+   * Account balance after applying the node's current unconfirmed pool.
+   * @pattern ^[0-9]+$
+   */
+  unconfirmedBalance?: string;
+};
+
+/**
+ * Compact header of a successfully applied and saved block. Historical database replay does not produce this event.
+ * @example {"id":"1739739671268673627","height":53532078,"timestamp":278966175,"generatorPublicKey":"24636735d64711f91f7680bb348662bc74f7b3446e66702369527e3882dd30d6","numberOfTransactions":2,"totalAmount":10000000,"totalFee":100000,"reward":10000000}
+ */
+export interface NewBlockEvent {
+  /**
+   * @minLength 1
+   * @maxLength 20
+   * @pattern ^[0-9]+$
+   */
+  id: string;
+  /** @min 1 */
+  height: number;
+  /**
+   * Seconds since the ADAMANT epoch.
+   * @min 0
+   */
+  timestamp: number;
+  /** 256 bit public key of ADAMANT address in hex format */
+  generatorPublicKey: PublicKey;
+  /** @min 0 */
+  numberOfTransactions: number;
+  /**
+   * Total transferred amount in 1/10^8 ADM units.
+   * @format int64
+   * @min 0
+   */
+  totalAmount: number;
+  /**
+   * Total transaction fee in 1/10^8 ADM units.
+   * @format int64
+   * @min 0
+   */
+  totalFee: number;
+  /**
+   * Forging reward in 1/10^8 ADM units.
+   * @format int64
+   * @min 0
+   */
+  reward: number;
+}

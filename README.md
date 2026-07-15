@@ -4,6 +4,10 @@
 
 📚 **Documentation:** [js.docs.adamant.im](https://js.docs.adamant.im)
 
+> Built and maintained by the ADAMANT developer community and **cryptofoundry**.
+> Want custom crypto software, bots, payments or blockchain infrastructure built by engineers with production blockchain experience? [Tell us what to build](https://adamant.business#contact).
+>
+
 ## Features
 
 - Automatic ADM node health checks, retries, failover, and height-aware node selection
@@ -11,7 +15,7 @@
 - ADM passphrase hashing, keypair and address derivation
 - Message encryption and decryption
 - Transaction construction, hashing, signing, and ID calculation
-- WebSocket subscriptions for incoming transactions
+- WebSocket subscriptions for incoming transactions, new blocks, and account balance changes
 - Optional BTC, ETH, DASH, and DOGE wallet derivation and address validation
 - Pinned, reproducible schema metadata from [`adamant-schema`](https://github.com/Adamant-im/adamant-schema)
 - Pinned, reproducible coin metadata from [`adamant-wallets`](https://github.com/Adamant-im/adamant-wallets)

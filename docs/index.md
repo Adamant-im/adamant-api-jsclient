@@ -38,7 +38,7 @@ features:
     link: /guide/transactions
     linkText: Transactions
   - title: WebSocket subscriptions
-    details: Subscribe to incoming transactions over Socket.IO with reconnection handling.
+    details: Subscribe to transactions, new blocks, and account balance changes over Socket.IO with reconnection handling.
     link: /guide/websocket
     linkText: WebSocket
   - title: External wallets
