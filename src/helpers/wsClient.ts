@@ -598,7 +598,8 @@ export class WebSocketClient {
   }
 
   /**
-   * Registers a handler for confirmed and unconfirmed balance changes.
+   * Registers a handler for current absolute confirmed and unconfirmed balances
+   * after a change. Payload values replace previous values; they are not deltas.
    * At least one ADM address must be configured on the client.
    */
   public onBalanceChange(handler: BalanceChangeHandler): this;

@@ -173,9 +173,14 @@ ws.onBalanceChange('balance', change => {
 });
 ```
 
-You can also pass `['balance', 'unconfirmedBalance']` explicitly. Values are
-decimal strings in 1/10^8 ADM units. The node emits no initial snapshot and may
-include only the fields that changed, so fetch `getAccountBalance()` first when
+You can also pass `['balance', 'unconfirmedBalance']` explicitly. Each included
+value is the account's current absolute balance after the node processes the
+change, not an amount added to or subtracted from the previous balance. Replace
+the cached value with it; do not apply it as a delta. Values are decimal strings
+in 1/10^8 ADM units.
+
+The node emits no initial snapshot and may include only the fields that changed.
+An omitted field is unchanged, not zero. Fetch `getAccountBalance()` first when
 the application needs a starting value.
 
 ## Connection lifecycle
