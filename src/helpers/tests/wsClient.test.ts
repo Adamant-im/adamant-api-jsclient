@@ -297,6 +297,25 @@ describe('WebSocketClient', () => {
     expect(balanceHandler).toHaveBeenCalledTimes(1);
   });
 
+  test('updates only balance fields when adding a handler to a live socket', () => {
+    const socket = makeSocket();
+    jest.mocked(io).mockReturnValue(socket as never);
+    const client = new WebSocketClient({
+      admAddress: 'U123456',
+      types: [TransactionType.SEND],
+      assetChatTypes: [MessageType.Chat],
+      logger,
+    });
+
+    client.reviseConnection([node()]);
+    socket.connected = true;
+    socket.emit.mockClear();
+
+    client.onBalanceChange('balance', jest.fn());
+
+    expect(socket.emit.mock.calls).toEqual([['balances', ['balance']]]);
+  });
+
   test('warns when balance handlers have no subscribed addresses', () => {
     const socket = makeSocket();
     jest.mocked(io).mockReturnValue(socket as never);

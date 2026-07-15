@@ -60,12 +60,36 @@ const KNOWN_CONTROL_PARAMETERS = new Set(
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const hasFilterProperties = (value: unknown, controls: Set<string>): boolean =>
+const hasFilterProperties = (value: unknown): boolean =>
   isRecord(value) &&
-  Object.keys(value).some(
-    property =>
-      !KNOWN_CONTROL_PARAMETERS.has(property) && !controls.has(property),
-  );
+  Object.keys(value).some(property => !KNOWN_CONTROL_PARAMETERS.has(property));
+
+/** Returns known controls that the selected endpoint will ignore. */
+export const getUnsupportedTransactionQueryControls = <T extends object>(
+  obj?: TransactionQuery<T>,
+  endpoint: TransactionQueryEndpoint = 'transactions',
+) => {
+  if (!obj) {
+    return [];
+  }
+
+  const controls = CONTROL_PARAMETERS[endpoint];
+  const unsupported = new Set<string>();
+
+  for (const value of [obj, obj.and, obj.or]) {
+    if (!isRecord(value)) {
+      continue;
+    }
+
+    for (const property of Object.keys(value)) {
+      if (KNOWN_CONTROL_PARAMETERS.has(property) && !controls.has(property)) {
+        unsupported.add(property);
+      }
+    }
+  }
+
+  return [...unsupported];
+};
 
 /**
  * Reports whether a query combines `or` filters with explicit or implicit
@@ -74,16 +98,14 @@ const hasFilterProperties = (value: unknown, controls: Set<string>): boolean =>
  */
 export const hasMixedTransactionQueryGroups = <T extends object>(
   obj?: TransactionQuery<T>,
-  endpoint: TransactionQueryEndpoint = 'transactions',
 ) => {
   if (!obj) {
     return false;
   }
 
   const source = obj as Record<string, unknown>;
-  const controls = CONTROL_PARAMETERS[endpoint];
-  const hasOrFilters = hasFilterProperties(source.or, controls);
-  const hasExplicitAndFilters = hasFilterProperties(source.and, controls);
+  const hasOrFilters = hasFilterProperties(source.or);
+  const hasExplicitAndFilters = hasFilterProperties(source.and);
   const hasTopLevelAndFilters = Object.keys(source).some(
     property =>
       property !== 'and' &&

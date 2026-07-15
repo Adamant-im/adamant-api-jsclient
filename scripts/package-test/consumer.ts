@@ -8,6 +8,7 @@ import {
   type AdamantAddress,
   type BalanceField,
   type ClientWebSocketNewBlock,
+  type GetBlocksOptions,
   type TransactionDirection,
 } from 'adamant-api';
 import {AdamantApi as ExplicitAdamantApi} from 'adamant-api/adm';
@@ -22,6 +23,9 @@ import {getTransactionId} from 'adamant-api/transactions';
 const address: AdamantAddress = 'U123456';
 const direction: TransactionDirection = 'incoming';
 const balanceField: BalanceField = 'balance';
+const exactBlockAmountFilter: GetBlocksOptions = {
+  totalAmount: '9800000000000000',
+};
 const api = new AdamantApi({
   nodes: ['https://node.example'],
   checkHealthAtStartup: false,
@@ -34,6 +38,7 @@ assert.equal(api.node, 'https://node.example');
 assert.equal(address, 'U123456');
 assert.equal(direction, 'incoming');
 assert.equal(balanceField, 'balance');
+assert.equal(exactBlockAmountFilter.totalAmount, '9800000000000000');
 assert.equal(typeof api.getTopAccounts, 'function');
 assert.equal(typeof api.searchDelegates, 'function');
 const ws = new WebSocketClient({admAddress: address})

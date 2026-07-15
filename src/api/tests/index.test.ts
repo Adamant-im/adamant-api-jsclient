@@ -524,7 +524,12 @@ describe('AdamantApi query methods', () => {
   });
 
   test('strips chat-only controls from transaction requests at runtime', async () => {
-    const api = createApi();
+    const logger = createLogger();
+    const api = new AdamantApi({
+      nodes: ['https://node.example'],
+      checkHealthAtStartup: false,
+      logger,
+    });
     const get = jest
       .spyOn(api, 'get')
       .mockResolvedValue({success: true} as never);
@@ -539,9 +544,23 @@ describe('AdamantApi query methods', () => {
     expect(get).toHaveBeenLastCalledWith('transactions', {
       'and:type': 0,
     });
+    expect(logger.warn.mock.calls).toEqual([
+      [
+        '[ADAMANT js-api] Query control `includeDirectTransfers` is not supported by the transactions endpoint and was ignored.',
+      ],
+      [
+        '[ADAMANT js-api] Query control `withoutDirectTransfers` is not supported by the transactions endpoint and was ignored.',
+      ],
+      [
+        '[ADAMANT js-api] Query control `userId` is not supported by the transactions endpoint and was ignored.',
+      ],
+    ]);
+
+    await api.getTransactions({includeDirectTransfers: false} as never);
+    expect(logger.warn).toHaveBeenCalledTimes(3);
   });
 
-  test('warns when flat AND and OR conditions are mixed', async () => {
+  test('warns once when flat AND and OR conditions are mixed', async () => {
     const logger = createLogger();
     const api = new AdamantApi({
       nodes: ['https://node.example'],
@@ -554,8 +573,13 @@ describe('AdamantApi query methods', () => {
       type: 8,
       or: {senderId: 'U111', recipientId: 'U222'},
     });
+    await api.getTransactions({
+      and: {type: 0},
+      or: {recipientId: 'U333'},
+    });
 
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(logger.warn).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenLastCalledWith(
       '[ADAMANT js-api] Query mixes `and` and `or` conditions. ADAMANT Node flattens them in wire order without parentheses, so JavaScript object key order changes the result.',
     );
   });

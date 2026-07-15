@@ -94,11 +94,11 @@ The shape `A AND (B OR C)` is **not expressible** through this node query
 language because it requires parentheses.
 
 ::: warning Mixed-query runtime warning
-All typed query methods log a warning when OR filters are combined with
-explicit `and: {}` filters or top-level filters. A top-level filter plus an
-`or: {}` object is also a mixed flat query; it does not mean
-`A AND (B OR C)`. Split the request or verify the exact wire order before
-depending on the result.
+All typed query methods log this warning at most once per `AdamantApi` instance
+when OR filters are combined with explicit `and: {}` filters or top-level
+filters. A top-level filter plus an `or: {}` object is also a mixed flat query;
+it does not mean `A AND (B OR C)`. Split the request or verify the exact wire
+order before depending on the result.
 :::
 
 ## Filter support is endpoint-specific
@@ -129,8 +129,10 @@ await api.getChatTransactions({minAmount: 1000});
 
 All endpoints also accept the pagination/control options (`limit`, `offset`,
 `orderBy`, `returnUnconfirmed`; `returnAsset` on `/api/transactions`). Beyond
-the amount filters, the SDK does not strip endpoint-inappropriate fields — it
-forwards what you pass, and the node ignores anything it does not apply.
+the amount filters, the SDK forwards endpoint-inappropriate filter fields and
+the node ignores anything it does not apply. Known control parameters from a
+different endpoint are instead dropped so they cannot become prefixed filters;
+the SDK warns at most once per endpoint and parameter when this happens.
 
 ## Filtering by multiple transaction types
 

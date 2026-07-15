@@ -337,10 +337,7 @@ export class WebSocketClient {
   }
 
   private subscribe(connection: Socket) {
-    const addresses = [
-      ...(this.options.admAddress ? [this.options.admAddress] : []),
-      ...(this.options.admAddresses ?? []),
-    ].filter((address, index, all) => all.indexOf(address) === index);
+    const addresses = this.getSubscribedAddresses();
 
     if (addresses.length) {
       connection.emit(
@@ -361,6 +358,24 @@ export class WebSocketClient {
       connection.emit('assetChatTypes', messageTypes);
     }
 
+    this.emitBalanceSubscription(connection, addresses);
+
+    if (this.blockHandlers.length) {
+      connection.emit('blocks', true);
+    }
+  }
+
+  private getSubscribedAddresses() {
+    return [
+      ...(this.options.admAddress ? [this.options.admAddress] : []),
+      ...(this.options.admAddresses ?? []),
+    ].filter((address, index, all) => all.indexOf(address) === index);
+  }
+
+  private emitBalanceSubscription(
+    connection: Socket,
+    addresses = this.getSubscribedAddresses(),
+  ) {
     const subscribedBalanceFields = [
       ...new Set(
         this.balanceHandlers.flatMap(subscription => [...subscription.fields]),
@@ -374,10 +389,6 @@ export class WebSocketClient {
           '[ADAMANT js-api Socket] Balance handlers are registered but no addresses are subscribed; balance changes cannot be delivered.',
         );
       }
-    }
-
-    if (this.blockHandlers.length) {
-      connection.emit('blocks', true);
     }
   }
 
@@ -461,6 +472,10 @@ export class WebSocketClient {
     this.balanceHandlers = this.balanceHandlers.filter(
       subscription => subscription.handler !== handler,
     );
+
+    // Node balance-field subscriptions are additive and expose no unsubscribe
+    // operation. Removed handlers stop local delivery; the remote subscription
+    // is discarded when this socket disconnects.
 
     if (
       removesBlockHandler &&
@@ -624,7 +639,7 @@ export class WebSocketClient {
     this.balanceHandlers.push({fields: new Set(fields), handler: callback});
 
     if (this.connection?.connected) {
-      this.subscribe(this.connection);
+      this.emitBalanceSubscription(this.connection);
     }
 
     return this;

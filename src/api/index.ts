@@ -88,6 +88,7 @@ import {
 import {encodeMessage} from '../helpers/encryptor';
 import {
   type VoteDirection,
+  getUnsupportedTransactionQueryControls,
   hasMixedTransactionQueryGroups,
   transformTransactionQuery,
   type TransactionQueryEndpoint,
@@ -133,11 +134,12 @@ export type DelegateLookupOptions =
  * `or`. To opt into `or`, wrap fields in `or`; an explicit `and` wrapper is
  * also supported and is equivalent to passing those fields at the top level
  * when no OR filters are present. Mixed operators are flattened in object-key
- * order without parentheses and trigger a runtime warning.
+ * order without parentheses and trigger a runtime warning at most once per
+ * client instance.
  *
  * Control and pagination parameters are not filters. Each endpoint forwards
  * only the controls it supports; known controls from another endpoint are
- * stripped at runtime.
+ * stripped at runtime and warn once per endpoint and parameter.
  *
  * @see https://docs.adamant.im/api/transactions-query-language.html#combine-filters-and-options
  */
@@ -154,8 +156,8 @@ export interface GetBlocksOptions {
   orderBy?: string;
   generatorPublicKey?: string;
   numberOfTransactions?: number;
-  totalAmount?: number;
-  totalFee?: number;
+  totalAmount?: number | string;
+  totalFee?: number | string;
   reward?: number;
   previousBlock?: string;
   height?: number;
@@ -405,6 +407,8 @@ const normalizeApiResponse = <T>(data: unknown): AdamantApiResult<T> => {
  */
 export class AdamantApi extends NodeManager {
   maxRetries: number;
+  private hasWarnedAboutMixedQuery = false;
+  private readonly warnedUnsupportedControls = new Set<string>();
 
   constructor(options: AdamantApiOptions) {
     const customLogger = new Logger(options.logLevel, options.logger);
@@ -1226,7 +1230,24 @@ export class AdamantApi extends NodeManager {
     options: TransactionQuery<T> | undefined,
     endpoint: TransactionQueryEndpoint,
   ) {
-    if (hasMixedTransactionQueryGroups(options, endpoint)) {
+    for (const control of getUnsupportedTransactionQueryControls(
+      options,
+      endpoint,
+    )) {
+      const warningKey = `${endpoint}:${control}`;
+      if (!this.warnedUnsupportedControls.has(warningKey)) {
+        this.warnedUnsupportedControls.add(warningKey);
+        this.logger.warn(
+          `[ADAMANT js-api] Query control \`${control}\` is not supported by the ${endpoint} endpoint and was ignored.`,
+        );
+      }
+    }
+
+    if (
+      !this.hasWarnedAboutMixedQuery &&
+      hasMixedTransactionQueryGroups(options)
+    ) {
+      this.hasWarnedAboutMixedQuery = true;
       this.logger.warn(
         '[ADAMANT js-api] Query mixes `and` and `or` conditions. ADAMANT Node flattens them in wire order without parentheses, so JavaScript object key order changes the result.',
       );

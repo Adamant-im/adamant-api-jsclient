@@ -1,4 +1,5 @@
 import {
+  getUnsupportedTransactionQueryControls,
   hasMixedTransactionQueryGroups,
   transformTransactionQuery,
 } from '../utils';
@@ -176,6 +177,33 @@ describe('transformTransactionQuery', () => {
 
     expect(Object.keys(andThenOr)).toEqual(['and:senderId', 'or:recipientId']);
     expect(Object.keys(orThenAnd)).toEqual(['or:recipientId', 'and:senderId']);
+  });
+});
+
+describe('getUnsupportedTransactionQueryControls', () => {
+  it('deduplicates unsupported controls across query groups', () => {
+    expect(
+      getUnsupportedTransactionQueryControls(
+        {
+          returnAsset: 1,
+          and: {returnAsset: 1, includeDirectTransfers: true},
+          or: {userId: 'U123456'},
+        },
+        'chats',
+      ),
+    ).toEqual(['returnAsset', 'userId']);
+  });
+
+  it('does not report controls supported by the selected endpoint', () => {
+    expect(
+      getUnsupportedTransactionQueryControls(
+        {
+          returnAsset: 1,
+          limit: 10,
+        },
+        'transactions',
+      ),
+    ).toEqual([]);
   });
 });
 
