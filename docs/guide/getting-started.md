@@ -73,5 +73,5 @@ logs.
 - [Modular Imports](./modular-imports) — pick the narrowest entry point
 - [ADM Key Pairs](./adm-key-pairs) — create accounts and derive keys
 - [Forming & Signing Transactions](./transactions) — build and sign transactions
-- [WebSocket Connections](./websocket) — subscribe to incoming transactions
+- [WebSocket Connections](./websocket) — subscribe to transactions, new blocks, and balance changes
 - [API Reference](/api/) — full generated reference for every export

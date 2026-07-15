@@ -32,6 +32,7 @@ import type {
   GetAccountBalanceResponseDto,
   GetAccountInfoResponseDto,
   GetAccountPublicKeyResponseDto,
+  GetTopAccountsResponseDto,
   GetAccountVotesResponseDto,
   GetBlockInfoResponseDto,
   GetBlocksResponseDto,
@@ -87,7 +88,9 @@ import {
 import {encodeMessage} from '../helpers/encryptor';
 import {
   type VoteDirection,
+  hasMixedTransactionQueryGroups,
   transformTransactionQuery,
+  type TransactionQueryEndpoint,
   parseVote,
   isVoteDirection,
 } from './utils';
@@ -128,38 +131,75 @@ export type DelegateLookupOptions =
  * Top-level filter conditions are combined with `and` by default — every
  * condition must match. This differs from the raw node API, whose default is
  * `or`. To opt into `or`, wrap fields in `or`; an explicit `and` wrapper is
- * also supported and is equivalent to passing those fields at the top level.
+ * also supported and is equivalent to passing those fields at the top level
+ * when no OR filters are present. Mixed operators are flattened in object-key
+ * order without parentheses and trigger a runtime warning.
  *
- * Control and pagination parameters (`limit`, `offset`, `orderBy`,
- * `returnAsset`, `returnUnconfirmed`, the direct-transfer flags, and `userId`)
- * are not filters and are always sent as-is.
+ * Control and pagination parameters are not filters. Each endpoint forwards
+ * only the controls it supports; known controls from another endpoint are
+ * stripped at runtime.
  *
  * @see https://docs.adamant.im/api/transactions-query-language.html#combine-filters-and-options
  */
 export type TransactionQuery<T extends object> = Partial<T> & {
-  /** Filter conditions combined with `or`. */
+  /** Conditions prefixed with `or`; this object does not create parentheses. */
   or?: Partial<T>;
-  /** Filter conditions combined with `and` (the default for top-level fields). */
+  /** Conditions prefixed with `and` (the default for top-level fields). */
   and?: Partial<T>;
 };
 
 export interface GetBlocksOptions {
   limit?: number;
   offset?: number;
+  orderBy?: string;
   generatorPublicKey?: string;
+  numberOfTransactions?: number;
+  totalAmount?: number;
+  totalFee?: number;
+  reward?: number;
+  previousBlock?: string;
   height?: number;
 }
 
 export interface GetDelegatesOptions {
   limit?: number;
   offset?: number;
+  orderBy?: string;
+}
+
+export interface SearchDelegatesOptions {
+  limit?: number;
+  orderBy?: string;
+}
+
+export interface GetDelegateStatsOptions {
+  start?: number;
+  end?: number;
 }
 
 export interface GetPeersOptions {
   limit?: number;
   offset?: number;
+  orderBy?: string;
   os?: string;
   ip?: string;
+  port?: number;
+  state?: 0 | 1 | 2;
+  version?: string;
+  broadhash?: string;
+  height?: number;
+}
+
+export interface GetTopAccountsOptions {
+  /** Number of accounts to return. Use `0` for count-only metadata. */
+  limit?: number;
+  offset?: number;
+  isDelegate?: 0 | 1;
+}
+
+export interface PooledTransactionsOptions {
+  senderPublicKey?: string;
+  address?: string;
 }
 
 /**
@@ -238,6 +278,8 @@ export interface TransactionsOptions extends TransactionQueryParameters {
   type?: number;
   types?: number[];
   returnAsset?: 1 | 0;
+  fromUnixTime?: number;
+  toUnixTime?: number;
   // Amount filters are supported only by `/api/transactions`, not by
   // `/api/chats/get`, `/api/chatrooms`, or `/api/states/get`.
   minAmount?: number;
@@ -817,6 +859,16 @@ export class AdamantApi extends NodeManager {
   }
 
   /**
+   * Gets non-zero-balance accounts ordered by balance descending.
+   *
+   * ADAMANT Node v0.10.2 and newer return pagination metadata and support an
+   * optional delegate-status filter.
+   */
+  async getTopAccounts(options?: GetTopAccountsOptions) {
+    return this.get<GetTopAccountsResponseDto>('accounts/top', options);
+  }
+
+  /**
    * Get block information by ID
    */
   async getBlock(id: string) {
@@ -840,7 +892,7 @@ export class AdamantApi extends NodeManager {
     this.warnDeprecatedDirectTransferFilter(options);
     return this.get<GetChatRoomsResponseDto>(
       `chatrooms/${address}`,
-      transformTransactionQuery(options),
+      this.transformQuery(options, 'chatrooms'),
     );
   }
 
@@ -855,7 +907,7 @@ export class AdamantApi extends NodeManager {
     this.warnDeprecatedDirectTransferFilter(query);
     return this.get<GetChatMessagesResponseDto>(
       `chatrooms/${address1}/${address2}`,
-      transformTransactionQuery(query),
+      this.transformQuery(query, 'chatrooms'),
     );
   }
 
@@ -867,7 +919,7 @@ export class AdamantApi extends NodeManager {
     this.warnDeprecatedDirectTransferFilter(options);
     return this.get<GetChatTransactionsResponseDto>(
       'chats/get',
-      transformTransactionQuery(options),
+      this.transformQuery(options, 'chats'),
     );
   }
 
@@ -890,8 +942,11 @@ export class AdamantApi extends NodeManager {
    *
    * @param q - username
    */
-  async searchDelegates(q: string) {
-    return this.get<SearchDelegateResponseDto>('delegates/search', {q});
+  async searchDelegates(q: string, options?: SearchDelegatesOptions) {
+    return this.get<SearchDelegateResponseDto>('delegates/search', {
+      ...options,
+      q,
+    });
   }
 
   /**
@@ -904,10 +959,13 @@ export class AdamantApi extends NodeManager {
   /**
    * Get forging activity of a delegate
    */
-  async getDelegateStats(generatorPublicKey: string) {
+  async getDelegateStats(
+    generatorPublicKey: string,
+    options?: GetDelegateStatsOptions,
+  ) {
     return this.get<GetDelegateStatsResponseDto>(
       'delegates/forging/getForgedByAccount',
-      {generatorPublicKey},
+      {...options, generatorPublicKey},
     );
   }
 
@@ -1066,7 +1124,7 @@ export class AdamantApi extends NodeManager {
   async getKVS(options?: TransactionQuery<KVSOptions>) {
     return this.get<GetKVSResponseDto>(
       'states/get',
-      transformTransactionQuery(options),
+      this.transformQuery(options, 'states'),
     );
   }
 
@@ -1081,7 +1139,7 @@ export class AdamantApi extends NodeManager {
   async getTransactions(options?: TransactionQuery<TransactionsOptions>) {
     return this.get<GetTransactionsResponseDto>(
       'transactions',
-      transformTransactionQuery(options),
+      this.transformQuery(options, 'transactions'),
     );
   }
 
@@ -1099,7 +1157,7 @@ export class AdamantApi extends NodeManager {
   ) {
     return this.get<GetTransactionByIdResponseDto>('transactions/get', {
       id,
-      ...transformTransactionQuery(options),
+      ...this.transformQuery(options, 'transactions'),
     });
   }
 
@@ -1113,8 +1171,11 @@ export class AdamantApi extends NodeManager {
   /**
    * Get queued transactions count
    */
-  async getQueuedTransactions() {
-    return this.get<GetQueuedTransactionsResponseDto>('transactions/queued');
+  async getQueuedTransactions(options?: PooledTransactionsOptions) {
+    return this.get<GetQueuedTransactionsResponseDto>(
+      'transactions/queued',
+      options,
+    );
   }
 
   /**
@@ -1130,9 +1191,10 @@ export class AdamantApi extends NodeManager {
   /**
    * Get unconfirmed transactions
    */
-  async getUnconfirmedTransactions() {
+  async getUnconfirmedTransactions(options?: PooledTransactionsOptions) {
     return this.get<GetUnconfirmedTransactionsResponseDto>(
       'transactions/unconfirmed',
+      options,
     );
   }
 
@@ -1158,6 +1220,19 @@ export class AdamantApi extends NodeManager {
         '[ADAMANT js-api] `withoutDirectTransfers` is deprecated. Use `includeDirectTransfers` instead.',
       );
     }
+  }
+
+  private transformQuery<T extends object>(
+    options: TransactionQuery<T> | undefined,
+    endpoint: TransactionQueryEndpoint,
+  ) {
+    if (hasMixedTransactionQueryGroups(options, endpoint)) {
+      this.logger.warn(
+        '[ADAMANT js-api] Query mixes `and` and `or` conditions. ADAMANT Node flattens them in wire order without parentheses, so JavaScript object key order changes the result.',
+      );
+    }
+
+    return transformTransactionQuery(options, endpoint);
   }
 }
 

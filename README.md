@@ -11,7 +11,7 @@
 - ADM passphrase hashing, keypair and address derivation
 - Message encryption and decryption
 - Transaction construction, hashing, signing, and ID calculation
-- WebSocket subscriptions for incoming transactions
+- WebSocket subscriptions for incoming transactions, new blocks, and account balance changes
 - Optional BTC, ETH, DASH, and DOGE wallet derivation and address validation
 - Pinned, reproducible schema metadata from [`adamant-schema`](https://github.com/Adamant-im/adamant-schema)
 - Pinned, reproducible coin metadata from [`adamant-wallets`](https://github.com/Adamant-im/adamant-wallets)

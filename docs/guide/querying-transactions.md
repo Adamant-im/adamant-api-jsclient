@@ -35,20 +35,20 @@ To restore the previous behavior for a query, wrap the fields in `or: { ... }`
 (see below).
 :::
 
-Pagination and control parameters — `limit`, `offset`, `orderBy`,
-`returnUnconfirmed`, `returnAsset`, `includeDirectTransfers`,
-`withoutDirectTransfers`, and `userId` — are not filters and are always sent
-as-is.
+Pagination and control parameters are not filters. The SDK now scopes them by
+endpoint: transaction controls such as `returnAsset` are sent only to
+`/api/transactions`, while `includeDirectTransfers`,
+`withoutDirectTransfers`, and `userId` are sent only to the chat endpoints that
+support them. If plain JavaScript passes a known control to the wrong typed
+method, the SDK strips it instead of constructing a request the node rejects.
 
 ### Opting into `or`
 
-Wrap fields in `or: { ... }` to OR them. You can mix a default-`and` top level
-with an `or` group; the node ANDs the top-level conditions with the OR group:
+Wrap fields in `or: { ... }` to OR them:
 
 ```ts
-// type === CHAT_MESSAGE  AND  (senderId === 'U111'  OR  recipientId === 'U222')
+// senderId === 'U111'  OR  recipientId === 'U222'
 await api.getTransactions({
-  type: TransactionType.CHAT_MESSAGE,
   or: {
     senderId: 'U111',
     recipientId: 'U222',
@@ -56,8 +56,50 @@ await api.getTransactions({
 });
 ```
 
-An explicit `and: { ... }` wrapper is also still supported and is equivalent to
-passing those fields at the top level.
+An explicit `and: { ... }` wrapper is also supported and is equivalent to
+passing those fields at the top level when the query contains only AND
+conditions.
+
+## Mixed `and` / `or` queries are flat and order-sensitive
+
+The node does **not** create logical groups from the `and: {}` and `or: {}`
+objects. It concatenates every condition into one flat SQL expression in query
+string order:
+
+1. The first condition's `and:` or `or:` prefix has no effect because nothing
+   precedes it.
+2. No parentheses are added.
+3. Normal SQL precedence applies: `AND` binds tighter than `OR`.
+
+`transformTransactionQuery()` preserves JavaScript object key insertion order,
+including the order of the `and` and `or` objects. These two calls therefore
+have different meanings:
+
+```ts
+// (inId = U123... AND amount >= 1) OR type IN (0, 8)
+await api.getTransactions({
+  and: {inId: 'U123...', minAmount: 1},
+  or: {types: [TransactionType.SEND, TransactionType.CHAT_MESSAGE]},
+});
+
+// type IN (0, 8) AND inId = U123... AND amount >= 1
+await api.getTransactions({
+  or: {types: [TransactionType.SEND, TransactionType.CHAT_MESSAGE]},
+  and: {inId: 'U123...', minAmount: 1},
+});
+```
+
+The shape `(A AND B) OR C` is expressible by putting the AND conditions first.
+The shape `A AND (B OR C)` is **not expressible** through this node query
+language because it requires parentheses.
+
+::: warning Mixed-query runtime warning
+All typed query methods log a warning when OR filters are combined with
+explicit `and: {}` filters or top-level filters. A top-level filter plus an
+`or: {}` object is also a mixed flat query; it does not mean
+`A AND (B OR C)`. Split the request or verify the exact wire order before
+depending on the result.
+:::
 
 ## Filter support is endpoint-specific
 

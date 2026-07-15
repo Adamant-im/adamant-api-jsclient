@@ -18,20 +18,81 @@ export const parseVote = (vote: string): [string, VoteDirection] => {
   return [name, direction as VoteDirection];
 };
 
-/**
- * Control and pagination parameters that are never filter conditions, so they
- * are passed through verbatim and never get an `and:` / `or:` prefix.
- */
-const CONTROL_PARAMETERS = new Set<string>([
+export type TransactionQueryEndpoint =
+  | 'transactions'
+  | 'chatrooms'
+  | 'chats'
+  | 'states';
+
+const COMMON_CONTROL_PARAMETERS = [
   'limit',
   'offset',
   'orderBy',
   'returnUnconfirmed',
-  'returnAsset',
-  'includeDirectTransfers',
-  'withoutDirectTransfers',
-  'userId',
-]);
+] as const;
+
+/** Control and pagination parameters supported by each node endpoint. */
+const CONTROL_PARAMETERS: Record<TransactionQueryEndpoint, Set<string>> = {
+  transactions: new Set([...COMMON_CONTROL_PARAMETERS, 'returnAsset']),
+  chatrooms: new Set([
+    ...COMMON_CONTROL_PARAMETERS,
+    'includeDirectTransfers',
+    'withoutDirectTransfers',
+    'userId',
+  ]),
+  chats: new Set([
+    ...COMMON_CONTROL_PARAMETERS,
+    'includeDirectTransfers',
+    'withoutDirectTransfers',
+  ]),
+  states: new Set(COMMON_CONTROL_PARAMETERS),
+};
+
+/**
+ * Known controls are dropped when an endpoint does not support them. Without
+ * this guard, a JavaScript caller can accidentally turn a chat-only option
+ * into a transaction filter that the node rejects.
+ */
+const KNOWN_CONTROL_PARAMETERS = new Set(
+  Object.values(CONTROL_PARAMETERS).flatMap(parameters => [...parameters]),
+);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const hasFilterProperties = (value: unknown, controls: Set<string>): boolean =>
+  isRecord(value) &&
+  Object.keys(value).some(
+    property =>
+      !KNOWN_CONTROL_PARAMETERS.has(property) && !controls.has(property),
+  );
+
+/**
+ * Reports whether a query combines `or` filters with explicit or implicit
+ * `and` filters. The node flattens such queries without parentheses, so callers
+ * should be warned that property order changes the resulting SQL expression.
+ */
+export const hasMixedTransactionQueryGroups = <T extends object>(
+  obj?: TransactionQuery<T>,
+  endpoint: TransactionQueryEndpoint = 'transactions',
+) => {
+  if (!obj) {
+    return false;
+  }
+
+  const source = obj as Record<string, unknown>;
+  const controls = CONTROL_PARAMETERS[endpoint];
+  const hasOrFilters = hasFilterProperties(source.or, controls);
+  const hasExplicitAndFilters = hasFilterProperties(source.and, controls);
+  const hasTopLevelAndFilters = Object.keys(source).some(
+    property =>
+      property !== 'and' &&
+      property !== 'or' &&
+      !KNOWN_CONTROL_PARAMETERS.has(property),
+  );
+
+  return hasOrFilters && (hasExplicitAndFilters || hasTopLevelAndFilters);
+};
 
 /**
  * Serializes a transaction query into the flat shape the node expects.
@@ -39,17 +100,19 @@ const CONTROL_PARAMETERS = new Set<string>([
  * Top-level filter conditions are combined with `and` by default: each is
  * emitted with an `and:` prefix. This differs from the raw node API, whose
  * default is `or`. To opt into `or` semantics, wrap fields in `or: { ... }`;
- * the explicit `and: { ... }` wrapper is also still supported (and equivalent
- * to passing those fields at the top level).
+ * the explicit `and: { ... }` wrapper is also supported. The wrapper objects
+ * do not create parentheses: mixed operators remain flat and are emitted in
+ * JavaScript object-key order.
  *
- * Control and pagination parameters (`limit`, `offset`, `orderBy`,
- * `returnAsset`, `returnUnconfirmed`, the direct-transfer flags, and `userId`)
- * are not filters and are passed through unchanged.
+ * Control and pagination parameters supported by the selected endpoint are
+ * passed through unchanged. Known controls unsupported by that endpoint are
+ * stripped instead of being serialized as filters.
  *
  * @see https://docs.adamant.im/api/transactions-query-language.html#combine-filters-and-options
  */
 export const transformTransactionQuery = <T extends object>(
   obj?: TransactionQuery<T>,
+  endpoint: TransactionQueryEndpoint = 'transactions',
 ) => {
   if (!obj) {
     return {};
@@ -57,6 +120,7 @@ export const transformTransactionQuery = <T extends object>(
 
   const source = obj as Record<string, unknown>;
   const transformed: Record<string, unknown> = {};
+  const controls = CONTROL_PARAMETERS[endpoint];
 
   for (const prop in source) {
     if (!hasOwnProperty(source, prop)) {
@@ -64,19 +128,34 @@ export const transformTransactionQuery = <T extends object>(
     }
 
     if (prop === 'or' || prop === 'and') {
-      const subProps = source[prop] as Record<string, unknown>;
+      const subProps = source[prop];
+
+      if (!isRecord(subProps)) {
+        continue;
+      }
 
       for (const subProp in subProps) {
-        if (hasOwnProperty(subProps, subProp)) {
-          transformed[`${prop}:${subProp}`] = subProps[subProp];
+        if (!hasOwnProperty(subProps, subProp)) {
+          continue;
         }
+
+        if (KNOWN_CONTROL_PARAMETERS.has(subProp)) {
+          if (controls.has(subProp)) {
+            transformed[subProp] = subProps[subProp];
+          }
+          continue;
+        }
+
+        transformed[`${prop}:${subProp}`] = subProps[subProp];
       }
 
       continue;
     }
 
-    if (CONTROL_PARAMETERS.has(prop)) {
-      transformed[prop] = source[prop];
+    if (KNOWN_CONTROL_PARAMETERS.has(prop)) {
+      if (controls.has(prop)) {
+        transformed[prop] = source[prop];
+      }
       continue;
     }
 
