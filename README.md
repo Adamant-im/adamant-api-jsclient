@@ -4,6 +4,10 @@
 
 📚 **Documentation:** [js.docs.adamant.im](https://js.docs.adamant.im)
 
+> Built and maintained by the ADAMANT developer community and **cryptofoundry**.
+> Want custom crypto software, bots, payments or blockchain infrastructure built by engineers with production blockchain experience? [Tell us what to build](https://adamant.business#contact).
+>
+
 ## Features
 
 - Automatic ADM node health checks, retries, failover, and height-aware node selection
