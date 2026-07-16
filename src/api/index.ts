@@ -164,31 +164,64 @@ export interface GetBlocksOptions {
 }
 
 export interface GetDelegatesOptions {
+  /** Number of delegates to retrieve. Defaults to `101`. */
   limit?: number;
+  /** Number of delegates to skip. Defaults to `0`. */
   offset?: number;
+  /**
+   * Sort field and direction, for example `rank:asc`.
+   *
+   * Supported fields are `approval`, `productivity`, `rate`, `rank`, `vote`,
+   * `username`, `address`, and `publicKey`.
+   */
   orderBy?: string;
 }
 
 export interface SearchDelegatesOptions {
+  /** Maximum number of matches to return, from `1` to `1000`. */
   limit?: number;
+  /**
+   * Sort field and direction, for example `username:asc`.
+   *
+   * Supported fields are `username`, `address`, `publicKey`, `vote`,
+   * `missedblocks`, `producedblocks`, `approval`, `productivity`, `voters_cnt`,
+   * and `register_timestamp`.
+   */
   orderBy?: string;
 }
 
 export interface GetDelegateStatsOptions {
+  /** Inclusive interval start as a Unix timestamp in seconds. */
   start?: number;
+  /** Inclusive interval end as a Unix timestamp in seconds. */
   end?: number;
 }
 
 export interface GetPeersOptions {
+  /** Number of peers to retrieve, from `1` to `100`. */
   limit?: number;
+  /** Number of peers to skip. Defaults to `0`. */
   offset?: number;
+  /**
+   * Sort field and direction, for example `height:desc`.
+   *
+   * Supported fields are `ip`, `port`, `state`, `os`, `version`, `broadhash`,
+   * `height`, and `nonce`.
+   */
   orderBy?: string;
+  /** Filter by operating system. */
   os?: string;
+  /** Filter by IP address. */
   ip?: string;
+  /** Filter by node port, from `1` to `65535`. */
   port?: number;
+  /** Filter by peer state: banned, disconnected, or connected. */
   state?: 0 | 1 | 2;
+  /** Filter by semantic ADAMANT Node version. */
   version?: string;
+  /** Filter by hexadecimal broadhash. */
   broadhash?: string;
+  /** Filter by blockchain height. */
   height?: number;
 }
 
@@ -200,7 +233,9 @@ export interface GetTopAccountsOptions {
 }
 
 export interface PooledTransactionsOptions {
+  /** Filter by the sender's 32-byte hexadecimal public key. */
   senderPublicKey?: string;
+  /** Filter by recipient ADAMANT address. */
   address?: string;
 }
 
@@ -928,23 +963,32 @@ export class AdamantApi extends NodeManager {
   }
 
   /**
-   * Retrieves list of registered ADAMANT delegates
+   * Retrieves registered ADAMANT delegates.
+   *
+   * Each delegate includes `forged`, the lifetime sum of block fees and
+   * rewards as a base-10 integer string in base units.
    */
   async getDelegates(options?: GetDelegatesOptions) {
     return this.get<GetDelegatesResponseDto>('delegates', options);
   }
 
   /**
-   * Get delegate info by `username` or `publicKey`
+   * Gets delegate info by `username`, `publicKey`, or `address`.
+   *
+   * The delegate includes `forged`, the lifetime sum of block fees and rewards
+   * as a base-10 integer string in base units.
    */
   async getDelegate(options: DelegateLookupOptions) {
     return this.get<GetDelegateResponseDto>('delegates/get', options);
   }
 
   /**
-   * Search delegates by `username`
+   * Searches delegates by partial or full `username`.
    *
-   * @param q - username
+   * Search results include voter and registration details, but unlike the
+   * delegate list and single-delegate endpoints they do not include `forged`.
+   *
+   * @param q - A username fragment from `1` to `20` characters.
    */
   async searchDelegates(q: string, options?: SearchDelegatesOptions) {
     return this.get<SearchDelegateResponseDto>('delegates/search', {
@@ -961,7 +1005,8 @@ export class AdamantApi extends NodeManager {
   }
 
   /**
-   * Get forging activity of a delegate
+   * Gets forging activity for a delegate, optionally within an inclusive Unix
+   * timestamp interval.
    */
   async getDelegateStats(
     generatorPublicKey: string,
@@ -974,9 +1019,14 @@ export class AdamantApi extends NodeManager {
   }
 
   /**
-   * Returns list of next forgers
+   * Returns a next-block snapshot of upcoming forger public keys.
    *
-   * @param limit count to retrieve
+   * The node builds the entire result from the delegate schedule for
+   * `currentBlock + 1`, including at round boundaries. Request a new snapshot
+   * after another block is accepted.
+   *
+   * @param limit - Number of public keys to retrieve, from `1` to `101`.
+   * Defaults to `10`.
    */
   async getNextForgers(limit?: number) {
     return this.get<GetNextForgersResponseDto>('delegates/getNextForgers', {
@@ -1111,14 +1161,17 @@ export class AdamantApi extends NodeManager {
   }
 
   /**
-   * Returns blockchain network information in a single request
+   * Returns blockchain network information in a single request, including the
+   * latest cumulative `consensusCodeName` active at the current height.
    */
   async getStatus() {
     return this.get<GetNetworkInfoResponseDto>('blocks/getStatus');
   }
 
   /**
-   * Returns both ADAMANT blockchain network information and Node information in a single request.
+   * Returns ADAMANT blockchain network and Node information in a single
+   * request, including the effective consensus activation heights and complete
+   * block reward milestone schedule.
    */
   async getNodeStatus() {
     return this.get<GetNodeStatusResponseDto>('node/status');

@@ -426,6 +426,37 @@ describe('AdamantApi query methods', () => {
       'states/store',
       'transactions',
     ]);
+    expect(get).toHaveBeenCalledWith('delegates', {
+      limit: 1,
+      orderBy: 'rate:asc',
+    });
+    expect(get).toHaveBeenCalledWith('delegates/search', {
+      q: 'del',
+      limit: 1,
+      orderBy: 'username:asc',
+    });
+    expect(get).toHaveBeenCalledWith('delegates/forging/getForgedByAccount', {
+      generatorPublicKey: recipientPublicKey,
+      start: 1,
+      end: 2,
+    });
+    expect(get).toHaveBeenCalledWith('delegates/getNextForgers', {limit: 10});
+    expect(get).toHaveBeenCalledWith('peers', {
+      limit: 10,
+      os: 'linux',
+      state: 2,
+      orderBy: 'ip:asc',
+      version: '0.10.2',
+      broadhash: 'abcdef',
+      height: 1,
+      port: 36666,
+    });
+    expect(get).toHaveBeenCalledWith('transactions/queued', {
+      senderPublicKey: recipientPublicKey,
+    });
+    expect(get).toHaveBeenCalledWith('transactions/unconfirmed', {
+      address: 'U123456',
+    });
   });
 
   test('warns when the deprecated direct-transfer filter is used', async () => {

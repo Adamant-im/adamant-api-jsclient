@@ -5,7 +5,7 @@ import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 const repository = 'Adamant-im/adamant-schema';
-const revision = '8ac55f0db203f90210e569b62824f817e1b3e268';
+const revision = 'f35b8ddb5597a8f1a80a3a670bedb003af65ef90';
 const bundlerVersion = '2.34.0';
 const generatorVersion = '13.12.2';
 const target = fileURLToPath(new URL('../src/api/generated.ts', import.meta.url));
