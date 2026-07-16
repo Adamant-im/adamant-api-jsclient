@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Schema source: https://github.com/Adamant-im/adamant-schema/tree/8ac55f0db203f90210e569b62824f817e1b3e268
+// Schema source: https://github.com/Adamant-im/adamant-schema/tree/f35b8ddb5597a8f1a80a3a670bedb003af65ef90
 // Bundler: @redocly/cli@2.34.0
 // Generator: swagger-typescript-api@13.12.2
 /* tslint:disable */
@@ -213,7 +213,7 @@ export interface GetDelegateStatsResponseDto {
 
 export interface GetNextForgersResponseDto {
   /**
-   * Array of next forgers public keys
+   * Public keys ordered by upcoming slots using the delegate schedule for `currentBlock + 1`. All entries use this next-block schedule; request a new snapshot after the node accepts another block.
    * @example ["677c6db63548c99674fed0571da522a6a9569d0c1da9669734a3625645519641","150d638714f65845b50f1ff58f3da2c2baa3a1dc8bf59a9884c10da5a8e951c6"]
    */
   delegates: string[];
@@ -414,6 +414,30 @@ export interface GetNodeStatusResponseDto {
     blocksCount: number;
   };
   network: NetworkStatus;
+  consensusSchedule: {
+    /**
+     * Effective runtime activation heights after configuration defaults, the selected configuration file, and startup overrides are merged. Values are network- and configuration-specific.
+     * @example {"fairSystem":4359465,"spaceship":100000000}
+     */
+    activationHeights: Record<string, number>;
+  };
+  milestoneSchedule: {
+    /**
+     * First block height that receives a block reward.
+     * @example 2000000
+     */
+    offset: number;
+    /**
+     * Number of block heights between reward milestones.
+     * @example 6300000
+     */
+    distance: number;
+    /**
+     * Block rewards by milestone in base units (1 ADM = 100000000).
+     * @example [50000000,45000000,40000000,35000000,30000000,25000000,20000000,15000000,10000000]
+     */
+    milestones: number[];
+  };
   version: NodeVersion;
   wsClient: WsClient;
 }
@@ -701,8 +725,7 @@ export type RegisterChatMessageTransaction = RegisterTransactionBase & {
   asset: ChatMessageAsset;
 };
 
-/** @example {"username":"galaxy","address":"U17457189553820283321","publicKey":"7e26562594685ba12c0bb99ae80692947828afb71962d54634795d78b3ea7023","vote":"248994436803629","votesWeight":"83910064952101","producedblocks":269879,"missedblocks":567,"rate":10,"rank":10,"approval":0.76,"productivity":99.79} */
-export interface DelegateDto {
+export interface DelegateBaseDto {
   /** Unique delegate's nickname */
   username: string;
   /** Delegate address */
@@ -726,6 +749,15 @@ export interface DelegateDto {
   /** Productivity / Uptime of a delegate. If `0`, delegate is not active now */
   productivity: number;
 }
+
+/** @example {"username":"galaxy","address":"U17457189553820283321","publicKey":"7e26562594685ba12c0bb99ae80692947828afb71962d54634795d78b3ea7023","vote":"248994436803629","votesWeight":"83910064952101","producedblocks":269879,"missedblocks":567,"rate":10,"rank":10,"approval":0.76,"productivity":99.79,"forged":"195607450000000"} */
+export type DelegateDto = DelegateBaseDto & {
+  /**
+   * Lifetime sum of block fees and rewards as a base-10 integer string in base units (1 ADM = 100000000).
+   * @pattern ^\d+$
+   */
+  forged: string;
+};
 
 /** @example {"type":2,"amount":0,"senderId":"U3031563782805250428","senderPublicKey":"a339974effc141f302bd3589c603bdc9468dd66bcc424b60025b36999eb69ca3","signature":"c2e4a3ef7f0d363611a2b22b96feff269f1a0cbb61741a2ce55756bb9324826092fd9bff6348145e3cc384c097f101a493b9136da5236292ecf8b1ed6657dd01","timestamp":166805250,"asset":{"delegate":{"username":"kpeo","publicKey":"a339974effc141f302bd3589c603bdc9468dd66bcc424b60025b36999eb69ca3"}}} */
 export type RegisterNewDelegateTransaction = RegisterTransactionBase & {
@@ -809,7 +841,7 @@ export type RegisterDelegateTransactionDto = QueuedTransaction & {
   fee?: 300000000000;
 };
 
-export type SearchDelegateDto = DelegateDto & {
+export type SearchDelegateDto = DelegateBaseDto & {
   /**
    * Number of accounts who voted for delegate
    * @example 12
@@ -923,13 +955,15 @@ export interface TransactionTypesFeesDto {
   avatar_upload: number;
 }
 
-/** @example {"broadhash":"4a28272c915f74d118120bb47db547a18a7512e1d48092c48be86939a6d45b89","epoch":"2017-09-02T17:00:00.000Z","height":10145334,"fee":50000000,"milestone":1,"nethash":"bd330166898377fb28743ceef5e43a5d9d0a3efd9b3451fb7bc53530bb0a6d64","reward":45000000,"supply":10198040075000000} */
+/** @example {"broadhash":"4a28272c915f74d118120bb47db547a18a7512e1d48092c48be86939a6d45b89","epoch":"2017-09-02T17:00:00.000Z","height":10145334,"consensusCodeName":"fairSystem","fee":50000000,"milestone":1,"nethash":"bd330166898377fb28743ceef5e43a5d9d0a3efd9b3451fb7bc53530bb0a6d64","reward":45000000,"supply":10198040075000000} */
 export interface NetworkStatus {
   /** Broadhash is established as an aggregated rolling hash of the past five blocks present in the database */
   broadhash: string;
   /** Time when blockchain epoch starts. Value `2017-09-02T17:00:00.000Z` is for mainnet. */
   epoch: string;
   height: number;
+  /** Latest cumulative consensus upgrade active at `height`, or `null` before the first configured activation. An upgrade configured for height H is active starting at block H. */
+  consensusCodeName: string | null;
   fee: number;
   /** Current slot height, which determines reward a delegate will get for forging a block. */
   milestone: number;
