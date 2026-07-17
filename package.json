@@ -1,6 +1,6 @@
 {
   "name": "adamant-api",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Modular TypeScript SDK for the ADAMANT blockchain and deterministic wallet helpers",
   "keywords": [
     "adm",
@@ -46,7 +46,7 @@
   },
   "packageManager": "pnpm@11.13.1",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "license": "GPL-3.0",
   "author": "ADAMANT community developers <devs@adamant.im>, ADAMANT Foundation <devs@adamant.im>, ADAMANT Tech Labs <devs@adamant.im>",
