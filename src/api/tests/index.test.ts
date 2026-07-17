@@ -314,21 +314,41 @@ describe('AdamantApi query methods', () => {
     const calls: Array<() => Promise<unknown>> = [
       () => api.getAccountInfo({address: 'U123456'}),
       () => api.getAccountBalance('U123456'),
+      () => api.getTopAccounts({limit: 2, offset: 1, isDelegate: 0}),
       () => api.createAccount(recipientPublicKey),
       () => api.getBlock('block'),
-      () => api.getBlocks({limit: 1}),
+      () =>
+        api.getBlocks({
+          limit: 1,
+          orderBy: 'height:desc',
+          numberOfTransactions: 0,
+          previousBlock: '1',
+          totalAmount: 0,
+          totalFee: 0,
+          reward: 10000000,
+        }),
       () => api.getChats('U123456', {or: {type: 0}}),
       () => api.getChatMessages('U123456', 'U654321', {and: {limit: 1}}),
       () => api.getChatTransactions({returnUnconfirmed: 1}),
-      () => api.getDelegates({limit: 1}),
+      () => api.getDelegates({limit: 1, orderBy: 'rate:asc'}),
       () => api.getDelegate({username: 'delegate'}),
-      () => api.searchDelegates('del'),
+      () => api.searchDelegates('del', {limit: 1, orderBy: 'username:asc'}),
       () => api.getDelegatesCount(),
-      () => api.getDelegateStats(recipientPublicKey),
+      () => api.getDelegateStats(recipientPublicKey, {start: 1, end: 2}),
       () => api.getNextForgers(10),
       () => api.getVoters(recipientPublicKey),
       () => api.getVoteData('U123456'),
-      () => api.getPeers({limit: 10, os: 'linux'}),
+      () =>
+        api.getPeers({
+          limit: 10,
+          os: 'linux',
+          state: 2,
+          orderBy: 'ip:asc',
+          version: '0.10.2',
+          broadhash: 'abcdef',
+          height: 1,
+          port: 36666,
+        }),
       () => api.getPeer('192.0.2.1', 36666),
       () => api.getLoadingStatus(),
       () => api.getSyncStatus(),
@@ -351,9 +371,9 @@ describe('AdamantApi query methods', () => {
       () => api.sendTransaction({transaction: {} as never}),
       () => api.getTransaction('transaction', {and: {returnAsset: 1}}),
       () => api.getTransactionsCount(),
-      () => api.getQueuedTransactions(),
+      () => api.getQueuedTransactions({senderPublicKey: recipientPublicKey}),
       () => api.getQueuedTransaction('transaction'),
-      () => api.getUnconfirmedTransactions(),
+      () => api.getUnconfirmedTransactions({address: 'U123456'}),
       () => api.getUnconfirmedTransaction('transaction'),
     ];
     await Promise.all(calls.map(call => call()));
@@ -361,6 +381,7 @@ describe('AdamantApi query methods', () => {
     expect(get.mock.calls.map(([endpoint]) => endpoint)).toEqual([
       'accounts',
       'accounts/getBalance',
+      'accounts/top',
       'blocks/get',
       'blocks',
       'chatrooms/U123456',
@@ -405,6 +426,37 @@ describe('AdamantApi query methods', () => {
       'states/store',
       'transactions',
     ]);
+    expect(get).toHaveBeenCalledWith('delegates', {
+      limit: 1,
+      orderBy: 'rate:asc',
+    });
+    expect(get).toHaveBeenCalledWith('delegates/search', {
+      q: 'del',
+      limit: 1,
+      orderBy: 'username:asc',
+    });
+    expect(get).toHaveBeenCalledWith('delegates/forging/getForgedByAccount', {
+      generatorPublicKey: recipientPublicKey,
+      start: 1,
+      end: 2,
+    });
+    expect(get).toHaveBeenCalledWith('delegates/getNextForgers', {limit: 10});
+    expect(get).toHaveBeenCalledWith('peers', {
+      limit: 10,
+      os: 'linux',
+      state: 2,
+      orderBy: 'ip:asc',
+      version: '0.10.2',
+      broadhash: 'abcdef',
+      height: 1,
+      port: 36666,
+    });
+    expect(get).toHaveBeenCalledWith('transactions/queued', {
+      senderPublicKey: recipientPublicKey,
+    });
+    expect(get).toHaveBeenCalledWith('transactions/unconfirmed', {
+      address: 'U123456',
+    });
   });
 
   test('warns when the deprecated direct-transfer filter is used', async () => {
@@ -501,6 +553,67 @@ describe('AdamantApi query methods', () => {
       orderBy: 'timestamp:desc',
     });
   });
+
+  test('strips chat-only controls from transaction requests at runtime', async () => {
+    const logger = createLogger();
+    const api = new AdamantApi({
+      nodes: ['https://node.example'],
+      checkHealthAtStartup: false,
+      logger,
+    });
+    const get = jest
+      .spyOn(api, 'get')
+      .mockResolvedValue({success: true} as never);
+
+    await api.getTransactions({
+      type: 0,
+      includeDirectTransfers: true,
+      withoutDirectTransfers: false,
+      userId: 'U123456',
+    } as never);
+
+    expect(get).toHaveBeenLastCalledWith('transactions', {
+      'and:type': 0,
+    });
+    expect(logger.warn.mock.calls).toEqual([
+      [
+        '[ADAMANT js-api] Query control `includeDirectTransfers` is not supported by the transactions endpoint and was ignored.',
+      ],
+      [
+        '[ADAMANT js-api] Query control `withoutDirectTransfers` is not supported by the transactions endpoint and was ignored.',
+      ],
+      [
+        '[ADAMANT js-api] Query control `userId` is not supported by the transactions endpoint and was ignored.',
+      ],
+    ]);
+
+    await api.getTransactions({includeDirectTransfers: false} as never);
+    expect(logger.warn).toHaveBeenCalledTimes(3);
+  });
+
+  test('warns once when flat AND and OR conditions are mixed', async () => {
+    const logger = createLogger();
+    const api = new AdamantApi({
+      nodes: ['https://node.example'],
+      checkHealthAtStartup: false,
+      logger,
+    });
+    jest.spyOn(api, 'get').mockResolvedValue({success: true} as never);
+
+    await api.getTransactions({
+      type: 8,
+      or: {senderId: 'U111', recipientId: 'U222'},
+    });
+    await api.getTransactions({
+      and: {type: 0},
+      or: {recipientId: 'U333'},
+    });
+
+    expect(logger.warn).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenLastCalledWith(
+      '[ADAMANT js-api] Query mixes `and` and `or` conditions. ADAMANT Node flattens them in wire order without parentheses, so JavaScript object key order changes the result.',
+    );
+  });
 });
 
 describe('transaction query serialization across endpoints', () => {
@@ -519,6 +632,8 @@ describe('transaction query serialization across endpoints', () => {
         minAmount: 1000,
         maxAmount: 5000,
         fromHeight: 100,
+        fromUnixTime: 1464109200,
+        toUnixTime: 1464109300,
         limit: 25,
         offset: 50,
         orderBy: 'timestamp:desc',
@@ -533,6 +648,8 @@ describe('transaction query serialization across endpoints', () => {
         'and:minAmount': 1000,
         'and:maxAmount': 5000,
         'and:fromHeight': 100,
+        'and:fromUnixTime': 1464109200,
+        'and:toUnixTime': 1464109300,
         limit: 25,
         offset: 50,
         orderBy: 'timestamp:desc',

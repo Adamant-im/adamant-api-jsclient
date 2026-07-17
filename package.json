@@ -1,6 +1,6 @@
 {
   "name": "adamant-api",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Modular TypeScript SDK for the ADAMANT blockchain and deterministic wallet helpers",
   "keywords": [
     "adm",
@@ -44,9 +44,9 @@
     "type": "git",
     "url": "git+https://github.com/Adamant-im/adamant-api-jsclient.git"
   },
-  "packageManager": "pnpm@11.8.0",
+  "packageManager": "pnpm@11.13.1",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "license": "GPL-3.0",
   "author": "ADAMANT community developers <devs@adamant.im>, ADAMANT Foundation <devs@adamant.im>, ADAMANT Tech Labs <devs@adamant.im>",
@@ -119,8 +119,8 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "axios": "^1.18.0",
-    "bignumber.js": "^11.1.4",
+    "axios": "^1.18.1",
+    "bignumber.js": "^11.1.5",
     "bip32": "^5.0.1",
     "bip39": "^3.1.0",
     "bitcoinjs-lib": "^7.0.1",
@@ -137,25 +137,25 @@
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
-    "@commitlint/cli": "^21.0.2",
-    "@commitlint/config-conventional": "^21.0.2",
-    "@redocly/cli": "2.34.0",
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0",
+    "@redocly/cli": "2.39.0",
     "@types/bytebuffer": "^5.0.49",
     "@types/ed2curve": "^0.2.4",
     "@types/jest": "^30.0.0",
-    "@types/node": "^26.0.0",
+    "@types/node": "^26.1.1",
     "@types/pbkdf2": "^3.1.2",
     "@types/semver": "^7.7.1",
-    "eslint": "10.5.0",
+    "eslint": "10.7.0",
     "gts": "^7.0.0",
     "husky": "^9.1.7",
     "jest": "^30.4.2",
-    "prettier": "3.8.4",
-    "swagger-typescript-api": "13.12.2",
+    "prettier": "3.9.5",
+    "swagger-typescript-api": "13.12.5",
     "ts-jest": "^29.4.11",
-    "typedoc": "^0.28.0",
-    "typedoc-plugin-markdown": "^4.4.0",
-    "typedoc-vitepress-theme": "^1.1.2",
+    "typedoc": "^0.28.20",
+    "typedoc-plugin-markdown": "^4.12.0",
+    "typedoc-vitepress-theme": "^1.1.3",
     "typescript": "~6.0.3",
     "vitepress": "^1.6.4"
   },

@@ -32,6 +32,7 @@ import type {
   GetAccountBalanceResponseDto,
   GetAccountInfoResponseDto,
   GetAccountPublicKeyResponseDto,
+  GetTopAccountsResponseDto,
   GetAccountVotesResponseDto,
   GetBlockInfoResponseDto,
   GetBlocksResponseDto,
@@ -87,7 +88,10 @@ import {
 import {encodeMessage} from '../helpers/encryptor';
 import {
   type VoteDirection,
+  getUnsupportedTransactionQueryControls,
+  hasMixedTransactionQueryGroups,
   transformTransactionQuery,
+  type TransactionQueryEndpoint,
   parseVote,
   isVoteDirection,
 } from './utils';
@@ -118,9 +122,7 @@ export type UsernameOrPublicKeyObject = UsernameObject | PublicKeyObject;
 
 /** Object that identifies a delegate by username, public key, or address. */
 export type DelegateLookupOptions =
-  | UsernameObject
-  | PublicKeyObject
-  | AddressObject;
+  UsernameObject | PublicKeyObject | AddressObject;
 
 /**
  * A transaction query.
@@ -128,38 +130,111 @@ export type DelegateLookupOptions =
  * Top-level filter conditions are combined with `and` by default — every
  * condition must match. This differs from the raw node API, whose default is
  * `or`. To opt into `or`, wrap fields in `or`; an explicit `and` wrapper is
- * also supported and is equivalent to passing those fields at the top level.
+ * also supported and is equivalent to passing those fields at the top level
+ * when no OR filters are present. Mixed operators are flattened in object-key
+ * order without parentheses and trigger a runtime warning at most once per
+ * client instance.
  *
- * Control and pagination parameters (`limit`, `offset`, `orderBy`,
- * `returnAsset`, `returnUnconfirmed`, the direct-transfer flags, and `userId`)
- * are not filters and are always sent as-is.
+ * Control and pagination parameters are not filters. Each endpoint forwards
+ * only the controls it supports; known controls from another endpoint are
+ * stripped at runtime and warn once per endpoint and parameter.
  *
  * @see https://docs.adamant.im/api/transactions-query-language.html#combine-filters-and-options
  */
 export type TransactionQuery<T extends object> = Partial<T> & {
-  /** Filter conditions combined with `or`. */
+  /** Conditions prefixed with `or`; this object does not create parentheses. */
   or?: Partial<T>;
-  /** Filter conditions combined with `and` (the default for top-level fields). */
+  /** Conditions prefixed with `and` (the default for top-level fields). */
   and?: Partial<T>;
 };
 
 export interface GetBlocksOptions {
   limit?: number;
   offset?: number;
+  orderBy?: string;
   generatorPublicKey?: string;
+  numberOfTransactions?: number;
+  totalAmount?: number | string;
+  totalFee?: number | string;
+  reward?: number;
+  previousBlock?: string;
   height?: number;
 }
 
 export interface GetDelegatesOptions {
+  /** Number of delegates to retrieve. Defaults to `101`. */
   limit?: number;
+  /** Number of delegates to skip. Defaults to `0`. */
   offset?: number;
+  /**
+   * Sort field and direction, for example `rank:asc`.
+   *
+   * Supported fields are `approval`, `productivity`, `rate`, `rank`, `vote`,
+   * `username`, `address`, and `publicKey`.
+   */
+  orderBy?: string;
+}
+
+export interface SearchDelegatesOptions {
+  /** Maximum number of matches to return, from `1` to `1000`. */
+  limit?: number;
+  /**
+   * Sort field and direction, for example `username:asc`.
+   *
+   * Supported fields are `username`, `address`, `publicKey`, `vote`,
+   * `missedblocks`, `producedblocks`, `approval`, `productivity`, `voters_cnt`,
+   * and `register_timestamp`.
+   */
+  orderBy?: string;
+}
+
+export interface GetDelegateStatsOptions {
+  /** Inclusive interval start as a Unix timestamp in seconds. */
+  start?: number;
+  /** Inclusive interval end as a Unix timestamp in seconds. */
+  end?: number;
 }
 
 export interface GetPeersOptions {
+  /** Number of peers to retrieve, from `1` to `100`. */
+  limit?: number;
+  /** Number of peers to skip. Defaults to `0`. */
+  offset?: number;
+  /**
+   * Sort field and direction, for example `height:desc`.
+   *
+   * Supported fields are `ip`, `port`, `state`, `os`, `version`, `broadhash`,
+   * `height`, and `nonce`.
+   */
+  orderBy?: string;
+  /** Filter by operating system. */
+  os?: string;
+  /** Filter by IP address. */
+  ip?: string;
+  /** Filter by node port, from `1` to `65535`. */
+  port?: number;
+  /** Filter by peer state: banned, disconnected, or connected. */
+  state?: 0 | 1 | 2;
+  /** Filter by semantic ADAMANT Node version. */
+  version?: string;
+  /** Filter by hexadecimal broadhash. */
+  broadhash?: string;
+  /** Filter by blockchain height. */
+  height?: number;
+}
+
+export interface GetTopAccountsOptions {
+  /** Number of accounts to return. Use `0` for count-only metadata. */
   limit?: number;
   offset?: number;
-  os?: string;
-  ip?: string;
+  isDelegate?: 0 | 1;
+}
+
+export interface PooledTransactionsOptions {
+  /** Filter by the sender's 32-byte hexadecimal public key. */
+  senderPublicKey?: string;
+  /** Filter by recipient ADAMANT address. */
+  address?: string;
 }
 
 /**
@@ -238,6 +313,8 @@ export interface TransactionsOptions extends TransactionQueryParameters {
   type?: number;
   types?: number[];
   returnAsset?: 1 | 0;
+  fromUnixTime?: number;
+  toUnixTime?: number;
   // Amount filters are supported only by `/api/transactions`, not by
   // `/api/chats/get`, `/api/chatrooms`, or `/api/states/get`.
   minAmount?: number;
@@ -363,6 +440,8 @@ const normalizeApiResponse = <T>(data: unknown): AdamantApiResult<T> => {
  */
 export class AdamantApi extends NodeManager {
   maxRetries: number;
+  private hasWarnedAboutMixedQuery = false;
+  private readonly warnedUnsupportedControls = new Set<string>();
 
   constructor(options: AdamantApiOptions) {
     const customLogger = new Logger(options.logLevel, options.logger);
@@ -817,6 +896,16 @@ export class AdamantApi extends NodeManager {
   }
 
   /**
+   * Gets non-zero-balance accounts ordered by balance descending.
+   *
+   * ADAMANT Node v0.10.2 and newer return pagination metadata and support an
+   * optional delegate-status filter.
+   */
+  async getTopAccounts(options?: GetTopAccountsOptions) {
+    return this.get<GetTopAccountsResponseDto>('accounts/top', options);
+  }
+
+  /**
    * Get block information by ID
    */
   async getBlock(id: string) {
@@ -840,7 +929,7 @@ export class AdamantApi extends NodeManager {
     this.warnDeprecatedDirectTransferFilter(options);
     return this.get<GetChatRoomsResponseDto>(
       `chatrooms/${address}`,
-      transformTransactionQuery(options),
+      this.transformQuery(options, 'chatrooms'),
     );
   }
 
@@ -855,7 +944,7 @@ export class AdamantApi extends NodeManager {
     this.warnDeprecatedDirectTransferFilter(query);
     return this.get<GetChatMessagesResponseDto>(
       `chatrooms/${address1}/${address2}`,
-      transformTransactionQuery(query),
+      this.transformQuery(query, 'chatrooms'),
     );
   }
 
@@ -867,31 +956,43 @@ export class AdamantApi extends NodeManager {
     this.warnDeprecatedDirectTransferFilter(options);
     return this.get<GetChatTransactionsResponseDto>(
       'chats/get',
-      transformTransactionQuery(options),
+      this.transformQuery(options, 'chats'),
     );
   }
 
   /**
-   * Retrieves list of registered ADAMANT delegates
+   * Retrieves registered ADAMANT delegates.
+   *
+   * Each delegate includes `forged`, the lifetime sum of block fees and
+   * rewards as a base-10 integer string in base units.
    */
   async getDelegates(options?: GetDelegatesOptions) {
     return this.get<GetDelegatesResponseDto>('delegates', options);
   }
 
   /**
-   * Get delegate info by `username` or `publicKey`
+   * Gets delegate info by `username`, `publicKey`, or `address`.
+   *
+   * The delegate includes `forged`, the lifetime sum of block fees and rewards
+   * as a base-10 integer string in base units.
    */
   async getDelegate(options: DelegateLookupOptions) {
     return this.get<GetDelegateResponseDto>('delegates/get', options);
   }
 
   /**
-   * Search delegates by `username`
+   * Searches delegates by partial or full `username`.
    *
-   * @param q - username
+   * Search results include voter and registration details, but unlike the
+   * delegate list and single-delegate endpoints they do not include `forged`.
+   *
+   * @param q - A username fragment from `1` to `20` characters.
    */
-  async searchDelegates(q: string) {
-    return this.get<SearchDelegateResponseDto>('delegates/search', {q});
+  async searchDelegates(q: string, options?: SearchDelegatesOptions) {
+    return this.get<SearchDelegateResponseDto>('delegates/search', {
+      ...options,
+      q,
+    });
   }
 
   /**
@@ -902,19 +1003,28 @@ export class AdamantApi extends NodeManager {
   }
 
   /**
-   * Get forging activity of a delegate
+   * Gets forging activity for a delegate, optionally within an inclusive Unix
+   * timestamp interval.
    */
-  async getDelegateStats(generatorPublicKey: string) {
+  async getDelegateStats(
+    generatorPublicKey: string,
+    options?: GetDelegateStatsOptions,
+  ) {
     return this.get<GetDelegateStatsResponseDto>(
       'delegates/forging/getForgedByAccount',
-      {generatorPublicKey},
+      {...options, generatorPublicKey},
     );
   }
 
   /**
-   * Returns list of next forgers
+   * Returns a next-block snapshot of upcoming forger public keys.
    *
-   * @param limit count to retrieve
+   * The node builds the entire result from the delegate schedule for
+   * `currentBlock + 1`, including at round boundaries. Request a new snapshot
+   * after another block is accepted.
+   *
+   * @param limit - Number of public keys to retrieve, from `1` to `101`.
+   * Defaults to `10`.
    */
   async getNextForgers(limit?: number) {
     return this.get<GetNextForgersResponseDto>('delegates/getNextForgers', {
@@ -1049,14 +1159,17 @@ export class AdamantApi extends NodeManager {
   }
 
   /**
-   * Returns blockchain network information in a single request
+   * Returns blockchain network information in a single request, including the
+   * latest cumulative `consensusCodeName` active at the current height.
    */
   async getStatus() {
     return this.get<GetNetworkInfoResponseDto>('blocks/getStatus');
   }
 
   /**
-   * Returns both ADAMANT blockchain network information and Node information in a single request.
+   * Returns ADAMANT blockchain network and Node information in a single
+   * request, including the effective consensus activation heights and complete
+   * block reward milestone schedule.
    */
   async getNodeStatus() {
     return this.get<GetNodeStatusResponseDto>('node/status');
@@ -1066,7 +1179,7 @@ export class AdamantApi extends NodeManager {
   async getKVS(options?: TransactionQuery<KVSOptions>) {
     return this.get<GetKVSResponseDto>(
       'states/get',
-      transformTransactionQuery(options),
+      this.transformQuery(options, 'states'),
     );
   }
 
@@ -1081,7 +1194,7 @@ export class AdamantApi extends NodeManager {
   async getTransactions(options?: TransactionQuery<TransactionsOptions>) {
     return this.get<GetTransactionsResponseDto>(
       'transactions',
-      transformTransactionQuery(options),
+      this.transformQuery(options, 'transactions'),
     );
   }
 
@@ -1099,7 +1212,7 @@ export class AdamantApi extends NodeManager {
   ) {
     return this.get<GetTransactionByIdResponseDto>('transactions/get', {
       id,
-      ...transformTransactionQuery(options),
+      ...this.transformQuery(options, 'transactions'),
     });
   }
 
@@ -1113,8 +1226,11 @@ export class AdamantApi extends NodeManager {
   /**
    * Get queued transactions count
    */
-  async getQueuedTransactions() {
-    return this.get<GetQueuedTransactionsResponseDto>('transactions/queued');
+  async getQueuedTransactions(options?: PooledTransactionsOptions) {
+    return this.get<GetQueuedTransactionsResponseDto>(
+      'transactions/queued',
+      options,
+    );
   }
 
   /**
@@ -1130,9 +1246,10 @@ export class AdamantApi extends NodeManager {
   /**
    * Get unconfirmed transactions
    */
-  async getUnconfirmedTransactions() {
+  async getUnconfirmedTransactions(options?: PooledTransactionsOptions) {
     return this.get<GetUnconfirmedTransactionsResponseDto>(
       'transactions/unconfirmed',
+      options,
     );
   }
 
@@ -1158,6 +1275,36 @@ export class AdamantApi extends NodeManager {
         '[ADAMANT js-api] `withoutDirectTransfers` is deprecated. Use `includeDirectTransfers` instead.',
       );
     }
+  }
+
+  private transformQuery<T extends object>(
+    options: TransactionQuery<T> | undefined,
+    endpoint: TransactionQueryEndpoint,
+  ) {
+    for (const control of getUnsupportedTransactionQueryControls(
+      options,
+      endpoint,
+    )) {
+      const warningKey = `${endpoint}:${control}`;
+      if (!this.warnedUnsupportedControls.has(warningKey)) {
+        this.warnedUnsupportedControls.add(warningKey);
+        this.logger.warn(
+          `[ADAMANT js-api] Query control \`${control}\` is not supported by the ${endpoint} endpoint and was ignored.`,
+        );
+      }
+    }
+
+    if (
+      !this.hasWarnedAboutMixedQuery &&
+      hasMixedTransactionQueryGroups(options)
+    ) {
+      this.hasWarnedAboutMixedQuery = true;
+      this.logger.warn(
+        '[ADAMANT js-api] Query mixes `and` and `or` conditions. ADAMANT Node flattens them in wire order without parentheses, so JavaScript object key order changes the result.',
+      );
+    }
+
+    return transformTransactionQuery(options, endpoint);
   }
 }
 

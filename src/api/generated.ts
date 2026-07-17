@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Schema source: https://github.com/Adamant-im/adamant-schema/tree/8432b267a847864d3dd3218f59991159b9a6a3f6
+// Schema source: https://github.com/Adamant-im/adamant-schema/tree/f35b8ddb5597a8f1a80a3a670bedb003af65ef90
 // Bundler: @redocly/cli@2.34.0
 // Generator: swagger-typescript-api@13.12.2
 /* tslint:disable */
@@ -11,6 +11,23 @@
  * ## SOURCE: https://github.com/acacode/swagger-typescript-api ##
  * ---------------------------------------------------------------
  */
+
+export type ClientWebSocketAddressSubscription = AddressSubscription;
+
+export type ClientWebSocketTransactionTypeSubscription =
+  TransactionTypeSubscription;
+
+export type ClientWebSocketChatTypeSubscription = ChatTypeSubscription;
+
+export type ClientWebSocketBalanceSubscription = BalanceSubscription;
+
+export type ClientWebSocketBlockSubscription = BlockSubscription;
+
+export type ClientWebSocketNewTransaction = QueuedTransaction;
+
+export type ClientWebSocketBalanceChange = BalanceChangeEvent;
+
+export type ClientWebSocketNewBlock = NewBlockEvent;
 
 /** @example {"account":{"address":"U777355171330060015","unconfirmedBalance":"4509718944753","balance":"4509718944753","publicKey":"a9407418dafb3c8aeee28f3263fd55bae0f528a5697a9df0e77e6568b19dfe34","unconfirmedSignature":0,"secondSignature":0,"secondPublicKey":null,"multisignatures":[],"u_multisignatures":[]},"success":true,"nodeTimestamp":58030181} */
 export interface GetAccountInfoResponseDto {
@@ -34,6 +51,31 @@ export interface GetAccountPublicKeyResponseDto {
   /** 256 bit public key of ADAMANT address in hex format */
   publicKey: PublicKey;
   success: boolean;
+  nodeTimestamp: number;
+}
+
+/** @example {"accounts":[{"address":"U777355171330060015","balance":"4509718944753","publicKey":"a9407418dafb3c8aeee28f3263fd55bae0f528a5697a9df0e77e6568b19dfe34","username":"adamant_delegate","isDelegate":1}],"count":254,"limit":100,"offset":0,"success":true,"nodeTimestamp":63205623} */
+export interface GetTopAccountsResponseDto {
+  /** Non-zero-balance accounts sorted by confirmed balance descending and address ascending for equal balances. */
+  accounts: GetTopAccountDto[];
+  /**
+   * Total number of non-zero-balance accounts matching the filter before pagination.
+   * @example 254
+   */
+  count: number;
+  /**
+   * Normalized page size used by the node.
+   * @example 100
+   */
+  limit: number;
+  /**
+   * Normalized offset used by the node.
+   * @example 0
+   */
+  offset: number;
+  /** @example true */
+  success: boolean;
+  /** @example 63205623 */
   nodeTimestamp: number;
 }
 
@@ -171,7 +213,7 @@ export interface GetDelegateStatsResponseDto {
 
 export interface GetNextForgersResponseDto {
   /**
-   * Array of next forgers public keys
+   * Public keys ordered by upcoming slots using the delegate schedule for `currentBlock + 1`. All entries use this next-block schedule; request a new snapshot after the node accepts another block.
    * @example ["677c6db63548c99674fed0571da522a6a9569d0c1da9669734a3625645519641","150d638714f65845b50f1ff58f3da2c2baa3a1dc8bf59a9884c10da5a8e951c6"]
    */
   delegates: string[];
@@ -372,6 +414,30 @@ export interface GetNodeStatusResponseDto {
     blocksCount: number;
   };
   network: NetworkStatus;
+  consensusSchedule: {
+    /**
+     * Effective runtime activation heights after configuration defaults, the selected configuration file, and startup overrides are merged. Values are network- and configuration-specific.
+     * @example {"fairSystem":4359465,"spaceship":100000000}
+     */
+    activationHeights: Record<string, number>;
+  };
+  milestoneSchedule: {
+    /**
+     * First block height that receives a block reward.
+     * @example 2000000
+     */
+    offset: number;
+    /**
+     * Number of block heights between reward milestones.
+     * @example 6300000
+     */
+    distance: number;
+    /**
+     * Block rewards by milestone in base units (1 ADM = 100000000).
+     * @example [50000000,45000000,40000000,35000000,30000000,25000000,20000000,15000000,10000000]
+     */
+    milestones: number[];
+  };
   version: NodeVersion;
   wsClient: WsClient;
 }
@@ -510,6 +576,29 @@ export interface AccountDto {
   u_multisignatures: string[];
 }
 
+/**
+ * ADAMANT address
+ * @example "U8916295525136600565"
+ */
+export type AdamantAddress = string;
+
+/** @example {"address":"U777355171330060015","balance":"4509718944753","publicKey":"a9407418dafb3c8aeee28f3263fd55bae0f528a5697a9df0e77e6568b19dfe34","username":"adamant_delegate","isDelegate":1} */
+export interface GetTopAccountDto {
+  /** ADAMANT address */
+  address: AdamantAddress;
+  /**
+   * Confirmed ADM balance in 1/10^8 ADM units.
+   * @format int64
+   */
+  balance: string;
+  /** 256 bit public key of the ADAMANT address in hex format, or `null` when the account has not published it yet. */
+  publicKey: string | null;
+  /** Delegate username, or `null` when the account is not a delegate. */
+  username: string | null;
+  /** Whether the account is registered as a delegate. */
+  isDelegate: 0 | 1;
+}
+
 /** @example {"id":"11114690216332606721","version":0,"timestamp":61741820,"height":10873829,"previousBlock":"11483763337863654141","numberOfTransactions":1,"totalAmount":10000000,"totalFee":50000000,"reward":45000000,"payloadLength":117,"payloadHash":"f7c0fa338a3a848119cad999d8035ab3fcb3d274a4555e141ebeb86205e41345","generatorPublicKey":"134a5de88c7da1ec71e75b5250d24168c6c6e3965ff16bd71497bd015d40ea6a","generatorId":"U3238410389688281135","blockSignature":"18607b15417a6b0a56b4c74cacd713ad7a10df16ec3ab45a697fa72b6f811f9213d895b7e0fbca71cf74323d60148d0991668e5368386408f4d841496ed2280d","confirmations":1093,"totalForged":"95000000"} */
 export interface BlockInfoDto {
   /** @format int64 */
@@ -525,6 +614,7 @@ export interface BlockInfoDto {
   reward: number;
   payloadLength: number;
   payloadHash: string;
+  generatorPublicKey: string;
   generatorId: string;
   blockSignature: string;
   confirmations: number;
@@ -605,12 +695,6 @@ export type ChatMessageTransaction = BaseTransaction & {
   asset: ChatMessageAsset;
 };
 
-/**
- * ADAMANT address
- * @example "U8916295525136600565"
- */
-export type AdamantAddress = string;
-
 export interface ChatParticipant {
   /** ADAMANT address */
   address: AdamantAddress;
@@ -641,8 +725,7 @@ export type RegisterChatMessageTransaction = RegisterTransactionBase & {
   asset: ChatMessageAsset;
 };
 
-/** @example {"username":"galaxy","address":"U17457189553820283321","publicKey":"7e26562594685ba12c0bb99ae80692947828afb71962d54634795d78b3ea7023","vote":"248994436803629","votesWeight":"83910064952101","producedblocks":269879,"missedblocks":567,"rate":10,"rank":10,"approval":0.76,"productivity":99.79} */
-export interface DelegateDto {
+export interface DelegateBaseDto {
   /** Unique delegate's nickname */
   username: string;
   /** Delegate address */
@@ -654,7 +737,7 @@ export interface DelegateDto {
   /** Vote weight (Fair Delegate System) */
   votesWeight: string;
   /** Count of produced blocks */
-  producedlocks?: number;
+  producedblocks: number;
   /** Count of missed blocks */
   missedblocks: number;
   /** Current position in the Delegates List */
@@ -666,6 +749,15 @@ export interface DelegateDto {
   /** Productivity / Uptime of a delegate. If `0`, delegate is not active now */
   productivity: number;
 }
+
+/** @example {"username":"galaxy","address":"U17457189553820283321","publicKey":"7e26562594685ba12c0bb99ae80692947828afb71962d54634795d78b3ea7023","vote":"248994436803629","votesWeight":"83910064952101","producedblocks":269879,"missedblocks":567,"rate":10,"rank":10,"approval":0.76,"productivity":99.79,"forged":"195607450000000"} */
+export type DelegateDto = DelegateBaseDto & {
+  /**
+   * Lifetime sum of block fees and rewards as a base-10 integer string in base units (1 ADM = 100000000).
+   * @pattern ^\d+$
+   */
+  forged: string;
+};
 
 /** @example {"type":2,"amount":0,"senderId":"U3031563782805250428","senderPublicKey":"a339974effc141f302bd3589c603bdc9468dd66bcc424b60025b36999eb69ca3","signature":"c2e4a3ef7f0d363611a2b22b96feff269f1a0cbb61741a2ce55756bb9324826092fd9bff6348145e3cc384c097f101a493b9136da5236292ecf8b1ed6657dd01","timestamp":166805250,"asset":{"delegate":{"username":"kpeo","publicKey":"a339974effc141f302bd3589c603bdc9468dd66bcc424b60025b36999eb69ca3"}}} */
 export type RegisterNewDelegateTransaction = RegisterTransactionBase & {
@@ -749,7 +841,7 @@ export type RegisterDelegateTransactionDto = QueuedTransaction & {
   fee?: 300000000000;
 };
 
-export type SearchDelegateDto = DelegateDto & {
+export type SearchDelegateDto = DelegateBaseDto & {
   /**
    * Number of accounts who voted for delegate
    * @example 12
@@ -863,13 +955,15 @@ export interface TransactionTypesFeesDto {
   avatar_upload: number;
 }
 
-/** @example {"broadhash":"4a28272c915f74d118120bb47db547a18a7512e1d48092c48be86939a6d45b89","epoch":"2017-09-02T17:00:00.000Z","height":10145334,"fee":50000000,"milestone":1,"nethash":"bd330166898377fb28743ceef5e43a5d9d0a3efd9b3451fb7bc53530bb0a6d64","reward":45000000,"supply":10198040075000000} */
+/** @example {"broadhash":"4a28272c915f74d118120bb47db547a18a7512e1d48092c48be86939a6d45b89","epoch":"2017-09-02T17:00:00.000Z","height":10145334,"consensusCodeName":"fairSystem","fee":50000000,"milestone":1,"nethash":"bd330166898377fb28743ceef5e43a5d9d0a3efd9b3451fb7bc53530bb0a6d64","reward":45000000,"supply":10198040075000000} */
 export interface NetworkStatus {
   /** Broadhash is established as an aggregated rolling hash of the past five blocks present in the database */
   broadhash: string;
   /** Time when blockchain epoch starts. Value `2017-09-02T17:00:00.000Z` is for mainnet. */
   epoch: string;
   height: number;
+  /** Latest cumulative consensus upgrade active at `height`, or `null` before the first configured activation. An upgrade configured for height H is active starting at block H. */
+  consensusCodeName: string | null;
   fee: number;
   /** Current slot height, which determines reward a delegate will get for forging a block. */
   milestone: number;
@@ -970,3 +1064,97 @@ export type RegisterAnyTransaction =
   | RegisterKVSTransaction
   | RegisterChatMessageTransaction
   | RegisterNewDelegateTransaction;
+
+/**
+ * One ADAMANT address or a list of addresses. The node validates values at runtime and stores accepted addresses in uppercase; this schema does not perform that validation or normalization.
+ * @example ["U1234567890123456","U6543210987654321"]
+ */
+export type AddressSubscription = AdamantAddress | AdamantAddress[];
+
+/**
+ * One transaction type or a list of transaction types to add to the socket subscription.
+ * @example [0,8]
+ */
+export type TransactionTypeSubscription = number | number[];
+
+/**
+ * One asset.chat.type value or a list of values to add to the socket subscription. This WebSocket contract follows the node's complete chat transaction type range (0-3), independently of REST chat endpoints that expose narrower query filters.
+ * @example [1,2,3]
+ */
+export type ChatTypeSubscription = number | number[];
+
+/**
+ * One public balance field or a list of fields to add to the socket subscription. At least one address subscription is required before balance changes can be delivered.
+ * @example ["balance","unconfirmedBalance"]
+ */
+export type BalanceSubscription =
+  | "balance"
+  | "unconfirmedBalance"
+  | ("balance" | "unconfirmedBalance")[];
+
+/**
+ * A scalar boolean that enables or disables newBlock events for the socket.
+ * @example true
+ */
+export type BlockSubscription = boolean;
+
+/**
+ * Current values for the subscribed public balance fields that changed. No initial snapshot is emitted. Values are decimal strings in 1/10^8 ADM units.
+ * @example {"address":"U1234567890123456","balance":"100000000","unconfirmedBalance":"99900000"}
+ */
+export type BalanceChangeEvent = {
+  /** ADAMANT address */
+  address: AdamantAddress;
+  /**
+   * Confirmed account balance.
+   * @pattern ^[0-9]+$
+   */
+  balance?: string;
+  /**
+   * Account balance after applying the node's current unconfirmed pool.
+   * @pattern ^[0-9]+$
+   */
+  unconfirmedBalance?: string;
+};
+
+/**
+ * Compact header of a successfully applied and saved block. Historical database replay does not produce this event.
+ * @example {"id":"1739739671268673627","height":53532078,"timestamp":278966175,"generatorPublicKey":"24636735d64711f91f7680bb348662bc74f7b3446e66702369527e3882dd30d6","numberOfTransactions":2,"totalAmount":10000000,"totalFee":100000,"reward":10000000}
+ */
+export interface NewBlockEvent {
+  /**
+   * @minLength 1
+   * @maxLength 20
+   * @pattern ^[0-9]+$
+   */
+  id: string;
+  /** @min 1 */
+  height: number;
+  /**
+   * Seconds since the ADAMANT epoch.
+   * @min 0
+   */
+  timestamp: number;
+  /** 256 bit public key of ADAMANT address in hex format */
+  generatorPublicKey: PublicKey;
+  /** @min 0 */
+  numberOfTransactions: number;
+  /**
+   * Total transferred amount in 1/10^8 ADM units.
+   * @format int64
+   * @min 0
+   */
+  totalAmount: number;
+  /**
+   * Total transaction fee in 1/10^8 ADM units.
+   * @format int64
+   * @min 0
+   */
+  totalFee: number;
+  /**
+   * Forging reward in 1/10^8 ADM units.
+   * @format int64
+   * @min 0
+   */
+  reward: number;
+}
