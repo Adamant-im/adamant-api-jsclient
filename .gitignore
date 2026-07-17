@@ -16,3 +16,6 @@ docs/.vitepress/dist/
 
 # ai
 .ai-ignored/
+.ai-tasks/
+.claude/
+.cursor/
