@@ -109,9 +109,7 @@ export type NewBlockHandler = (
 ) => void | Promise<void>;
 
 export type SingleWebSocketHandler =
-  | SingleTransactionHandler
-  | BalanceChangeHandler
-  | NewBlockHandler;
+  SingleTransactionHandler | BalanceChangeHandler | NewBlockHandler;
 
 interface BalanceHandlerSubscription {
   fields: Set<BalanceField>;
@@ -532,9 +530,7 @@ export class WebSocketClient {
   ): this;
   public onMessage(
     typesOrHandler:
-      | MessageType
-      | MessageType[]
-      | TransactionHandler<ChatMessageTransaction>,
+      MessageType | MessageType[] | TransactionHandler<ChatMessageTransaction>,
     handler?: TransactionHandler<ChatMessageTransaction>,
   ) {
     if (typeof typesOrHandler === 'function') {
@@ -712,8 +708,7 @@ export class WebSocketClient {
 
     if (transaction.type === TransactionType.CHAT_MESSAGE) {
       const messageType = transaction.asset?.chat?.type as
-        | MessageType
-        | undefined;
+        MessageType | undefined;
       if (messageType === undefined) {
         this.errorHandler(
           new TypeError(

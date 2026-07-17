@@ -122,9 +122,7 @@ export type UsernameOrPublicKeyObject = UsernameObject | PublicKeyObject;
 
 /** Object that identifies a delegate by username, public key, or address. */
 export type DelegateLookupOptions =
-  | UsernameObject
-  | PublicKeyObject
-  | AddressObject;
+  UsernameObject | PublicKeyObject | AddressObject;
 
 /**
  * A transaction query.

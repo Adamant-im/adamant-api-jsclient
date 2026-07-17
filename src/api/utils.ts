@@ -19,10 +19,7 @@ export const parseVote = (vote: string): [string, VoteDirection] => {
 };
 
 export type TransactionQueryEndpoint =
-  | 'transactions'
-  | 'chatrooms'
-  | 'chats'
-  | 'states';
+  'transactions' | 'chatrooms' | 'chats' | 'states';
 
 const COMMON_CONTROL_PARAMETERS = [
   'limit',
