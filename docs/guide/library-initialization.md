@@ -69,6 +69,13 @@ api.onReady(() => {
   console.log('ADAMANT API is ready to use!');
 });
 
+`onReady` means a usable node has been selected. With the default
+`checkHealthAtStartup: true`, that node has answered `/api/node/status`, meets
+`minVersion`, and is not still loading or syncing. The callback does not run
+when the health check finds no such node; a later health check runs it once
+one is available. `checkHealthAtStartup: false` skips selection, so `onReady`
+runs immediately.
+
 export {api};
 ```
 
