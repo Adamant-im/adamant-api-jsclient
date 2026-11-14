@@ -50,6 +50,88 @@ const hasMinVersion = (version: string | undefined, minVersion?: string) => {
   );
 };
 
+type NotReadyReason = 'loading' | 'syncing' | 'loading-and-syncing';
+
+interface NotReadyCounts {
+  loading: number;
+  syncing: number;
+  loadingAndSyncing: number;
+}
+
+const emptyNotReady = (): NotReadyCounts => ({
+  loading: 0,
+  syncing: 0,
+  loadingAndSyncing: 0,
+});
+
+const notReadyTotal = (counts: NotReadyCounts) =>
+  counts.loading + counts.syncing + counts.loadingAndSyncing;
+
+/**
+ * A node can serve queries after it has finished loading and while it is not
+ * syncing. Status payloads without `loader` stay eligible: nodes older than
+ * v0.9.0 do not send that object.
+ */
+const classifyLoader = (
+  loader: {loaded?: boolean; syncing?: boolean} | null | undefined,
+): 'ready' | NotReadyReason => {
+  if (!loader || typeof loader !== 'object') {
+    return 'ready';
+  }
+
+  const loading = loader.loaded === false;
+  const syncing = loader.syncing === true;
+
+  if (loading && syncing) {
+    return 'loading-and-syncing';
+  }
+
+  if (syncing) {
+    return 'syncing';
+  }
+
+  if (loading) {
+    return 'loading';
+  }
+
+  return 'ready';
+};
+
+const notReadyMessage = (node: string, reason: NotReadyReason) => {
+  switch (reason) {
+    case 'syncing':
+      return `[ADAMANT js-api] Health check: Node ${node} is still syncing`;
+    case 'loading':
+      return `[ADAMANT js-api] Health check: Node ${node} is not loaded`;
+    case 'loading-and-syncing':
+      return `[ADAMANT js-api] Health check: Node ${node} is not loaded and is still syncing`;
+  }
+};
+
+const notReadyFragments = (counts: NotReadyCounts) => {
+  const fragments: string[] = [];
+
+  if (counts.loading) {
+    fragments.push(
+      `${counts.loading} ${counts.loading === 1 ? 'node is' : 'nodes are'} not loaded`,
+    );
+  }
+
+  if (counts.syncing) {
+    fragments.push(
+      `${counts.syncing} ${counts.syncing === 1 ? 'node is' : 'nodes are'} still syncing`,
+    );
+  }
+
+  if (counts.loadingAndSyncing) {
+    fragments.push(
+      `${counts.loadingAndSyncing} ${counts.loadingAndSyncing === 1 ? 'node is' : 'nodes are'} not loaded and still syncing`,
+    );
+  }
+
+  return fragments;
+};
+
 /** Selects healthy, synchronized nodes and coordinates socket reconnection. */
 export class NodeManager {
   options: NodeManagerOptions;
@@ -64,6 +146,8 @@ export class NodeManager {
 
   private initialized = false;
   private isCheckingNodes = false;
+  /** Counts from the latest `checkNodes()` call, consumed by the next `chooseNode()`. */
+  private notReadyCounts: NotReadyCounts = emptyNotReady();
 
   constructor(logger: Logger, options: NodeManagerOptions) {
     this.options = {
@@ -88,6 +172,17 @@ export class NodeManager {
     }
   }
 
+  /**
+   * Runs `callback` once a usable node has been selected.
+   *
+   * With startup health checks enabled, a usable node has answered
+   * `/api/node/status`, satisfies `minVersion`, and is neither still loading
+   * nor syncing. The callback does not run when that check selects no such
+   * node. A later health check runs it after one becomes available.
+   *
+   * With startup health checks disabled, selection is skipped and the callback
+   * runs immediately. An already ready manager runs the callback immediately.
+   */
   public onReady(callback: () => void) {
     if (this.initialized) {
       callback();
@@ -137,10 +232,9 @@ export class NodeManager {
       }
 
       const activeNodes = await this.checkNodes();
+      const selected = await this.chooseNode(activeNodes, !isPlannedUpdate);
 
-      await this.chooseNode(activeNodes, !isPlannedUpdate);
-
-      if (!this.initialized) {
+      if (!this.initialized && selected) {
         this.ready();
       }
     } finally {
@@ -148,20 +242,43 @@ export class NodeManager {
     }
   }
 
-  async chooseNode(activeNodes: ActiveNode[], forceChangeActiveNode?: boolean) {
+  async chooseNode(
+    activeNodes: ActiveNode[],
+    forceChangeActiveNode?: boolean,
+  ): Promise<boolean> {
     const {logger, socket} = this;
+    const notReady = this.takeNotReadyCounts();
 
     const respondingNodesCount = activeNodes.length;
     if (!respondingNodesCount) {
-      // There is no version evidence while every node is offline. Reset the
-      // compatibility flag so callers receive the actual transport failure.
+      // There is no version evidence while every node is offline or not ready
+      // to serve. Reset the compatibility flag so callers receive the actual
+      // transport or loader failure.
       this.hasCompatibleNode = true;
       const totalNodesCount = this.options.nodes.length;
+
+      if (notReadyTotal(notReady) > 0) {
+        const unavailableCount = Math.max(
+          0,
+          totalNodesCount - notReadyTotal(notReady),
+        );
+        const details = [
+          unavailableCount
+            ? `${unavailableCount} ${unavailableCount === 1 ? 'node did' : 'nodes did'} not respond`
+            : '',
+          ...notReadyFragments(notReady),
+        ].filter(detail => detail.length > 0);
+
+        logger.error(
+          `[ADAMANT js-api] Health check: No usable nodes available. ${details.join('. ')}.`,
+        );
+        return false;
+      }
 
       logger.error(
         `[ADAMANT js-api] Health check: All of ${totalNodesCount} nodes are unavailable. Check internet connection and nodes list in config.`,
       );
-      return;
+      return false;
     }
 
     const {minVersion} = this.options;
@@ -192,15 +309,23 @@ export class NodeManager {
     const activeNodesCount = compatibleNodes.length;
     if (!activeNodesCount) {
       this.hasCompatibleNode = false;
-      const unavailableCount = this.options.nodes.length - respondingNodesCount;
+      const unavailableCount = Math.max(
+        0,
+        this.options.nodes.length -
+          respondingNodesCount -
+          notReadyTotal(notReady),
+      );
       const unavailableInfo = unavailableCount
         ? ` ${unavailableCount} ${unavailableCount === 1 ? 'node did' : 'nodes did'} not respond.`
         : '';
+      const notReadyInfo = notReadyFragments(notReady)
+        .map(fragment => ` ${fragment}.`)
+        .join('');
 
       logger.error(
-        `[ADAMANT js-api] Health check: No compatible nodes available.${unavailableInfo} ${incompatibleVersionCount} ${incompatibleVersionCount === 1 ? 'node is' : 'nodes are'} below minimum required version ${minVersionLabel}.`,
+        `[ADAMANT js-api] Health check: No compatible nodes available.${unavailableInfo}${notReadyInfo} ${incompatibleVersionCount} ${incompatibleVersionCount === 1 ? 'node is' : 'nodes are'} below minimum required version ${minVersionLabel}.`,
       );
-      return;
+      return false;
     }
 
     this.hasCompatibleNode = true;
@@ -280,7 +405,10 @@ export class NodeManager {
 
     const {nodes} = this.options;
 
-    const unavailableCount = nodes.length - respondingNodesCount;
+    const unavailableCount = Math.max(
+      0,
+      nodes.length - respondingNodesCount - notReadyTotal(notReady),
+    );
     const supportedCount = activeNodesCount - outOfSyncCount;
     const supportedNodeLabel = supportedCount === 1 ? 'node' : 'nodes';
 
@@ -292,6 +420,10 @@ export class NodeManager {
 
     if (incompatibleVersionCount) {
       nodesInfoString += `, ${incompatibleVersionCount} ${incompatibleVersionCount === 1 ? 'node is' : 'nodes are'} below minimum version ${minVersionLabel}`;
+    }
+
+    for (const fragment of notReadyFragments(notReady)) {
+      nodesInfoString += `, ${fragment}`;
     }
 
     if (outOfSyncCount) {
@@ -306,6 +438,27 @@ export class NodeManager {
     this.logger.log(
       `[ADAMANT js-api] Health check: Found ${supportedCount} supported and synced ${supportedNodeLabel}${nodesInfoString}. Active node is ${this.node}${version}.`,
     );
+    return true;
+  }
+
+  private takeNotReadyCounts() {
+    const counts = this.notReadyCounts;
+    this.notReadyCounts = emptyNotReady();
+    return counts;
+  }
+
+  private recordNotReady(reason: NotReadyReason) {
+    if (reason === 'loading') {
+      this.notReadyCounts.loading += 1;
+      return;
+    }
+
+    if (reason === 'syncing') {
+      this.notReadyCounts.syncing += 1;
+      return;
+    }
+
+    this.notReadyCounts.loadingAndSyncing += 1;
   }
 
   async checkNode(node: string) {
@@ -328,6 +481,7 @@ export class NodeManager {
     const {nodes} = this.options;
 
     const activeNodes: ActiveNode[] = [];
+    this.notReadyCounts = emptyNotReady();
 
     for (const node of nodes) {
       const start = unixTimestamp();
@@ -340,6 +494,13 @@ export class NodeManager {
         this.logger.log(
           `[ADAMANT js-api] Health check: Node ${node} hasn't returned its status`,
         );
+        continue;
+      }
+
+      const readiness = classifyLoader(response.loader);
+      if (readiness !== 'ready') {
+        this.recordNotReady(readiness);
+        this.logger.log(notReadyMessage(node, readiness));
         continue;
       }
 

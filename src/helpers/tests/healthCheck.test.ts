@@ -35,6 +35,26 @@ describe('NodeManager', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
+  const deferStartup = async (
+    run: (manager: NodeManager) => Promise<void>,
+    nodes: string[],
+    minVersion?: string,
+  ) => {
+    jest.useFakeTimers();
+    const startup = jest
+      .spyOn(NodeManager.prototype, 'updateNodes')
+      .mockResolvedValue(undefined);
+
+    try {
+      const manager = new NodeManager(logger, {nodes, minVersion});
+      startup.mockRestore();
+      await run(manager);
+    } finally {
+      startup.mockRestore();
+      jest.useRealTimers();
+    }
+  };
+
   test('becomes ready immediately when startup checks are disabled', () => {
     const manager = new NodeManager(logger, {
       nodes: ['https://one'],
@@ -285,4 +305,254 @@ describe('NodeManager', () => {
     update.mockRestore();
     jest.useRealTimers();
   });
+
+  test('does not count a loading or syncing node as active', async () => {
+    const manager = new NodeManager(logger, {
+      nodes: [
+        'https://syncing.example',
+        'https://loading.example',
+        'https://both.example',
+        'https://ready.example',
+        'https://legacy.example',
+      ],
+      checkHealthAtStartup: false,
+    });
+    jest
+      .spyOn(manager, 'checkNode')
+      .mockResolvedValueOnce(nodeStatus({height: 500, syncing: true}))
+      .mockResolvedValueOnce(nodeStatus({height: 400, loaded: false}))
+      .mockResolvedValueOnce(
+        nodeStatus({height: 300, loaded: false, syncing: true}),
+      )
+      .mockResolvedValueOnce(nodeStatus({height: 100}))
+      .mockResolvedValueOnce(nodeStatus({height: 90, loader: false}));
+
+    const nodes = await manager.checkNodes();
+
+    expect(nodes.map(node => node.node)).toEqual([
+      'https://ready.example',
+      'https://legacy.example',
+    ]);
+    expect(output.log).toHaveBeenCalledWith(
+      '[ADAMANT js-api] Health check: Node https://syncing.example is still syncing',
+    );
+    expect(output.log).toHaveBeenCalledWith(
+      '[ADAMANT js-api] Health check: Node https://loading.example is not loaded',
+    );
+    expect(output.log).toHaveBeenCalledWith(
+      '[ADAMANT js-api] Health check: Node https://both.example is not loaded and is still syncing',
+    );
+  });
+
+  test('does not fire onReady when no usable node was selected', async () => {
+    await deferStartup(
+      async manager => {
+        const ready = jest.fn();
+        manager.onReady(ready);
+        jest.spyOn(manager, 'checkNodes').mockResolvedValue([]);
+
+        await manager.updateNodes(true);
+
+        expect(ready).not.toHaveBeenCalled();
+        expect(manager.node).toBe('https://one');
+        expect(output.error).toHaveBeenCalledWith(
+          expect.stringContaining('All of 2 nodes are unavailable'),
+        );
+      },
+      ['https://one', 'https://two'],
+    );
+  });
+
+  test('does not fire onReady when every responding node is still syncing', async () => {
+    await deferStartup(
+      async manager => {
+        const ready = jest.fn();
+        manager.onReady(ready);
+        jest
+          .spyOn(manager, 'checkNode')
+          .mockResolvedValueOnce(nodeStatus({height: 10, syncing: true}))
+          .mockResolvedValueOnce(nodeStatus({height: 11, syncing: true}));
+
+        await manager.updateNodes(true);
+
+        expect(ready).not.toHaveBeenCalled();
+        expect(output.error).toHaveBeenCalledWith(
+          '[ADAMANT js-api] Health check: No usable nodes available. 2 nodes are still syncing.',
+        );
+      },
+      ['https://one', 'https://two'],
+    );
+  });
+
+  test('does not fire onReady when the only node is not loaded', async () => {
+    await deferStartup(
+      async manager => {
+        const ready = jest.fn();
+        manager.onReady(ready);
+        jest
+          .spyOn(manager, 'checkNode')
+          .mockResolvedValue(nodeStatus({height: 10, loaded: false}));
+
+        await manager.updateNodes(true);
+
+        expect(ready).not.toHaveBeenCalled();
+        expect(output.error).toHaveBeenCalledWith(
+          '[ADAMANT js-api] Health check: No usable nodes available. 1 node is not loaded.',
+        );
+      },
+      ['https://loading.example'],
+    );
+  });
+
+  test('does not fire onReady when every responding node is below the minimum version', async () => {
+    await deferStartup(
+      async manager => {
+        const ready = jest.fn();
+        manager.onReady(ready);
+        jest
+          .spyOn(manager, 'checkNode')
+          .mockResolvedValue(nodeStatus({height: 10, version: '0.8.0'}));
+
+        await manager.updateNodes(true);
+
+        expect(ready).not.toHaveBeenCalled();
+        expect(output.error).toHaveBeenCalledWith(
+          '[ADAMANT js-api] Health check: No compatible nodes available. 1 node is below minimum required version v0.9.0.',
+        );
+      },
+      ['https://old.example'],
+      '0.9.0',
+    );
+  });
+
+  test('reports nodes that are not ready when every loaded node is too old', async () => {
+    await deferStartup(
+      async manager => {
+        const ready = jest.fn();
+        manager.onReady(ready);
+        jest
+          .spyOn(manager, 'checkNode')
+          .mockResolvedValueOnce(nodeStatus({height: 10, syncing: true}))
+          .mockResolvedValueOnce(nodeStatus({height: 10, version: '0.8.0'}))
+          .mockResolvedValueOnce({success: false} as never);
+
+        await manager.updateNodes(true);
+
+        expect(ready).not.toHaveBeenCalled();
+        expect(output.error).toHaveBeenCalledWith(
+          '[ADAMANT js-api] Health check: No compatible nodes available. 1 node did not respond. 1 node is still syncing. 1 node is below minimum required version v0.9.0.',
+        );
+      },
+      [
+        'https://syncing.example',
+        'https://old.example',
+        'https://offline.example',
+      ],
+      '0.9.0',
+    );
+  });
+
+  test('fires onReady after a later check selects a usable node', async () => {
+    await deferStartup(
+      async manager => {
+        jest
+          .spyOn(manager, 'checkNode')
+          .mockResolvedValueOnce({success: false} as never)
+          .mockResolvedValueOnce(nodeStatus({height: 80, syncing: true}))
+          .mockResolvedValueOnce(nodeStatus({height: 40, loaded: false}))
+          .mockResolvedValueOnce(nodeStatus({height: 70, syncing: true}))
+          .mockResolvedValueOnce({success: false} as never)
+          .mockResolvedValueOnce(nodeStatus({height: 80, syncing: true}))
+          .mockResolvedValueOnce(nodeStatus({height: 40, loaded: false}))
+          .mockResolvedValueOnce(nodeStatus({height: 120}));
+
+        await manager.updateNodes(true);
+        const ready = jest.fn();
+        manager.onReady(ready);
+        expect(ready).not.toHaveBeenCalled();
+
+        await manager.updateNodes(true);
+
+        expect(ready).toHaveBeenCalledTimes(1);
+        expect(manager.node).toBe('https://ready.example');
+        expect(output.log).toHaveBeenCalledWith(
+          "[ADAMANT js-api] Health check: Found 1 supported and synced node, 1 node didn't respond, 1 node is not loaded, 1 node is still syncing. Active node is https://ready.example (v0.9.0).",
+        );
+      },
+      [
+        'https://offline.example',
+        'https://syncing.example',
+        'https://loading.example',
+        'https://ready.example',
+      ],
+    );
+  });
+
+  test('selects a loaded node and keeps a syncing node off the socket list', async () => {
+    await deferStartup(
+      async manager => {
+        const ready = jest.fn();
+        const reviseConnection = jest.fn();
+        manager.onReady(ready);
+        manager.socket = {reviseConnection} as unknown as WebSocketClient;
+        jest
+          .spyOn(manager, 'checkNode')
+          .mockResolvedValueOnce(nodeStatus({height: 500, syncing: true}))
+          .mockResolvedValueOnce(
+            nodeStatus({height: 100, loaded: false, syncing: true}),
+          )
+          .mockResolvedValueOnce(nodeStatus({height: 90}))
+          .mockResolvedValueOnce({success: false} as never);
+
+        await manager.updateNodes(true);
+
+        expect(ready).toHaveBeenCalledTimes(1);
+        expect(manager.node).toBe('https://ready.example');
+        expect(reviseConnection).toHaveBeenCalledWith([
+          expect.objectContaining({node: 'https://ready.example'}),
+        ]);
+        expect(output.log).toHaveBeenCalledWith(
+          "[ADAMANT js-api] Health check: Found 1 supported and synced node, 1 node didn't respond, 1 node is still syncing, 1 node is not loaded and still syncing. Active node is https://ready.example (v0.9.0).",
+        );
+      },
+      [
+        'https://syncing.example',
+        'https://both.example',
+        'https://ready.example',
+        'https://offline.example',
+      ],
+    );
+  });
 });
+
+const nodeStatus = ({
+  height,
+  version = '0.9.0',
+  loaded = true,
+  syncing = false,
+  loader = true,
+}: {
+  height: number;
+  version?: string;
+  loaded?: boolean;
+  syncing?: boolean;
+  loader?: boolean;
+}) =>
+  ({
+    success: true,
+    network: {height},
+    version: {version},
+    wsClient: {enabled: true, port: 36667},
+    ...(loader
+      ? {
+          loader: {
+            loaded,
+            now: 1,
+            syncing,
+            consensus: 100,
+            blocks: height,
+            blocksCount: 0,
+          },
+        }
+      : {}),
+  }) as never;

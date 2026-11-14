@@ -60,7 +60,7 @@ api.onReady(async () => {
 });
 ```
 
-`minVersion` is inclusive. During health checks, nodes below this ADAMANT Node version are reported and excluded from API and WebSocket selection.
+`minVersion` is inclusive. During health checks, nodes below this ADAMANT Node version are reported and excluded from API and WebSocket selection. `onReady` runs after that check selects a usable node. A node that is still loading or syncing is not usable, so the callback waits until one is available.
 
 CommonJS remains supported:
 
