@@ -91,6 +91,7 @@ import {
   getUnsupportedTransactionQueryControls,
   hasMixedTransactionQueryGroups,
   transformTransactionQuery,
+  unsupportedOrQueryResult,
   type TransactionQueryEndpoint,
   parseVote,
   isVoteDirection,
@@ -127,13 +128,20 @@ export type DelegateLookupOptions =
 /**
  * A transaction query.
  *
- * Top-level filter conditions are combined with `and` by default — every
- * condition must match. This differs from the raw node API, whose default is
- * `or`. To opt into `or`, wrap fields in `or`; an explicit `and` wrapper is
- * also supported and is equivalent to passing those fields at the top level
- * when no OR filters are present. Mixed operators are flattened in object-key
- * order without parentheses and trigger a runtime warning at most once per
- * client instance.
+ * `/api/transactions` (`getTransactions`, `getTransaction`) prefixes top-level
+ * filter conditions with `and:`, so every condition must match. The raw node
+ * API defaults that endpoint to `or`. Wrap fields in `or` to opt into `or`.
+ * An explicit `and` wrapper is also supported. Mixed operators are flattened
+ * in object-key order without parentheses and trigger a runtime warning at
+ * most once per client instance.
+ *
+ * `/api/states/get`, `/api/chats/get`, and `/api/chatrooms` already combine
+ * plain filter names with `and`. Those methods send plain names. An explicit
+ * `and` wrapper is flattened to the same plain names. An `or` wrapper is
+ * rejected: released nodes ignore `and:` and `or:` prefixes on these
+ * endpoints and return unfiltered data (Adamant-im/adamant#277). Plain names
+ * remain correct after that node bug is fixed, because they are the
+ * documented form on every node version.
  *
  * Control and pagination parameters are not filters. Each endpoint forwards
  * only the controls it supports; known controls from another endpoint are
@@ -142,9 +150,16 @@ export type DelegateLookupOptions =
  * @see https://docs.adamant.im/api/transactions-query-language.html#combine-filters-and-options
  */
 export type TransactionQuery<T extends object> = Partial<T> & {
-  /** Conditions prefixed with `or`; this object does not create parentheses. */
+  /**
+   * Conditions prefixed with `or` on `/api/transactions`. This object does not
+   * create parentheses. Chat and KVS endpoints reject this wrapper.
+   */
   or?: Partial<T>;
-  /** Conditions prefixed with `and` (the default for top-level fields). */
+  /**
+   * Conditions combined with `and`. On `/api/transactions` each field is sent
+   * with an `and:` prefix. On chat and KVS endpoints the wrapper is flattened
+   * to plain filter names.
+   */
   and?: Partial<T>;
 };
 
@@ -244,8 +259,9 @@ export interface PooledTransactionsOptions {
  *
  * Two things to keep in mind:
  *
- * 1. **Filter combination.** Top-level filter conditions are combined with
- *    `and` by default — see {@link TransactionQuery} to opt into `or`. Control
+ * 1. **Filter combination.** `/api/transactions` sends top-level filters with
+ *    an `and:` prefix. Chat and KVS endpoints send plain names, which those
+ *    nodes already combine with `and`. See {@link TransactionQuery}. Control
  *    and pagination fields (`limit`, `offset`, `orderBy`, `returnUnconfirmed`)
  *    are never treated as filters.
  * 2. **Endpoint support varies.** The node does not reject unknown query
@@ -282,12 +298,20 @@ export interface TransactionQueryParameters {
  * Options for the chat endpoints: `/api/chatrooms` (`getChats`,
  * `getChatMessages`) and the legacy `/api/chats/get` (`getChatTransactions`).
  *
- * Verified against the node query builders, these endpoints apply only `type`,
- * `senderId`, `recipientId`, the direct-transfer toggle, and pagination —
- * plus `userId` on `/api/chatrooms`, and `isIn` / `inId` and `fromHeight` on
- * `/api/chats/get`. Other inherited fields (most range filters) are accepted
- * by the node but not applied, so they have no effect. Amount filters are
- * excluded at the type level (they belong to {@link TransactionsOptions}).
+ * The SDK sends these fields under their plain names. Released ADAMANT Node
+ * versions ignore `and:` and `or:` prefixes here and still return
+ * `success: true`, so a prefixed filter does not narrow the result
+ * (Adamant-im/adamant#277). Plain names are the documented form and stay
+ * correct after that node bug is fixed. `or` is rejected because these
+ * endpoints have no `or` combiner.
+ *
+ * Verified against the node query builders for those plain names, these
+ * endpoints apply only `type`, `senderId`, `recipientId`, the direct-transfer
+ * toggle, and pagination — plus `userId` on `/api/chatrooms`, and `isIn` /
+ * `inId` and `fromHeight` on `/api/chats/get`. Other inherited fields (most
+ * range filters) are accepted by the node but not applied, so they have no
+ * effect. Amount filters are excluded at the type level (they belong to
+ * {@link TransactionsOptions}).
  */
 export interface ChatroomsOptions extends TransactionQueryParameters {
   type?: number;
@@ -324,10 +348,15 @@ export interface TransactionsOptions extends TransactionQueryParameters {
 /**
  * Options for `/api/states/get` (`getKVS`).
  *
- * Verified against the node query builder, this endpoint applies `type`,
- * `key`, `keyIds`, `senderId`, `senderIds`, and `fromHeight`, plus pagination.
- * It does not support amount filters (excluded at the type level) and ignores
- * `recipientId`.
+ * The SDK sends these fields under their plain names. A prefixed filter is
+ * ignored by released nodes, which then return KVS records from the whole
+ * network (Adamant-im/adamant#277). Plain names stay correct after that bug
+ * is fixed. `or` is rejected because this endpoint has no `or` combiner.
+ *
+ * Verified against the node query builder for those plain names, this
+ * endpoint applies `type`, `key`, `keyIds`, `senderId`, `senderIds`, and
+ * `fromHeight`, plus pagination. It does not support amount filters (excluded
+ * at the type level) and ignores `recipientId`.
  */
 export interface KVSOptions extends TransactionQueryParameters {
   senderIds?: string[];
@@ -927,6 +956,11 @@ export class AdamantApi extends NodeManager {
     options?: TransactionQuery<ChatroomsOptions>,
   ) {
     this.warnDeprecatedDirectTransferFilter(options);
+    const rejected = unsupportedOrQueryResult(options, 'chatrooms');
+    if (rejected) {
+      return rejected;
+    }
+
     return this.get<GetChatRoomsResponseDto>(
       `chatrooms/${address}`,
       this.transformQuery(options, 'chatrooms'),
@@ -942,6 +976,11 @@ export class AdamantApi extends NodeManager {
     query?: TransactionQuery<ChatroomsOptions>,
   ) {
     this.warnDeprecatedDirectTransferFilter(query);
+    const rejected = unsupportedOrQueryResult(query, 'chatrooms');
+    if (rejected) {
+      return rejected;
+    }
+
     return this.get<GetChatMessagesResponseDto>(
       `chatrooms/${address1}/${address2}`,
       this.transformQuery(query, 'chatrooms'),
@@ -954,6 +993,11 @@ export class AdamantApi extends NodeManager {
    */
   async getChatTransactions(options?: TransactionQuery<ChatroomsOptions>) {
     this.warnDeprecatedDirectTransferFilter(options);
+    const rejected = unsupportedOrQueryResult(options, 'chats');
+    if (rejected) {
+      return rejected;
+    }
+
     return this.get<GetChatTransactionsResponseDto>(
       'chats/get',
       this.transformQuery(options, 'chats'),
@@ -1177,6 +1221,11 @@ export class AdamantApi extends NodeManager {
 
   /** Fetches ADAMANT KVS transactions. */
   async getKVS(options?: TransactionQuery<KVSOptions>) {
+    const rejected = unsupportedOrQueryResult(options, 'states');
+    if (rejected) {
+      return rejected;
+    }
+
     return this.get<GetKVSResponseDto>(
       'states/get',
       this.transformQuery(options, 'states'),
