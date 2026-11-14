@@ -1,3 +1,4 @@
+import {badParameter} from '../helpers/validator';
 import {hasOwnProperty} from '../helpers/utils';
 import {TransactionQuery} from '.';
 
@@ -56,6 +57,45 @@ const KNOWN_CONTROL_PARAMETERS = new Set(
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const andOnlyQueryPath = (endpoint: TransactionQueryEndpoint) => {
+  switch (endpoint) {
+    case 'chatrooms':
+      return '/api/chatrooms';
+    case 'chats':
+      return '/api/chats/get';
+    case 'states':
+      return '/api/states/get';
+    case 'transactions':
+      return undefined;
+  }
+};
+
+/**
+ * Chat and KVS endpoints combine plain filter names with `and` and ignore
+ * `and:` / `or:` prefixes. An `or` wrapper is rejected so those prefixes are
+ * never sent. `/api/transactions` is unchanged and still accepts `or`.
+ *
+ * Returns `undefined` when the query can be serialized.
+ */
+export const unsupportedOrQueryResult = <T extends object>(
+  obj: TransactionQuery<T> | undefined,
+  endpoint: TransactionQueryEndpoint,
+): {success: false; errorMessage: string} | undefined => {
+  const path = andOnlyQueryPath(endpoint);
+
+  if (!path || !isRecord(obj?.or)) {
+    return undefined;
+  }
+
+  const {errorMessage} = badParameter(
+    'or',
+    undefined,
+    `${path} does not support or filters. Pass plain filter names; ADAMANT Node combines them with and`,
+  );
+
+  return {success: false, errorMessage};
+};
 
 const hasFilterProperties = (value: unknown): boolean =>
   isRecord(value) &&
@@ -116,12 +156,20 @@ export const hasMixedTransactionQueryGroups = <T extends object>(
 /**
  * Serializes a transaction query into the flat shape the node expects.
  *
- * Top-level filter conditions are combined with `and` by default: each is
- * emitted with an `and:` prefix. This differs from the raw node API, whose
- * default is `or`. To opt into `or` semantics, wrap fields in `or: { ... }`;
- * the explicit `and: { ... }` wrapper is also supported. The wrapper objects
- * do not create parentheses: mixed operators remain flat and are emitted in
- * JavaScript object-key order.
+ * On `transactions`, top-level filter conditions are combined with `and`:
+ * each is emitted with an `and:` prefix. This differs from the raw node API,
+ * whose default for `/api/transactions` is `or`. To opt into `or` semantics,
+ * wrap fields in `or: { ... }`; the explicit `and: { ... }` wrapper is also
+ * supported. The wrapper objects do not create parentheses: mixed operators
+ * remain flat and are emitted in JavaScript object-key order.
+ *
+ * On `states`, `chats`, and `chatrooms`, filter conditions are emitted under
+ * their plain names. Those endpoints already combine plain names with `and`
+ * and ignore `and:` / `or:` prefixes (Adamant-im/adamant#277). An explicit
+ * `and` wrapper is flattened to plain names. Plain names stay correct after
+ * that node bug is fixed, because they are the documented form. An `or`
+ * wrapper throws the same `badParameter` message the client methods return,
+ * so a prefix the node would ignore cannot be sent.
  *
  * Control and pagination parameters supported by the selected endpoint are
  * passed through unchanged. Known controls unsupported by that endpoint are
@@ -137,9 +185,15 @@ export const transformTransactionQuery = <T extends object>(
     return {};
   }
 
+  const rejected = unsupportedOrQueryResult(obj, endpoint);
+  if (rejected) {
+    throw new Error(rejected.errorMessage);
+  }
+
   const source = obj as Record<string, unknown>;
   const transformed: Record<string, unknown> = {};
   const controls = CONTROL_PARAMETERS[endpoint];
+  const prefixAndFilters = endpoint === 'transactions';
 
   for (const prop in source) {
     if (!hasOwnProperty(source, prop)) {
@@ -165,7 +219,9 @@ export const transformTransactionQuery = <T extends object>(
           continue;
         }
 
-        transformed[`${prop}:${subProp}`] = subProps[subProp];
+        transformed[
+          prop === 'and' && !prefixAndFilters ? subProp : `${prop}:${subProp}`
+        ] = subProps[subProp];
       }
 
       continue;
@@ -178,8 +234,9 @@ export const transformTransactionQuery = <T extends object>(
       continue;
     }
 
-    // Default: combine top-level filter conditions with `and`.
-    transformed[`and:${prop}`] = source[prop];
+    // `/api/transactions` defaults to `or`, so top-level filters need `and:`.
+    // Chat and KVS endpoints already AND-combine plain names.
+    transformed[prefixAndFilters ? `and:${prop}` : prop] = source[prop];
   }
 
   return transformed;

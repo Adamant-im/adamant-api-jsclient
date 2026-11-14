@@ -26,13 +26,14 @@ const result = await api.getTransactions({
 ::: warning Breaking change in v3
 The raw node
 [query language](https://docs.adamant.im/api/transactions-query-language.html#combine-filters-and-options)
-defaults to **`or`** for `/api/transactions`. Versions up to `2.x` passed
-top-level filters through unchanged, so they were OR-combined, which surprised
-developers. Since **v3**, this library prefixes top-level filters with `and:`
-for you, so multiple conditions are AND-combined by default.
+defaults to **`or`** for `/api/transactions` only. Versions up to `2.x` passed
+top-level filters through unchanged, so on that endpoint they were
+OR-combined, which surprised developers. Since **v3**, this library prefixes
+top-level filters with `and:` **only when calling `/api/transactions`**
+(`getTransactions`, `getTransaction`).
 
-To restore the previous behavior for a query, wrap the fields in `or: { ... }`
-(see below).
+To restore the previous behavior for a transaction query, wrap the fields in
+`or: { ... }` (see below).
 :::
 
 Pagination and control parameters are not filters. The SDK now scopes them by
@@ -42,9 +43,39 @@ endpoint: transaction controls such as `returnAsset` are sent only to
 support them. If plain JavaScript passes a known control to the wrong typed
 method, the SDK strips it instead of constructing a request the node rejects.
 
+### Chat and KVS endpoints use plain filter names
+
+`getKVS` (`/api/states/get`), `getChatTransactions` (`/api/chats/get`),
+`getChats`, and `getChatMessages` (`/api/chatrooms`) already combine plain
+filter names with **`and`**. Released ADAMANT Node versions ignore `and:` and
+`or:` prefixes on these endpoints and still answer `success: true` with
+unfiltered data ([Adamant-im/adamant#277](https://github.com/Adamant-im/adamant/issues/277)).
+A prefixed `getKVS()` call therefore returns records from the whole network.
+The SDK sends the plain names:
+
+```ts
+await api.getKVS({
+  senderId: 'U16655734187932477074',
+  key: 'eth:address',
+  orderBy: 'timestamp:desc',
+});
+// GET /api/states/get?senderId=U16655734187932477074&key=eth:address&orderBy=timestamp:desc
+```
+
+An explicit `and: { ... }` wrapper is accepted and flattened to those same
+plain names. An `or: { ... }` wrapper is rejected with `success: false`,
+because these endpoints have no `or` combiner. Sending the prefix anyway would
+make the node ignore the filter.
+
+Plain names stay the correct request after Adamant-im/adamant#277 is fixed.
+They are the documented form and work on every node version. The SDK does not
+switch these endpoints to `and:` prefixes if a future node starts accepting
+prefixes.
+
 ### Opting into `or`
 
-Wrap fields in `or: { ... }` to OR them:
+`or` is supported only by `/api/transactions`. Wrap fields in `or: { ... }` to
+OR them:
 
 ```ts
 // senderId === 'U111'  OR  recipientId === 'U222'
@@ -62,9 +93,9 @@ conditions.
 
 ## Mixed `and` / `or` queries are flat and order-sensitive
 
-The node does **not** create logical groups from the `and: {}` and `or: {}`
-objects. It concatenates every condition into one flat SQL expression in query
-string order:
+On `/api/transactions`, the node does **not** create logical groups from the
+`and: {}` and `or: {}` objects. It concatenates every condition into one flat
+SQL expression in query string order:
 
 1. The first condition's `and:` or `or:` prefix has no effect because nothing
    precedes it.
@@ -94,17 +125,18 @@ The shape `A AND (B OR C)` is **not expressible** through this node query
 language because it requires parentheses.
 
 ::: warning Mixed-query runtime warning
-All typed query methods log this warning at most once per `AdamantApi` instance
-when OR filters are combined with explicit `and: {}` filters or top-level
-filters. A top-level filter plus an `or: {}` object is also a mixed flat query;
-it does not mean `A AND (B OR C)`. Split the request or verify the exact wire
-order before depending on the result.
+`getTransactions()` and `getTransaction()` log this warning at most once per
+`AdamantApi` instance when OR filters are combined with explicit `and: {}`
+filters or top-level filters. A top-level filter plus an `or: {}` object is
+also a mixed flat query; it does not mean `A AND (B OR C)`. Split the request
+or verify the exact wire order before depending on the result. Chat and KVS
+methods reject `or` instead of sending it.
 :::
 
 ## Filter support is endpoint-specific
 
 Not every filter is valid on every endpoint. The node does not reject unknown
-query fields, but each endpoint only *applies* a subset of them — passing a
+query fields, but each endpoint only _applies_ a subset of them — passing a
 filter an endpoint ignores simply has no effect. The table below was verified
 against the node's per-endpoint query builders, not just the
 [query-language docs](https://docs.adamant.im/api/transactions-query-language.html).
@@ -120,12 +152,12 @@ await api.getTransactions({minAmount: 1000}); // OK
 await api.getChatTransactions({minAmount: 1000});
 ```
 
-| Method (endpoint)                                 | Filters the node actually applies                                                  |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `getTransactions` (`/api/transactions`)           | the full set, including `minAmount` / `maxAmount`, `types`, height & time ranges    |
-| `getChatTransactions` (`/api/chats/get`)          | `type`, `senderId`, `recipientId`, `inId` / `isIn`, `fromHeight`                    |
-| `getChats` / `getChatMessages` (`/api/chatrooms`) | `type`, `senderId`, `recipientId`, `userId`, plus the direct-transfer toggle        |
-| `getKVS` (`/api/states/get`)                      | `type`, `key`, `keyIds`, `senderId`, `senderIds`, `fromHeight`                       |
+| Method (endpoint)                                 | Filters the node actually applies                                                | Names sent on the wire                         |
+| ------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `getTransactions` (`/api/transactions`)           | the full set, including `minAmount` / `maxAmount`, `types`, height & time ranges | top-level filters as `and:`; `or` is supported |
+| `getChatTransactions` (`/api/chats/get`)          | `type`, `senderId`, `recipientId`, `inId` / `isIn`, `fromHeight`                 | plain names; `or` is rejected                  |
+| `getChats` / `getChatMessages` (`/api/chatrooms`) | `type`, `senderId`, `recipientId`, `userId`, plus the direct-transfer toggle     | plain names; `or` is rejected                  |
+| `getKVS` (`/api/states/get`)                      | `type`, `key`, `keyIds`, `senderId`, `senderIds`, `fromHeight`                   | plain names; `or` is rejected                  |
 
 All endpoints also accept the pagination/control options (`limit`, `offset`,
 `orderBy`, `returnUnconfirmed`; `returnAsset` on `/api/transactions`). Beyond
@@ -171,7 +203,7 @@ nullable / zero — guard for them before use:
 - `blockId` is `null`
 - `height` is `null`
 - `confirmations` is `0`
-:::
+  :::
 
 ```ts
 if (response.success) {
