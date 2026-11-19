@@ -73,7 +73,7 @@ importers:
         version: 0.2.6
       tiny-secp256k1:
         specifier: ^2.2.4
-        version: 2.2.4
+        version: 2.2.5
       tweetnacl:
         specifier: ^1.0.3
         version: 1.0.3
@@ -2138,6 +2138,7 @@ packages:
   eslint@9.39.4:
     resolution: {integrity: sha512-XoMjdBOwe/esVgEvLmNsD3IRHkm7fbKIUGvrleloJXUZgDHig2IPWNniv+GwjyJXzuNqVjlr5+4yVUZjycJwfQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -3438,8 +3439,8 @@ packages:
   through@2.3.8:
     resolution: {integrity: sha512-w89qg7PI8wAdvX60bMDP+bFoD5Dvhm9oLheFp5O4a2QF0cSBGsBX4qZmadPMvVqlLJBBci+WqGGOAPvcDeNSVg==}
 
-  tiny-secp256k1@2.2.4:
-    resolution: {integrity: sha512-FoDTcToPqZE454Q04hH9o2EhxWsm7pOSpicyHkgTwKhdKWdsTUuqfP5MLq3g+VjAtl2vSx6JpXGdwA2qpYkI0Q==}
+  tiny-secp256k1@2.2.5:
+    resolution: {integrity: sha512-SayewBxdprZxU7VSugGb/LZsU3zOEtZnT7aCqSEIRtXRO4jpxS5IyWmvGEWVxCdaO8SSyB0OHf1B/VtC3szytg==}
     engines: {node: '>=14.0.0'}
 
   tinyexec@1.0.1:
@@ -7588,7 +7589,7 @@ snapshots:
 
   through@2.3.8: {}
 
-  tiny-secp256k1@2.2.4:
+  tiny-secp256k1@2.2.5:
     dependencies:
       uint8array-tools: 0.0.7
 
