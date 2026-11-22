@@ -1,5 +1,6 @@
 import axios, {AxiosError} from 'axios';
-import {AdamantApi} from '..';
+import {AdamantApi, unsupportedOrQueryResult} from '..';
+import statesGetPlainFilters from './fixtures/states-get-plain-filters.json';
 import {bytesToHex} from '../../helpers/encryptor';
 import {createKeypairFromPassphrase} from '../../helpers/keys';
 import {MessageType} from '../../helpers/constants';
@@ -327,7 +328,7 @@ describe('AdamantApi query methods', () => {
           totalFee: 0,
           reward: 10000000,
         }),
-      () => api.getChats('U123456', {or: {type: 0}}),
+      () => api.getChats('U123456', {type: 0}),
       () => api.getChatMessages('U123456', 'U654321', {and: {limit: 1}}),
       () => api.getChatTransactions({returnUnconfirmed: 1}),
       () => api.getDelegates({limit: 1, orderBy: 'rate:asc'}),
@@ -482,13 +483,20 @@ describe('AdamantApi query methods', () => {
       checkHealthAtStartup: false,
       logger,
     });
-    jest.spyOn(api, 'get').mockResolvedValue({success: true} as never);
+    const get = jest
+      .spyOn(api, 'get')
+      .mockResolvedValue({success: true} as never);
 
     await api.getChatMessages('U123456', 'U654321', {
       and: {withoutDirectTransfers: 1},
     });
-    await api.getChatTransactions({or: {withoutDirectTransfers: 0}});
+    await expect(
+      api.getChatTransactions({or: {withoutDirectTransfers: 0}}),
+    ).resolves.toEqual(
+      unsupportedOrQueryResult({or: {withoutDirectTransfers: 0}}, 'chats'),
+    );
 
+    expect(get).toHaveBeenCalledTimes(1);
     expect(logger.warn).toHaveBeenCalledTimes(2);
     expect(logger.warn).toHaveBeenLastCalledWith(
       '[ADAMANT js-api] `withoutDirectTransfers` is deprecated. Use `includeDirectTransfers` instead.',
@@ -691,7 +699,7 @@ describe('transaction query serialization across endpoints', () => {
   });
 
   describe('/api/chats/get (getChatTransactions)', () => {
-    test('and-combines supported filters with pass-through options', async () => {
+    test('sends plain filter names and flattens an explicit and wrapper', async () => {
       const api = createApi();
       const get = spyGet(api);
 
@@ -701,12 +709,14 @@ describe('transaction query serialization across endpoints', () => {
         fromHeight: 100,
         limit: 20,
         orderBy: 'timestamp:desc',
+        and: {recipientId: 'U222'},
       });
 
       expect(get).toHaveBeenLastCalledWith('chats/get', {
-        'and:senderId': 'U111',
-        'and:type': 8,
-        'and:fromHeight': 100,
+        senderId: 'U111',
+        type: 8,
+        fromHeight: 100,
+        recipientId: 'U222',
         limit: 20,
         orderBy: 'timestamp:desc',
       });
@@ -725,14 +735,14 @@ describe('transaction query serialization across endpoints', () => {
       // The SDK does not strip unsupported filters; it still serializes them,
       // but the node ignores `minAmount` for this endpoint.
       expect(get).toHaveBeenLastCalledWith('chats/get', {
-        'and:type': 8,
-        'and:minAmount': 1000,
+        type: 8,
+        minAmount: 1000,
       });
     });
   });
 
   describe('/api/chatrooms (getChats, getChatMessages)', () => {
-    test('getChats and-combines `type` and passes chatroom options through', async () => {
+    test('getChats sends plain `type` and passes chatroom options through', async () => {
       const api = createApi();
       const get = spyGet(api);
 
@@ -745,7 +755,7 @@ describe('transaction query serialization across endpoints', () => {
       });
 
       expect(get).toHaveBeenLastCalledWith('chatrooms/U123456', {
-        'and:type': 8,
+        type: 8,
         includeDirectTransfers: true,
         limit: 15,
         offset: 30,
@@ -753,7 +763,7 @@ describe('transaction query serialization across endpoints', () => {
       });
     });
 
-    test('getChatMessages and-combines filters and keeps `userId` as an option', async () => {
+    test('getChatMessages sends plain filters and keeps `userId` as an option', async () => {
       const api = createApi();
       const get = spyGet(api);
 
@@ -761,10 +771,12 @@ describe('transaction query serialization across endpoints', () => {
         type: 8,
         userId: 'U123',
         limit: 5,
+        and: {senderId: 'U123'},
       });
 
       expect(get).toHaveBeenLastCalledWith('chatrooms/U123/U456', {
-        'and:type': 8,
+        type: 8,
+        senderId: 'U123',
         userId: 'U123',
         limit: 5,
       });
@@ -781,14 +793,14 @@ describe('transaction query serialization across endpoints', () => {
       });
 
       expect(get).toHaveBeenLastCalledWith('chatrooms/U123456', {
-        'and:type': 8,
-        'and:maxAmount': 5000,
+        type: 8,
+        maxAmount: 5000,
       });
     });
   });
 
   describe('/api/states/get (getKVS)', () => {
-    test('and-combines KVS filters and passes options through', async () => {
+    test('sends plain KVS filters and passes options through', async () => {
       const api = createApi();
       const get = spyGet(api);
 
@@ -799,13 +811,15 @@ describe('transaction query serialization across endpoints', () => {
         senderIds: ['U111', 'U222'],
         limit: 10,
         orderBy: 'timestamp:desc',
+        and: {type: 9},
       });
 
       expect(get).toHaveBeenLastCalledWith('states/get', {
-        'and:key': 'eth:address',
-        'and:keyIds': ['eth:address', 'doge:address'],
-        'and:senderId': 'U111',
-        'and:senderIds': ['U111', 'U222'],
+        key: 'eth:address',
+        keyIds: ['eth:address', 'doge:address'],
+        senderId: 'U111',
+        senderIds: ['U111', 'U222'],
+        type: 9,
         limit: 10,
         orderBy: 'timestamp:desc',
       });
@@ -822,9 +836,101 @@ describe('transaction query serialization across endpoints', () => {
       });
 
       expect(get).toHaveBeenLastCalledWith('states/get', {
-        'and:key': 'eth:address',
-        'and:minAmount': 1000,
+        key: 'eth:address',
+        minAmount: 1000,
       });
     });
+
+    test('sends the recorded plain KVS query and returns that node body', async () => {
+      const api = createApi();
+      // Recorded 2026-11-14 from endless.adamant.im for
+      // /api/states/get?senderId=U16655734187932477074&key=eth:address&orderBy=timestamp:desc
+      // The same filters with an `and:` prefix are ignored by released nodes.
+      request.mockResolvedValue({data: statesGetPlainFilters});
+
+      const response = await api.getKVS({
+        senderId: 'U16655734187932477074',
+        key: 'eth:address',
+        orderBy: 'timestamp:desc',
+      });
+
+      expect(request).toHaveBeenCalledWith({
+        method: 'GET',
+        url: 'https://node.example/api/states/get',
+        params: {
+          senderId: 'U16655734187932477074',
+          key: 'eth:address',
+          orderBy: 'timestamp:desc',
+        },
+      });
+      expect(response).toEqual(statesGetPlainFilters);
+      if (!response.success) {
+        throw new Error(response.errorMessage);
+      }
+      expect(response.count).toBe(1);
+      expect(response.transactions[0]?.senderId).toBe('U16655734187932477074');
+      expect(response.transactions[0]?.asset.state.key).toBe('eth:address');
+    });
   });
+});
+
+describe('or filters on and-only endpoints', () => {
+  const cases: Array<{
+    name: string;
+    endpoint: 'chatrooms' | 'chats' | 'states';
+    query: {or: Record<string, unknown>};
+    call: (api: AdamantApi) => Promise<unknown>;
+  }> = [
+    {
+      name: 'getKVS',
+      endpoint: 'states',
+      query: {or: {senderId: 'U111'}},
+      call: api => api.getKVS({key: 'eth:address', or: {senderId: 'U111'}}),
+    },
+    {
+      name: 'getChats',
+      endpoint: 'chatrooms',
+      query: {or: {type: 0}},
+      call: api => api.getChats('U123456', {or: {type: 0}}),
+    },
+    {
+      name: 'getChatMessages',
+      endpoint: 'chatrooms',
+      query: {or: {type: 8}},
+      call: api => api.getChatMessages('U123456', 'U654321', {or: {type: 8}}),
+    },
+    {
+      name: 'getChatTransactions',
+      endpoint: 'chats',
+      query: {or: {senderId: 'U111'}},
+      call: api => api.getChatTransactions({or: {senderId: 'U111'}}),
+    },
+    {
+      name: 'empty or wrapper',
+      endpoint: 'states',
+      query: {or: {}},
+      call: api => api.getKVS({or: {}}),
+    },
+  ];
+
+  test.each(cases)(
+    'rejects an or wrapper from $name without calling the node',
+    async ({endpoint, query, call}) => {
+      const logger = createLogger();
+      const api = new AdamantApi({
+        nodes: ['https://node.example'],
+        checkHealthAtStartup: false,
+        logger,
+      });
+      const get = jest
+        .spyOn(api, 'get')
+        .mockResolvedValue({success: true} as never);
+
+      await expect(call(api)).resolves.toEqual(
+        unsupportedOrQueryResult(query, endpoint),
+      );
+      expect(get).not.toHaveBeenCalled();
+      expect(logger.warn).not.toHaveBeenCalled();
+    },
+  );
 });
