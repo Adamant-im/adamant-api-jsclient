@@ -22,8 +22,16 @@ All expected failures use the normalized
   of health-check requests.
 - Nodes below `minVersion` (inclusive) are reported and excluded from both API
   and WebSocket selection.
+- A node that reports `loader.loaded: false` or `loader.syncing: true` is not
+  an active node. Status responses without a `loader` object stay eligible, so
+  older nodes that do not send it can still be selected.
 - Node selection is height-aware: nodes that lag behind the network's actual
   height are not used.
+- `onReady` runs only after a usable node is selected. It does not run when
+  every node is unavailable, below `minVersion`, or still loading or syncing.
+  The next periodic health check runs the callback once such a node appears.
+  With `checkHealthAtStartup: false`, selection is skipped and `onReady` runs
+  immediately.
 
 ## Retries
 
