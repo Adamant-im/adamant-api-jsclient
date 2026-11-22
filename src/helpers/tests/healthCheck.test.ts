@@ -523,6 +523,46 @@ describe('NodeManager', () => {
       ],
     );
   });
+
+  test('does not fire onReady twice if the callback throws', async () => {
+    await deferStartup(
+      async manager => {
+        const ready = jest.fn(() => {
+          throw new Error('consumer startup error');
+        });
+        manager.onReady(ready);
+        jest
+          .spyOn(manager, 'checkNode')
+          .mockResolvedValue(nodeStatus({height: 100}));
+
+        await expect(manager.updateNodes(true)).rejects.toThrow(
+          'consumer startup error',
+        );
+        await manager.updateNodes(true);
+
+        expect(ready).toHaveBeenCalledTimes(1);
+      },
+      ['https://ready.example'],
+    );
+  });
+
+  test('skips malformed null status responses without aborting remaining nodes', async () => {
+    const manager = new NodeManager(logger, {
+      nodes: ['https://broken.example', 'https://ready.example'],
+      checkHealthAtStartup: false,
+    });
+    jest
+      .spyOn(manager, 'checkNode')
+      .mockResolvedValueOnce(null as never)
+      .mockResolvedValueOnce(nodeStatus({height: 100}));
+
+    const nodes = await manager.checkNodes();
+
+    expect(nodes.map(node => node.node)).toEqual(['https://ready.example']);
+    expect(output.log).toHaveBeenCalledWith(
+      "[ADAMANT js-api] Health check: Node https://broken.example hasn't returned its status",
+    );
+  });
 });
 
 const nodeStatus = ({

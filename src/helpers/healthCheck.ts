@@ -201,11 +201,13 @@ export class NodeManager {
   }
 
   private ready() {
-    if (this.onReadyCallback) {
-      this.onReadyCallback();
-    }
-
     this.initialized = true;
+    const callback = this.onReadyCallback;
+    this.onReadyCallback = undefined;
+
+    if (callback) {
+      callback();
+    }
   }
 
   private updateNodesSafely() {
@@ -490,7 +492,7 @@ export class NodeManager {
 
       const ping = unixTimestamp() - start;
 
-      if (!response.success) {
+      if (!response?.success) {
         this.logger.log(
           `[ADAMANT js-api] Health check: Node ${node} hasn't returned its status`,
         );
