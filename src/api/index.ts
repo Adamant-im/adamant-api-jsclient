@@ -135,13 +135,13 @@ export type DelegateLookupOptions =
  * in object-key order without parentheses and trigger a runtime warning at
  * most once per client instance.
  *
- * `/api/states/get`, `/api/chats/get`, and `/api/chatrooms` already combine
- * plain filter names with `and`. Those methods send plain names. An explicit
- * `and` wrapper is flattened to the same plain names. An `or` wrapper is
- * rejected: released nodes ignore `and:` and `or:` prefixes on these
- * endpoints and return unfiltered data (Adamant-im/adamant#277). Plain names
- * remain correct after that node bug is fixed, because they are the
- * documented form on every node version.
+ * `/api/states/get`, `/api/chats/get`, and `/api/chatrooms` combine plain
+ * filter names with `and`. Those methods send plain names. An explicit `and`
+ * wrapper is flattened to the same plain names. An `or` wrapper is rejected:
+ * pre-v0.11.0 nodes ignore `and:` and `or:` prefixes on these endpoints and
+ * return unfiltered data (Adamant-im/adamant#277), while ADAMANT Node v0.11.0+
+ * strictly rejects `or:` prefixes (Adamant-im/adamant#294). Plain names are
+ * the documented form across every node version.
  *
  * Control and pagination parameters are not filters. Each endpoint forwards
  * only the controls it supports; known controls from another endpoint are
@@ -253,24 +253,23 @@ export interface PooledTransactionsOptions {
 }
 
 /**
- * Query parameters shared by the transaction-style endpoints:
- * `/api/transactions`, `/api/chats/get`, `/api/chatrooms`, and
- * `/api/states/get`.
+ * Query parameters shared by transaction-style endpoints, led by
+ * `/api/transactions`.
  *
  * Two things to keep in mind:
  *
  * 1. **Filter combination.** `/api/transactions` sends top-level filters with
- *    an `and:` prefix. Chat and KVS endpoints send plain names, which those
- *    nodes already combine with `and`. See {@link TransactionQuery}. Control
- *    and pagination fields (`limit`, `offset`, `orderBy`, `returnUnconfirmed`)
- *    are never treated as filters.
- * 2. **Endpoint support varies.** The node does not reject unknown query
- *    fields, but each endpoint only *applies* a subset of these in its SQL, so
- *    passing a field an endpoint ignores simply has no effect. The applicable
- *    filters were verified against the node's per-module query builders, not
- *    just the docs. Amount filters (`minAmount` / `maxAmount`) are honored only
- *    by `/api/transactions` and are therefore declared on
- *    {@link TransactionsOptions} rather than here.
+ *    an `and:` prefix. Chat and KVS endpoints send plain names, which nodes
+ *    combine with `and`. See {@link TransactionQuery}. Control and pagination
+ *    fields (`limit`, `offset`, `orderBy`, `returnUnconfirmed`) are never
+ *    treated as filters.
+ * 2. **Endpoint support varies.** Pre-v0.11.0 nodes silently ignored unknown
+ *    query fields on chat and KVS endpoints; starting in ADAMANT Node v0.11.0,
+ *    `/api/chatrooms/*`, `/api/chats/get`, and `/api/states/get` strictly
+ *    reject unsupported parameters (Adamant-im/adamant#294). Use the
+ *    endpoint-specific option interfaces ({@link ChatroomsOptions},
+ *    {@link ChatTransactionsOptions}, {@link KVSOptions},
+ *    {@link TransactionsOptions}) to catch unsupported filters at compile time.
  *
  * @see https://docs.adamant.im/api/transactions-query-language.html
  * @see https://github.com/Adamant-im/adamant/blob/dev/modules/transactions.js
@@ -295,30 +294,45 @@ export interface TransactionQueryParameters {
 }
 
 /**
- * Options for the chat endpoints: `/api/chatrooms` (`getChats`,
- * `getChatMessages`) and the legacy `/api/chats/get` (`getChatTransactions`).
+ * Options for the chatroom endpoints: `/api/chatrooms/{address}` (`getChats`)
+ * and `/api/chatrooms/{ownAddress}/{partnerAddress}` (`getChatMessages`).
  *
- * The SDK sends these fields under their plain names. Released ADAMANT Node
- * versions ignore `and:` and `or:` prefixes here and still return
- * `success: true`, so a prefixed filter does not narrow the result
- * (Adamant-im/adamant#277). Plain names are the documented form and stay
- * correct after that node bug is fixed. `or` is rejected because these
- * endpoints have no `or` combiner.
- *
- * Verified against the node query builders for those plain names, these
- * endpoints apply only `type`, `senderId`, `recipientId`, the direct-transfer
- * toggle, and pagination — plus `userId` on `/api/chatrooms`, and `isIn` /
- * `inId` and `fromHeight` on `/api/chats/get`. Other inherited fields (most
- * range filters) are accepted by the node but not applied, so they have no
- * effect. Amount filters are excluded at the type level (they belong to
- * {@link TransactionsOptions}).
+ * The SDK sends these fields under their plain names. `or` is rejected because
+ * these endpoints have no `or` combiner. Starting in ADAMANT Node v0.11.0,
+ * unsupported query fields (including `fromHeight`, `toHeight`, and query
+ * `userId`) are strictly rejected (Adamant-im/adamant#294).
  */
-export interface ChatroomsOptions extends TransactionQueryParameters {
+export interface ChatroomsOptions {
   type?: number;
+  senderId?: string;
+  recipientId?: string;
+  limit?: number;
+  offset?: number;
+  orderBy?: string;
+  returnUnconfirmed?: 1 | 0;
+  /**
+   * @deprecated Removed in ADAMANT Node v0.11.0: the account address belongs in
+   * the `/api/chatrooms/{address}` URL path and passing `userId` as a query
+   * parameter is rejected by v0.11.0+ nodes. The SDK strips this parameter and
+   * warns once.
+   */
   userId?: string;
   includeDirectTransfers?: boolean | 1 | 0;
   /** @deprecated Use `includeDirectTransfers` instead. */
   withoutDirectTransfers?: boolean | 1 | 0;
+}
+
+/**
+ * Options for the legacy `/api/chats/get` endpoint (`getChatTransactions`).
+ *
+ * Supports all {@link ChatroomsOptions} filters plus `fromHeight`, `toHeight`
+ * (enforced starting in ADAMANT Node v0.11.0), `inId`, and `isIn`.
+ */
+export interface ChatTransactionsOptions extends ChatroomsOptions {
+  fromHeight?: number;
+  toHeight?: number;
+  inId?: string;
+  isIn?: string;
 }
 
 /**
@@ -348,21 +362,34 @@ export interface TransactionsOptions extends TransactionQueryParameters {
 /**
  * Options for `/api/states/get` (`getKVS`).
  *
- * The SDK sends these fields under their plain names. A prefixed filter is
- * ignored by released nodes, which then return KVS records from the whole
- * network (Adamant-im/adamant#277). Plain names stay correct after that bug
- * is fixed. `or` is rejected because this endpoint has no `or` combiner.
- *
- * Verified against the node query builder for those plain names, this
- * endpoint applies `type`, `key`, `keyIds`, `senderId`, `senderIds`, and
- * `fromHeight`, plus pagination. It does not support amount filters (excluded
- * at the type level) and ignores `recipientId`.
+ * The SDK sends these fields under their plain names. `or` is rejected because
+ * this endpoint has no `or` combiner. Starting in ADAMANT Node v0.11.0,
+ * `toHeight` is enforced (`b_height <= toHeight`), `keyIds` validates 20-char
+ * KVS keys, and unsupported fields such as `blockId`, `recipientId`, or
+ * misspelled `keysIds` are strictly rejected (Adamant-im/adamant#294).
  */
-export interface KVSOptions extends TransactionQueryParameters {
+export interface KVSOptions {
+  limit?: number;
+  offset?: number;
+  orderBy?: string;
+  returnUnconfirmed?: 1 | 0;
+  fromHeight?: number;
+  toHeight?: number;
+  senderId?: string;
   senderIds?: string[];
   key?: string;
   keyIds?: string[];
   type?: number;
+}
+
+/** Request options for {@link AdamantApi.getKVS}. */
+export interface GetKVSRequestOptions {
+  /**
+   * HTTP method for `/api/states/get`. Defaults to `'GET'`.
+   * Use `'POST'` when large `keyIds` or `senderIds` filters exceed URL length
+   * limits.
+   */
+  method?: 'GET' | 'POST';
 }
 
 export interface AdamantApiOptions extends NodeManagerOptions {
@@ -442,6 +469,95 @@ const responseErrorMessage = (data: unknown) => {
   return '';
 };
 
+const MAX_RATE_LIMIT_RETRY_DELAY_MS = 10_000;
+const DEFAULT_RATE_LIMIT_RETRY_DELAY_MS = 1_000;
+const RATE_LIMIT_JITTER_MS = 250;
+
+const getResponseHeader = (
+  headers: unknown,
+  name: string,
+): string | undefined => {
+  if (!headers || typeof headers !== 'object') {
+    return undefined;
+  }
+
+  const target = name.toLowerCase();
+  const getter = (headers as {get?: (key: string) => unknown}).get;
+  if (typeof getter === 'function') {
+    const value = getter.call(headers, target);
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+    if (typeof value === 'number') {
+      return String(value);
+    }
+  }
+
+  for (const [key, value] of Object.entries(
+    headers as Record<string, unknown>,
+  )) {
+    if (key.toLowerCase() !== target) {
+      continue;
+    }
+
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+    if (typeof value === 'number') {
+      return String(value);
+    }
+    if (
+      Array.isArray(value) &&
+      typeof value[0] === 'string' &&
+      value[0].trim()
+    ) {
+      return value[0].trim();
+    }
+  }
+
+  return undefined;
+};
+
+const parseDeltaSecondsMs = (value: string | undefined): number | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (/^\d+(?:\.\d+)?$/.test(value)) {
+    const seconds = Number(value);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      return Math.ceil(seconds * 1000);
+    }
+  }
+
+  return undefined;
+};
+
+const parseRetryAfterMs = (headers: unknown): number | undefined => {
+  const retryAfter = getResponseHeader(headers, 'retry-after');
+  const retryAfterSecondsMs = parseDeltaSecondsMs(retryAfter);
+  if (retryAfterSecondsMs !== undefined) {
+    return retryAfterSecondsMs;
+  }
+
+  if (retryAfter) {
+    const timestamp = Date.parse(retryAfter);
+    if (!Number.isNaN(timestamp)) {
+      return Math.max(0, timestamp - Date.now());
+    }
+  }
+
+  return parseDeltaSecondsMs(getResponseHeader(headers, 'ratelimit-reset'));
+};
+
+const wait = (ms: number) =>
+  new Promise<void>(resolve => {
+    setTimeout(resolve, ms);
+  });
+
+const ensureTrailingPeriod = (message: string) =>
+  message.endsWith('.') ? message : `${message}.`;
+
 const normalizeApiResponse = <T>(data: unknown): AdamantApiResult<T> => {
   if (
     typeof data === 'object' &&
@@ -515,9 +631,25 @@ export class AdamantApi extends NodeManager {
     } catch (error) {
       if (error instanceof AxiosError) {
         const {response} = error;
+        const isRateLimited = response?.status === 429;
+        const rateLimitScope = isRateLimited
+          ? getResponseHeader(response.headers, 'ratelimit-scope')
+          : undefined;
+        const retryAfterMs = isRateLimited
+          ? parseRetryAfterMs(response.headers)
+          : undefined;
+        const rateLimitDetails = [
+          rateLimitScope ? `scope: ${rateLimitScope}` : '',
+          retryAfterMs !== undefined
+            ? `retry after: ${Math.ceil(retryAfterMs / 1000)}s`
+            : '',
+        ].filter(Boolean);
+        const rateLimitSuffix = rateLimitDetails.length
+          ? ` (${rateLimitDetails.join(', ')})`
+          : '';
 
         const nodeStatus = response?.status
-          ? `Request to ${url} failed with HTTP ${response.status}`
+          ? `Request to ${url} failed with HTTP ${response.status}${rateLimitSuffix}`
           : `Request to ${url} failed`;
         const errorDetails = formatAxiosError(error);
 
@@ -527,16 +659,61 @@ export class AdamantApi extends NodeManager {
         }.`;
 
         // A received HTTP response proves that the node is reachable. Retrying a
-        // rejected POST can duplicate a transaction, while 4xx and structured API
-        // errors are not recoverable by switching nodes. Unstructured GET 5xx
-        // failures may safely fail over to another node.
+        // rejected POST can duplicate a transaction, while 4xx (other than GET
+        // 429 rate limits) and structured API errors are not recoverable by
+        // switching nodes. Unstructured GET 5xx failures and GET 429 rate
+        // limits may safely fail over to another node (or back off on 429).
         const shouldRetry =
           !response ||
           (method === 'GET' &&
-            response.status >= 500 &&
-            responseMessage === '');
+            ((response.status >= 500 && responseMessage === '') ||
+              isRateLimited));
 
         if (shouldRetry && retryNo <= maxRetries) {
+          if (isRateLimited) {
+            const previousNode = this.node;
+            await this.updateNodes();
+
+            if (this.node !== previousNode) {
+              logger.log(
+                `${logMessage} Try ${retryNo}/${maxRetries}. Retrying on ${this.node}…`,
+              );
+              return this.request<T>(method, endpoint, data, retryNo + 1);
+            }
+
+            const baseDelayMs =
+              retryAfterMs ?? DEFAULT_RATE_LIMIT_RETRY_DELAY_MS * retryNo;
+            if (baseDelayMs > MAX_RATE_LIMIT_RETRY_DELAY_MS) {
+              logger.warn(
+                `${logMessage} Retry delay exceeds bounded wait (${MAX_RATE_LIMIT_RETRY_DELAY_MS}ms), returning error.`,
+              );
+              return {
+                success: false,
+                errorMessage: ensureTrailingPeriod(
+                  responseMessage || errorDetails,
+                ),
+              };
+            }
+
+            const jitterMs =
+              baseDelayMs > 0
+                ? Math.min(
+                    RATE_LIMIT_JITTER_MS,
+                    MAX_RATE_LIMIT_RETRY_DELAY_MS - baseDelayMs,
+                  ) * Math.random()
+                : 0;
+            const waitMs = Math.round(baseDelayMs + jitterMs);
+
+            logger.log(
+              `${logMessage} Try ${retryNo}/${maxRetries}. Waiting ${waitMs}ms before retrying…`,
+            );
+            if (waitMs > 0) {
+              await wait(waitMs);
+            }
+
+            return this.request<T>(method, endpoint, data, retryNo + 1);
+          }
+
           logger.log(`${logMessage} Try ${retryNo}/${maxRetries}. Retrying…`);
 
           await this.updateNodes();
@@ -547,7 +724,7 @@ export class AdamantApi extends NodeManager {
 
         return {
           success: false,
-          errorMessage: `${responseMessage || errorDetails}.`,
+          errorMessage: ensureTrailingPeriod(responseMessage || errorDetails),
         };
       }
 
@@ -991,7 +1168,9 @@ export class AdamantApi extends NodeManager {
    * Gets chat transactions through the legacy `/api/chats/get` endpoint.
    * @deprecated Use {@link getChats} or {@link getChatMessages} instead.
    */
-  async getChatTransactions(options?: TransactionQuery<ChatroomsOptions>) {
+  async getChatTransactions(
+    options?: TransactionQuery<ChatTransactionsOptions>,
+  ) {
     this.warnDeprecatedDirectTransferFilter(options);
     const rejected = unsupportedOrQueryResult(options, 'chats');
     if (rejected) {
@@ -1219,17 +1398,27 @@ export class AdamantApi extends NodeManager {
     return this.get<GetNodeStatusResponseDto>('node/status');
   }
 
-  /** Fetches ADAMANT KVS transactions. */
-  async getKVS(options?: TransactionQuery<KVSOptions>) {
+  /**
+   * Fetches ADAMANT KVS transactions from `/api/states/get`.
+   *
+   * Pass `{method: 'POST'}` when large `keyIds` or `senderIds` filters would
+   * exceed URL length limits.
+   */
+  async getKVS(
+    options?: TransactionQuery<KVSOptions>,
+    requestOptions?: GetKVSRequestOptions,
+  ) {
     const rejected = unsupportedOrQueryResult(options, 'states');
     if (rejected) {
       return rejected;
     }
 
-    return this.get<GetKVSResponseDto>(
-      'states/get',
-      this.transformQuery(options, 'states'),
-    );
+    const payload = this.transformQuery(options, 'states');
+    if (requestOptions?.method === 'POST') {
+      return this.post<GetKVSResponseDto>('states/get', payload);
+    }
+
+    return this.get<GetKVSResponseDto>('states/get', payload);
   }
 
   /** Broadcasts an already-created and signed KVS transaction. */

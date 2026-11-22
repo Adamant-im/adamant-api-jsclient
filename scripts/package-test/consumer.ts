@@ -7,11 +7,15 @@ import {
   createKeypairFromPassphrase,
   type AdamantAddress,
   type BalanceField,
+  type ChatTransactionsOptions,
   type ClientWebSocketNewBlock,
   type DelegateDto,
   type GetBlocksOptions,
+  type GetKVSRequestBody,
+  type GetKVSRequestOptions,
   type GetNodeStatusResponseDto,
   type NetworkStatus,
+  type RateLimitErrorResponseDto,
   type SearchDelegateDto,
   type TransactionDirection,
 } from 'adamant-api';
@@ -44,6 +48,16 @@ type SearchDelegateOmitsForged = 'forged' extends keyof SearchDelegateDto
   ? false
   : true;
 const searchDelegateOmitsForged: SearchDelegateOmitsForged = true;
+const kvsPostBody: GetKVSRequestBody = {
+  keyIds: ['eth:address'],
+  toHeight: 100,
+};
+const kvsRequestOptions: GetKVSRequestOptions = {method: 'POST'};
+const chatTxOptions: ChatTransactionsOptions = {fromHeight: 10, toHeight: 20};
+const rateLimitError: RateLimitErrorResponseDto = {
+  success: false,
+  error: 'Too many requests, please try again later.',
+};
 const api = new AdamantApi({
   nodes: ['https://node.example'],
   checkHealthAtStartup: false,
@@ -62,6 +76,10 @@ assert.equal(consensusCodeName, null);
 assert.equal(consensusSchedule.activationHeights.fairSystem, 4359465);
 assert.deepEqual(milestoneSchedule.milestones, [50000000, 45000000]);
 assert.equal(searchDelegateOmitsForged, true);
+assert.equal(kvsPostBody.toHeight, 100);
+assert.equal(kvsRequestOptions.method, 'POST');
+assert.equal(chatTxOptions.toHeight, 20);
+assert.equal(rateLimitError.success, false);
 assert.equal(typeof api.getTopAccounts, 'function');
 assert.equal(typeof api.searchDelegates, 'function');
 const ws = new WebSocketClient({admAddress: address})

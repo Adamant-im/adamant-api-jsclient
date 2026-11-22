@@ -112,7 +112,7 @@ describe('transformTransactionQuery', () => {
     });
   });
 
-  it('passes only the controls supported by chat endpoints', () => {
+  it('passes only the controls supported by chat endpoints and strips legacy userId', () => {
     const transformed = transformTransactionQuery(
       {
         type: 8,
@@ -127,7 +127,6 @@ describe('transformTransactionQuery', () => {
     expect(transformed).toStrictEqual({
       type: 8,
       includeDirectTransfers: true,
-      userId: 'U123456',
       senderId: 'U111',
       withoutDirectTransfers: false,
     });
@@ -223,6 +222,12 @@ describe('getUnsupportedTransactionQueryControls', () => {
         'chats',
       ),
     ).toEqual(['returnAsset', 'userId']);
+  });
+
+  it('reports legacy userId as unsupported on chatrooms', () => {
+    expect(
+      getUnsupportedTransactionQueryControls({userId: 'U123456'}, 'chatrooms'),
+    ).toEqual(['userId']);
   });
 
   it('does not report controls supported by the selected endpoint', () => {

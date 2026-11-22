@@ -115,6 +115,22 @@ describe('NodeManager', () => {
     expect(higher.outOfSync).toBe(true);
   });
 
+  test('switches to the other synced node when forcing a change across two nodes', async () => {
+    const manager = new NodeManager(logger, {
+      nodes: ['https://a', 'https://b'],
+      checkHealthAtStartup: false,
+    });
+    const nodeA = activeNode('a', 100);
+    const nodeB = activeNode('b', 101);
+    manager.node = 'https://b';
+
+    await manager.chooseNode([nodeA, nodeB], true);
+    expect(manager.node).toBe('https://a');
+
+    await manager.chooseNode([nodeA, nodeB], true);
+    expect(manager.node).toBe('https://b');
+  });
+
   test('uses the fastest node in the majority height group and can force a change', async () => {
     const manager = new NodeManager(logger, {
       nodes: [

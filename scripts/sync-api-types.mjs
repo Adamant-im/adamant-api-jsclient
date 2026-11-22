@@ -4,12 +4,16 @@ import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
-const repository = 'Adamant-im/adamant-schema';
-const revision = 'f35b8ddb5597a8f1a80a3a670bedb003af65ef90';
-const bundlerVersion = '2.34.0';
-const generatorVersion = '13.12.2';
+const packageJson = JSON.parse(
+  await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+);
+const repository = 'Adamant-im/adamant';
+const revision = 'd9a07f173cd8cee8a3c212025a2f093d9cc4a607';
+const schemaSubpath = 'openapi/specification/openapi.yaml';
+const bundlerVersion = packageJson.devDependencies['@redocly/cli'];
+const generatorVersion = packageJson.devDependencies['swagger-typescript-api'];
 const target = fileURLToPath(new URL('../src/api/generated.ts', import.meta.url));
-const schemaUrl = `https://raw.githubusercontent.com/${repository}/${revision}/specification/openapi.yaml`;
+const schemaUrl = `https://raw.githubusercontent.com/${repository}/${revision}/${schemaSubpath}`;
 
 const run = (command, args) =>
   new Promise((resolve, reject) => {
@@ -56,7 +60,7 @@ try {
 
   const generated = await readFile(path.join(outputDirectory, 'generated.ts'), 'utf8');
   const sourceHeader = [
-    `// Schema source: https://github.com/${repository}/tree/${revision}`,
+    `// Schema source: https://github.com/${repository}/tree/${revision}/openapi`,
     `// Bundler: @redocly/cli@${bundlerVersion}`,
     `// Generator: swagger-typescript-api@${generatorVersion}`,
   ].join('\n');

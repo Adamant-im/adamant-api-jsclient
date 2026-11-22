@@ -339,15 +339,21 @@ export class NodeManager {
     } else if (activeNodesCount === 2) {
       const [h0, h1] = compatibleNodes;
 
-      this.node = h0.height > h1.height ? h0.node : h1.node;
-
       // Mark node outOfSync if needed
       if (h0.heightEpsilon > h1.heightEpsilon) {
         compatibleNodes[1].outOfSync = true;
         outOfSyncCount += 1;
+        this.node = h0.node;
       } else if (h0.heightEpsilon < h1.heightEpsilon) {
         compatibleNodes[0].outOfSync = true;
         outOfSyncCount += 1;
+        this.node = h1.node;
+      } else if (forceChangeActiveNode && this.node === h0.node) {
+        this.node = h1.node;
+      } else if (forceChangeActiveNode && this.node === h1.node) {
+        this.node = h0.node;
+      } else {
+        this.node = h0.height > h1.height ? h0.node : h1.node;
       }
     } else {
       // Removing lodash: const groups = _.groupBy(liveNodes, n => n.heightEpsilon);
