@@ -6,6 +6,5 @@ allowBuilds:
 overrides:
   'brace-expansion@>=2.0.0 <2.1.7': ^2.1.7
   'browserslist@<4.28.7': ^4.28.7
-  esbuild: ~0.25.0
   'tmp@<0.2.6': ^0.2.6
-  vite: 6.4.6
+  'vitepress>vite': 6.4.6

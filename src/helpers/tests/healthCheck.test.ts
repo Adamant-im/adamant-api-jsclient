@@ -22,6 +22,10 @@ class TestNodeManager extends NodeManager {
   get compatibleNodeAvailable() {
     return this.hasCompatibleNode;
   }
+
+  markRateLimited(node: string, cooldownMs: number) {
+    this.markNodeRateLimited(node, cooldownMs);
+  }
 }
 
 describe('NodeManager', () => {
@@ -129,6 +133,44 @@ describe('NodeManager', () => {
 
     await manager.chooseNode([nodeA, nodeB], true);
     expect(manager.node).toBe('https://b');
+
+    // A late forced failover for a node we already rotated away from must not flip back.
+    await manager.chooseNode([nodeA, nodeB], true, 'https://a');
+    expect(manager.node).toBe('https://b');
+  });
+
+  test('avoids a rate-limited node across planned and forced updates until cooldown expires', async () => {
+    jest.useFakeTimers();
+    try {
+      const manager = new TestNodeManager(logger, {
+        nodes: ['https://fast', 'https://mid', 'https://slow'],
+        checkHealthAtStartup: false,
+      });
+      const fast = activeNode('fast', 100, 1);
+      const mid = activeNode('mid', 100, 10);
+      const slow = activeNode('slow', 100, 20);
+      manager.node = 'https://fast';
+      manager.markRateLimited('https://fast', 30_000);
+
+      await manager.chooseNode([fast, mid, slow], true, 'https://fast');
+      expect(manager.node).toBe('https://mid');
+
+      // Planned update while cooldown is active keeps avoiding the rate-limited node.
+      await manager.chooseNode([fast, mid, slow], false);
+      expect(manager.node).toBe('https://mid');
+
+      // Once cooldown expires, the fastest node becomes eligible again.
+      jest.advanceTimersByTime(30_001);
+      await manager.chooseNode([fast, mid, slow], false);
+      expect(manager.node).toBe('https://fast');
+
+      // A late forced failover for a node we already rotated away from keeps the current synced node.
+      manager.node = 'https://mid';
+      await manager.chooseNode([fast, mid, slow], true, 'https://fast');
+      expect(manager.node).toBe('https://mid');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   test('uses the fastest node in the majority height group and can force a change', async () => {
@@ -276,9 +318,9 @@ describe('NodeManager', () => {
     });
   });
 
-  test('prevents overlapping refreshes', async () => {
+  test('deduplicates overlapping refreshes so concurrent callers await the in-flight check', async () => {
     const manager = new NodeManager(logger, {
-      nodes: ['https://one'],
+      nodes: ['https://one', 'https://two'],
       checkHealthAtStartup: false,
     });
     let release!: (nodes: ActiveNode[]) => void;
@@ -286,10 +328,18 @@ describe('NodeManager', () => {
       .spyOn(manager, 'checkNodes')
       .mockImplementation(() => new Promise(resolve => (release = resolve)));
     const first = manager.updateNodes(true);
-    const second = manager.updateNodes(true);
-    expect(await second).toBeUndefined();
-    release([activeNode('one', 100)]);
-    await first;
+    const second = manager.updateNodes(false, 'https://one');
+    let secondSettled = false;
+    void second.then(() => {
+      secondSettled = true;
+    });
+    await Promise.resolve();
+    expect(secondSettled).toBe(false);
+
+    release([activeNode('two', 100)]);
+    await Promise.all([first, second]);
+    expect(secondSettled).toBe(true);
+    expect(manager.node).toBe('https://two');
     expect(manager.checkNodes).toHaveBeenCalledTimes(1);
   });
 

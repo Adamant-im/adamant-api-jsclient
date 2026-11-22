@@ -89,6 +89,7 @@ import {encodeMessage} from '../helpers/encryptor';
 import {
   type VoteDirection,
   getUnsupportedTransactionQueryControls,
+  getUnsupportedTransactionQueryControlWarning,
   hasMixedTransactionQueryGroups,
   transformTransactionQuery,
   unsupportedOrQueryResult,
@@ -600,9 +601,11 @@ export class AdamantApi extends NodeManager {
     method: 'GET' | 'POST',
     endpoint: string,
     data: unknown,
-    retryNo = 1,
+    options: {retryNo?: number; idempotent?: boolean} = {},
   ): Promise<AdamantApiResult<T>> {
     const {logger, maxRetries} = this;
+    const retryNo = options.retryNo ?? 1;
+    const idempotent = options.idempotent ?? method === 'GET';
 
     if (!this.hasCompatibleNode) {
       const minVersion = this.options.minVersion;
@@ -612,7 +615,8 @@ export class AdamantApi extends NodeManager {
       };
     }
 
-    const url = `${this.node}/api/${endpoint}`;
+    const targetNode = this.node;
+    const url = `${targetNode}/api/${endpoint}`;
 
     try {
       const response = await axios<AdamantApiResult<T>>({
@@ -658,27 +662,55 @@ export class AdamantApi extends NodeManager {
           responseMessage ? '. Message: ' + responseMessage : ''
         }.`;
 
+        const rateLimitResultMetadata = isRateLimited
+          ? {
+              status: 429,
+              ...(retryAfterMs !== undefined ? {retryAfterMs} : {}),
+              ...(rateLimitScope !== undefined ? {rateLimitScope} : {}),
+            }
+          : {};
+
+        if (isRateLimited) {
+          this.markNodeRateLimited(
+            targetNode,
+            retryAfterMs ?? DEFAULT_RATE_LIMIT_RETRY_DELAY_MS * retryNo,
+          );
+        }
+
         // A received HTTP response proves that the node is reachable. Retrying a
-        // rejected POST can duplicate a transaction, while 4xx (other than GET
-        // 429 rate limits) and structured API errors are not recoverable by
-        // switching nodes. Unstructured GET 5xx failures and GET 429 rate
-        // limits may safely fail over to another node (or back off on 429).
+        // rejected non-idempotent POST can duplicate a transaction, while 4xx
+        // (other than idempotent 429 rate limits) and structured API errors are
+        // not recoverable by switching nodes. Unstructured 5xx failures and 429
+        // rate limits on idempotent reads may safely fail over to another node
+        // (or back off on 429).
         const shouldRetry =
           !response ||
-          (method === 'GET' &&
+          (idempotent &&
             ((response.status >= 500 && responseMessage === '') ||
               isRateLimited));
 
         if (shouldRetry && retryNo <= maxRetries) {
           if (isRateLimited) {
-            const previousNode = this.node;
-            await this.updateNodes();
-
-            if (this.node !== previousNode) {
+            if (this.node !== targetNode) {
               logger.log(
                 `${logMessage} Try ${retryNo}/${maxRetries}. Retrying on ${this.node}…`,
               );
-              return this.request<T>(method, endpoint, data, retryNo + 1);
+              return this.request<T>(method, endpoint, data, {
+                retryNo: retryNo + 1,
+                idempotent,
+              });
+            }
+
+            await this.updateNodes(false, targetNode);
+
+            if (this.node !== targetNode) {
+              logger.log(
+                `${logMessage} Try ${retryNo}/${maxRetries}. Retrying on ${this.node}…`,
+              );
+              return this.request<T>(method, endpoint, data, {
+                retryNo: retryNo + 1,
+                idempotent,
+              });
             }
 
             const baseDelayMs =
@@ -692,6 +724,7 @@ export class AdamantApi extends NodeManager {
                 errorMessage: ensureTrailingPeriod(
                   responseMessage || errorDetails,
                 ),
+                ...rateLimitResultMetadata,
               };
             }
 
@@ -711,13 +744,29 @@ export class AdamantApi extends NodeManager {
               await wait(waitMs);
             }
 
-            return this.request<T>(method, endpoint, data, retryNo + 1);
+            return this.request<T>(method, endpoint, data, {
+              retryNo: retryNo + 1,
+              idempotent,
+            });
+          }
+
+          if (this.node !== targetNode) {
+            logger.log(
+              `${logMessage} Try ${retryNo}/${maxRetries}. Retrying on ${this.node}…`,
+            );
+            return this.request<T>(method, endpoint, data, {
+              retryNo: retryNo + 1,
+              idempotent,
+            });
           }
 
           logger.log(`${logMessage} Try ${retryNo}/${maxRetries}. Retrying…`);
 
-          await this.updateNodes();
-          return this.request<T>(method, endpoint, data, retryNo + 1);
+          await this.updateNodes(false, targetNode);
+          return this.request<T>(method, endpoint, data, {
+            retryNo: retryNo + 1,
+            idempotent,
+          });
         }
 
         logger.warn(`${logMessage} No more attempts, returning error.`);
@@ -725,6 +774,7 @@ export class AdamantApi extends NodeManager {
         return {
           success: false,
           errorMessage: ensureTrailingPeriod(responseMessage || errorDetails),
+          ...rateLimitResultMetadata,
         };
       }
 
@@ -1415,7 +1465,9 @@ export class AdamantApi extends NodeManager {
 
     const payload = this.transformQuery(options, 'states');
     if (requestOptions?.method === 'POST') {
-      return this.post<GetKVSResponseDto>('states/get', payload);
+      return this.request<GetKVSResponseDto>('POST', 'states/get', payload, {
+        idempotent: true,
+      });
     }
 
     return this.get<GetKVSResponseDto>('states/get', payload);
@@ -1527,7 +1579,7 @@ export class AdamantApi extends NodeManager {
       if (!this.warnedUnsupportedControls.has(warningKey)) {
         this.warnedUnsupportedControls.add(warningKey);
         this.logger.warn(
-          `[ADAMANT js-api] Query control \`${control}\` is not supported by the ${endpoint} endpoint and was ignored.`,
+          getUnsupportedTransactionQueryControlWarning(control, endpoint),
         );
       }
     }

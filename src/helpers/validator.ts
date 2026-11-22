@@ -147,11 +147,19 @@ export const badParameter = (
  * Result returned by ADAMANT API operations.
  *
  * Expected validation, node, and transport failures resolve to a discriminated
- * result with a single `errorMessage` field instead of throwing.
+ * result with an `errorMessage` field instead of throwing. HTTP `429 Too Many
+ * Requests` failures also include optional rate-limit metadata (`status`,
+ * `retryAfterMs`, and `rateLimitScope`) when reported by the node.
  */
 export type AdamantApiResult<T> =
   | (Omit<T, 'success'> & {success: true})
   | {
       success: false;
       errorMessage: string;
+      /** HTTP status code for rate-limited (`429`) responses. */
+      status?: number;
+      /** Suggested wait time in milliseconds from `Retry-After` or `RateLimit-Reset`. */
+      retryAfterMs?: number;
+      /** Rate-limit bucket reported by `RateLimit-Scope` (for example `read`, `publish`, or `all`). */
+      rateLimitScope?: string;
     };

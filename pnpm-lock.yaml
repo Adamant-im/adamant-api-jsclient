@@ -7,9 +7,8 @@ settings:
 overrides:
   brace-expansion@>=2.0.0 <2.1.7: ^2.1.7
   browserslist@<4.28.7: ^4.28.7
-  esbuild: ~0.25.0
   tmp@<0.2.6: ^0.2.6
-  vite: 6.4.6
+  vitepress>vite: 6.4.6
 
 importers:
 
@@ -1482,7 +1481,7 @@ packages:
     resolution: {integrity: sha512-7Yx/SXSOcQq5HiiV3orevHUFn+pmMB4cgbEkDYgnkUWb0WfeQ/wa2yFv6D5ICiCQOVpjA7vYDXrC7AGO8yjDHA==}
     engines: {node: ^18.0.0 || >=20.0.0}
     peerDependencies:
-      vite: 6.4.6
+      vite: ^5.0.0 || ^6.0.0
       vue: ^3.2.25
 
   '@vue/compiler-core@3.5.45':

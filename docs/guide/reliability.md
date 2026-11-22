@@ -35,19 +35,26 @@ All expected failures use the normalized
 
 ## Retries and rate limits
 
-- **GET** requests are safe to retry: transport failures and unstructured 5xx
-  responses refresh nodes and retry against another healthy node.
+- **Idempotent reads (`GET` and `getKVS(..., {method: 'POST'})`)** are safe to
+  retry: transport failures and unstructured 5xx responses refresh nodes and
+  retry against another healthy node. Forced failovers rotate away from the
+  failed node across both 2-node and 3+-node synced sets, and concurrent
+  requests share a single in-flight health sweep rather than running duplicate
+  sweeps or flipping back to the failed node.
 - **HTTP `429 Too Many Requests`** (enabled by default in ADAMANT Node
-  `v0.11.0`): for **GET** requests, the SDK refreshes nodes to fail over to
-  another synced node immediately when one is available. If the active node
-  remains the same (for example, in a single-node configuration), the SDK honors
-  `Retry-After` / `RateLimit-Reset` with jitter up to a bounded 10-second wait
-  and returns the normalized error promptly when the requested backoff exceeds
-  that cap instead of tight-looping or hanging.
-- **POST** requests are retried only when no HTTP response was received. A POST
-  that received an explicit (4xx, including `429`, or semantic 5xx) rejection
-  is not replayed automatically — this avoids endlessly retrying invalid input
-  or duplicating transactions.
+  `v0.11.0`): the SDK records a per-node cooldown (capped at 60 seconds) so
+  subsequent forced and planned health checks prefer non-rate-limited synced
+  nodes even though `/api/node/status` uses a separate `status` bucket. For
+  idempotent reads, the SDK fails over immediately when another synced node is
+  available; if the active node remains the same (for example, in a single-node
+  configuration), it honors `Retry-After` / `RateLimit-Reset` with jitter up to
+  a bounded 10-second wait and otherwise returns the normalized error promptly
+  with `status: 429`, `retryAfterMs`, and `rateLimitScope` so callers can
+  schedule retries cleanly.
+- **Write `POST` requests** are retried only when no HTTP response was
+  received. A write `POST` that received an explicit (4xx, including `429`, or
+  semantic 5xx) rejection is not replayed automatically — this avoids endlessly
+  retrying invalid input or duplicating transactions.
 
 See the [API Reference](/api/) for the `maxRetries`, `timeout`, and
 `checkHealthAtStartup` options.

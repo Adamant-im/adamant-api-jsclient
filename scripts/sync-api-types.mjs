@@ -1,17 +1,16 @@
 import {mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
+import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
-const packageJson = JSON.parse(
-  await readFile(new URL('../package.json', import.meta.url), 'utf8'),
-);
+const require = createRequire(import.meta.url);
 const repository = 'Adamant-im/adamant';
 const revision = 'd9a07f173cd8cee8a3c212025a2f093d9cc4a607';
 const schemaSubpath = 'openapi/specification/openapi.yaml';
-const bundlerVersion = packageJson.devDependencies['@redocly/cli'];
-const generatorVersion = packageJson.devDependencies['swagger-typescript-api'];
+const bundlerVersion = require('@redocly/cli/package.json').version;
+const generatorVersion = require('swagger-typescript-api/package.json').version;
 const target = fileURLToPath(new URL('../src/api/generated.ts', import.meta.url));
 const schemaUrl = `https://raw.githubusercontent.com/${repository}/${revision}/${schemaSubpath}`;
 

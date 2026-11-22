@@ -78,6 +78,8 @@ To update the DTOs, review and change the pinned commit in the script, run `pnpm
 
 `pnpm-workspace.yaml` enforces a 7-day release-age quarantine (`minimumReleaseAge: 10080` minutes) and restricts dependency lifecycle scripts via `allowBuilds`. Adopt only stable package releases published at least 7 days before the update unless an urgent security exception is explicitly reviewed and documented in the pull request.
 
+Reviewed dev-only override exception: `'vitepress>vite': 6.4.6` is scoped strictly to `vitepress@1.6.4` (which declares `vite ^5.4.14`) to resolve moderate/high dev-server advisories in Vite 5.x and `esbuild@0.21.x` (automatically resolving `esbuild@0.25.x`). Both `pnpm docs:build` and `vitepress dev` are verified against it. Other cross-major transitive overrides (such as `glob@14` or `minimatch@11`) are intentionally avoided.
+
 ## Wallet metadata
 
 `src/metadata/wallets.json` is generated from the pinned [`adamant-wallets`](https://github.com/Adamant-im/adamant-wallets) revision in `scripts/sync-wallet-metadata.mjs`.

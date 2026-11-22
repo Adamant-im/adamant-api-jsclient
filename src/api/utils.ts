@@ -54,6 +54,24 @@ const CONTROL_PARAMETERS: Record<TransactionQueryEndpoint, Set<string>> = {
  */
 const LEGACY_UNSUPPORTED_CONTROL_PARAMETERS = ['userId'] as const;
 
+const DEPRECATED_CONTROL_WARNINGS = new Map<string, string>([
+  [
+    'chatrooms:userId',
+    '[ADAMANT js-api] `userId` is deprecated: ADAMANT Node v0.11.0+ rejects it on /api/chatrooms/*; the address is taken from the URL path and this parameter was ignored.',
+  ],
+]);
+
+/**
+ * Returns the warning message logged when a known query control parameter is
+ * ignored for `endpoint`.
+ */
+export const getUnsupportedTransactionQueryControlWarning = (
+  control: string,
+  endpoint: TransactionQueryEndpoint,
+) =>
+  DEPRECATED_CONTROL_WARNINGS.get(`${endpoint}:${control}`) ??
+  `[ADAMANT js-api] Query control \`${control}\` is not supported by the ${endpoint} endpoint and was ignored.`;
+
 /**
  * Known controls are dropped when an endpoint does not support them. Without
  * this guard, a JavaScript caller can accidentally turn an unsupported option

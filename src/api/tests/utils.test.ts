@@ -1,5 +1,6 @@
 import {
   getUnsupportedTransactionQueryControls,
+  getUnsupportedTransactionQueryControlWarning,
   hasMixedTransactionQueryGroups,
   transformTransactionQuery,
   unsupportedOrQueryResult,
@@ -228,6 +229,16 @@ describe('getUnsupportedTransactionQueryControls', () => {
     expect(
       getUnsupportedTransactionQueryControls({userId: 'U123456'}, 'chatrooms'),
     ).toEqual(['userId']);
+    expect(
+      getUnsupportedTransactionQueryControlWarning('userId', 'chatrooms'),
+    ).toBe(
+      '[ADAMANT js-api] `userId` is deprecated: ADAMANT Node v0.11.0+ rejects it on /api/chatrooms/*; the address is taken from the URL path and this parameter was ignored.',
+    );
+    expect(
+      getUnsupportedTransactionQueryControlWarning('returnAsset', 'chats'),
+    ).toBe(
+      '[ADAMANT js-api] Query control `returnAsset` is not supported by the chats endpoint and was ignored.',
+    );
   });
 
   it('does not report controls supported by the selected endpoint', () => {

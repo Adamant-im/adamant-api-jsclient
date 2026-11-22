@@ -6,7 +6,13 @@ validation, node, and transport failures:
 ```ts
 type AdamantApiResult<T> =
   | (Omit<T, 'success'> & {success: true})
-  | {success: false; errorMessage: string};
+  | {
+      success: false;
+      errorMessage: string;
+      status?: number;
+      retryAfterMs?: number;
+      rateLimitScope?: string;
+    };
 ```
 
 Always check `success` before reading response data:
@@ -34,6 +40,19 @@ Some ADAMANT Node versions return unsuccessful HTTP responses using `error` or
 `message`. The SDK normalizes these node-specific fields to `errorMessage`, so
 applications do not need fallbacks such as
 `response.errorMessage || response.error`.
+
+When a request fails with HTTP `429 Too Many Requests` (ADAMANT Node
+`v0.11.0+`), the failure result also includes optional rate-limit metadata when
+reported by the node:
+
+- `status`: `429`
+- `retryAfterMs`: suggested backoff in milliseconds parsed from `Retry-After` or
+  `RateLimit-Reset`
+- `rateLimitScope`: rate-limit bucket from `RateLimit-Scope` (for example
+  `read`, `publish`, or `all`)
+
+Applications can use `retryAfterMs` to schedule their next attempt instead of
+guessing when a node's 60-second rate-limit window resets.
 
 ## Errors and exceptions
 
