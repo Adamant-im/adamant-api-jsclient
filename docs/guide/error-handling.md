@@ -47,7 +47,9 @@ try {
   const response = await api.getTransactions({limit: 100});
 
   if (!response.success) {
-    logger.warn(`Unable to retrieve ADM transactions: ${response.errorMessage}`);
+    logger.warn(
+      `Unable to retrieve ADM transactions: ${response.errorMessage}`,
+    );
     return;
   }
 
@@ -62,8 +64,10 @@ when reporting an error.
 
 ## Retries
 
-Safe GET failures may be retried against another healthy node. A POST request
-is retried only when no HTTP response was received; an explicitly rejected POST
-is not replayed because doing so could submit a transaction twice.
+Safe GET failures (including HTTP `429 Too Many Requests` rate limits on
+ADAMANT Node `v0.11.0+`) may be retried against another healthy node or after a
+bounded `Retry-After` / `RateLimit-Reset` backoff. A POST request is retried
+only when no HTTP response was received; an explicitly rejected POST is not
+replayed because doing so could submit a transaction twice.
 
 See [Reliability](./reliability) for node selection and retry details.

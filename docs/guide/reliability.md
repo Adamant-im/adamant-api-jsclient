@@ -33,13 +33,21 @@ All expected failures use the normalized
   With `checkHealthAtStartup: false`, selection is skipped and `onReady` runs
   immediately.
 
-## Retries
+## Retries and rate limits
 
-- **GET** requests are safe to retry, and a failure on one node can be retried
-  against another healthy node.
+- **GET** requests are safe to retry: transport failures and unstructured 5xx
+  responses refresh nodes and retry against another healthy node.
+- **HTTP `429 Too Many Requests`** (enabled by default in ADAMANT Node
+  `v0.11.0`): for **GET** requests, the SDK refreshes nodes to fail over to
+  another synced node immediately when one is available. If the active node
+  remains the same (for example, in a single-node configuration), the SDK honors
+  `Retry-After` / `RateLimit-Reset` with jitter up to a bounded 10-second wait
+  and returns the normalized error promptly when the requested backoff exceeds
+  that cap instead of tight-looping or hanging.
 - **POST** requests are retried only when no HTTP response was received. A POST
-  that received an explicit (4xx, or semantic 5xx) rejection is not replayed —
-  this avoids endlessly retrying requests rejected for invalid input.
+  that received an explicit (4xx, including `429`, or semantic 5xx) rejection
+  is not replayed automatically — this avoids endlessly retrying invalid input
+  or duplicating transactions.
 
 See the [API Reference](/api/) for the `maxRetries`, `timeout`, and
 `checkHealthAtStartup` options.
