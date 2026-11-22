@@ -84,7 +84,7 @@ export const unsupportedOrQueryResult = <T extends object>(
 ): {success: false; errorMessage: string} | undefined => {
   const path = andOnlyQueryPath(endpoint);
 
-  if (!path || !isRecord(obj?.or)) {
+  if (!path || !obj || !hasOwnProperty(obj, 'or') || !isRecord(obj.or)) {
     return undefined;
   }
 

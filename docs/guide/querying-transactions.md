@@ -203,7 +203,8 @@ nullable / zero — guard for them before use:
 - `blockId` is `null`
 - `height` is `null`
 - `confirmations` is `0`
-  :::
+
+:::
 
 ```ts
 if (response.success) {
