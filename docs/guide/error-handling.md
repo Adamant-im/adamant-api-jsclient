@@ -52,7 +52,7 @@ reported by the node:
   `read`, `publish`, or `all`)
 
 Applications can use `retryAfterMs` to schedule their next attempt instead of
-guessing when a node's 60-second rate-limit window resets.
+guessing when the node's rate-limit window resets (60 seconds by default).
 
 ## Errors and exceptions
 

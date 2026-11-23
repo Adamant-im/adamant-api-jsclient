@@ -343,6 +343,32 @@ describe('NodeManager', () => {
     expect(manager.checkNodes).toHaveBeenCalledTimes(1);
   });
 
+  test('upgrades an in-flight planned refresh to forced failover when a request reports a failed node', async () => {
+    const manager = new NodeManager(logger, {
+      nodes: ['https://n1', 'https://n2', 'https://n3'],
+      checkHealthAtStartup: false,
+    });
+    manager.node = 'https://n1';
+
+    let release!: (nodes: ActiveNode[]) => void;
+    jest
+      .spyOn(manager, 'checkNodes')
+      .mockImplementation(() => new Promise(resolve => (release = resolve)));
+
+    const planned = manager.updateNodes(true);
+    const forced = manager.updateNodes(false, 'https://n1');
+
+    release([
+      activeNode('n1', 100, 1),
+      activeNode('n2', 100, 10),
+      activeNode('n3', 100, 20),
+    ]);
+    await Promise.all([planned, forced]);
+
+    expect(manager.checkNodes).toHaveBeenCalledTimes(1);
+    expect(manager.node).not.toBe('https://n1');
+  });
+
   test('runs startup and scheduled health checks', () => {
     jest.useFakeTimers();
     const update = jest

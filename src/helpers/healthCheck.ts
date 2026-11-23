@@ -147,6 +147,8 @@ export class NodeManager {
 
   private initialized = false;
   private updateNodesPromise?: Promise<void>;
+  private pendingForcedUpdate = false;
+  private pendingFailedNode?: string;
   /** Per-node HTTP 429 cooldown expiration timestamps (epoch ms). */
   private readonly rateLimitedUntil = new Map<string, number>();
   /** Counts from the latest `checkNodes()` call, consumed by the next `chooseNode()`. */
@@ -255,6 +257,18 @@ export class NodeManager {
   }
 
   async updateNodes(isPlannedUpdate = false, failedNode?: string) {
+    if (!isPlannedUpdate) {
+      if (this.updateNodesPromise && !this.pendingForcedUpdate) {
+        this.logger.warn(
+          '[ADAMANT js-api] Health check: Forcing to update active nodes…',
+        );
+      }
+      this.pendingForcedUpdate = true;
+      if (failedNode) {
+        this.pendingFailedNode = failedNode;
+      }
+    }
+
     if (this.updateNodesPromise) {
       return this.updateNodesPromise;
     }
@@ -264,6 +278,8 @@ export class NodeManager {
       failedNode,
     ).finally(() => {
       this.updateNodesPromise = undefined;
+      this.pendingForcedUpdate = false;
+      this.pendingFailedNode = undefined;
     });
 
     return this.updateNodesPromise;
@@ -277,10 +293,12 @@ export class NodeManager {
     }
 
     const activeNodes = await this.checkNodes();
+    const forceChange = !isPlannedUpdate || this.pendingForcedUpdate;
+    const nodeToAvoid = this.pendingFailedNode ?? failedNode;
     const selected = await this.chooseNode(
       activeNodes,
-      !isPlannedUpdate,
-      failedNode,
+      forceChange,
+      nodeToAvoid,
     );
 
     if (!this.initialized && selected) {
