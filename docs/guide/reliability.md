@@ -33,13 +33,28 @@ All expected failures use the normalized
   With `checkHealthAtStartup: false`, selection is skipped and `onReady` runs
   immediately.
 
-## Retries
+## Retries and rate limits
 
-- **GET** requests are safe to retry, and a failure on one node can be retried
-  against another healthy node.
-- **POST** requests are retried only when no HTTP response was received. A POST
-  that received an explicit (4xx, or semantic 5xx) rejection is not replayed —
-  this avoids endlessly retrying requests rejected for invalid input.
+- **Idempotent reads (`GET` and `getKVS(..., {method: 'POST'})`)** are safe to
+  retry: transport failures and unstructured 5xx responses refresh nodes and
+  retry against another healthy node. Forced failovers rotate away from the
+  failed node across both 2-node and 3+-node synced sets, and concurrent
+  requests share a single in-flight health sweep rather than running duplicate
+  sweeps or flipping back to the failed node.
+- **HTTP `429 Too Many Requests`** (enabled by default in ADAMANT Node
+  `v0.11.0`): the SDK records a per-node cooldown (capped at 60 seconds) so
+  subsequent forced and planned health checks prefer non-rate-limited synced
+  nodes even though `/api/node/status` uses a separate `status` bucket. For
+  idempotent reads, the SDK fails over immediately when another synced node is
+  available; if the active node remains the same (for example, in a single-node
+  configuration), it honors `Retry-After` / `RateLimit-Reset` with jitter up to
+  a bounded 10-second wait and otherwise returns the normalized error promptly
+  with `status: 429`, `retryAfterMs`, and `rateLimitScope` so callers can
+  schedule retries cleanly.
+- **Write `POST` requests** are retried only when no HTTP response was
+  received. A write `POST` that received an explicit (4xx, including `429`, or
+  semantic 5xx) rejection is not replayed automatically — this avoids endlessly
+  retrying invalid input or duplicating transactions.
 
 See the [API Reference](/api/) for the `maxRetries`, `timeout`, and
 `checkHealthAtStartup` options.

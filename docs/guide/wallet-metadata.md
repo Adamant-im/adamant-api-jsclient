@@ -19,8 +19,9 @@ pnpm metadata:check
 pnpm metadata:sync
 ```
 
-Generated ADAMANT API DTOs follow the same pinned workflow for
-[`adamant-schema`](https://github.com/Adamant-im/adamant-schema):
+Generated ADAMANT API DTOs follow the same pinned workflow from the
+[`Adamant-im/adamant` OpenAPI specification](https://github.com/Adamant-im/adamant/tree/dev/openapi)
+(published at [docs.adamant.im/schema](https://docs.adamant.im/schema/)):
 
 ```sh
 pnpm api-types:check

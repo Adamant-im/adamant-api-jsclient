@@ -1,5 +1,6 @@
 import {
   getUnsupportedTransactionQueryControls,
+  getUnsupportedTransactionQueryControlWarning,
   hasMixedTransactionQueryGroups,
   transformTransactionQuery,
   unsupportedOrQueryResult,
@@ -112,7 +113,7 @@ describe('transformTransactionQuery', () => {
     });
   });
 
-  it('passes only the controls supported by chat endpoints', () => {
+  it('passes only the controls supported by chat endpoints and strips legacy userId', () => {
     const transformed = transformTransactionQuery(
       {
         type: 8,
@@ -127,7 +128,6 @@ describe('transformTransactionQuery', () => {
     expect(transformed).toStrictEqual({
       type: 8,
       includeDirectTransfers: true,
-      userId: 'U123456',
       senderId: 'U111',
       withoutDirectTransfers: false,
     });
@@ -223,6 +223,22 @@ describe('getUnsupportedTransactionQueryControls', () => {
         'chats',
       ),
     ).toEqual(['returnAsset', 'userId']);
+  });
+
+  it('reports legacy userId as unsupported on chatrooms', () => {
+    expect(
+      getUnsupportedTransactionQueryControls({userId: 'U123456'}, 'chatrooms'),
+    ).toEqual(['userId']);
+    expect(
+      getUnsupportedTransactionQueryControlWarning('userId', 'chatrooms'),
+    ).toBe(
+      '[ADAMANT js-api] `userId` is deprecated: ADAMANT Node v0.11.0+ rejects it on /api/chatrooms/*; the address is taken from the URL path and this parameter was ignored.',
+    );
+    expect(
+      getUnsupportedTransactionQueryControlWarning('returnAsset', 'chats'),
+    ).toBe(
+      '[ADAMANT js-api] Query control `returnAsset` is not supported by the chats endpoint and was ignored.',
+    );
   });
 
   it('does not report controls supported by the selected endpoint', () => {

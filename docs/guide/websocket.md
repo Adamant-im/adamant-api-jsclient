@@ -7,9 +7,7 @@ API instance:
 // socket.js
 import {WebSocketClient} from 'adamant-api';
 
-const ws = new WebSocketClient({
-  /* options */
-});
+const ws = new WebSocketClient({/* options */});
 
 export {ws};
 ```
@@ -19,9 +17,7 @@ export {ws};
 import {AdamantApi} from 'adamant-api';
 import {ws} from './socket.js';
 
-const api = new AdamantApi({
-  /* options */
-});
+const api = new AdamantApi({/* options */});
 
 api.initSocket(ws); // WebSocket initialization
 
@@ -32,11 +28,7 @@ export {api};
 
 ```ts
 type WsType = 'ws' | 'wss';
-type TransactionDirection =
-  | 'allDirections'
-  | 'self'
-  | 'incoming'
-  | 'outgoing';
+type TransactionDirection = 'allDirections' | 'self' | 'incoming' | 'outgoing';
 
 interface WsOptions {
   /** ADM address to subscribe to transactions. */
@@ -104,6 +96,16 @@ several. The WebSocket client delivers live events only and does not backfill
 transactions missed while disconnected. Applications that require gap-free
 processing should reconcile transaction history through the REST API after a
 reconnection.
+
+::: tip Anti-abuse limits in ADAMANT Node v0.11.0
+Starting in ADAMANT Node `v0.11.0`, nodes enforce client WebSocket anti-abuse
+limits (`wsClient.limits`), including per-node and per-IP active/pending
+connection caps, connection-attempt rate windows, per-socket address/type/chat-subtype
+caps, and subscription-event rate windows. Reuse a single `WebSocketClient`
+instance with `admAddresses` instead of opening one socket per address, and
+keep `reconnectionDelay` reasonable so reconnect loops do not trip per-IP
+connection windows.
+:::
 
 ### Filtering by transaction direction
 
@@ -270,7 +272,7 @@ Adds a handler for all transaction types, or for specific transaction types.
 function on(handler: AnyTransactionHandler): this;
 function on<T extends EventType>(
   types: T | T[],
-  handler: TransactionHandler<TransactionMap[T]>
+  handler: TransactionHandler<TransactionMap[T]>,
 ): this;
 ```
 
@@ -312,7 +314,7 @@ Registers a handler for Chat Message transactions. You may optionally filter by
 function onMessage(handler: TransactionHandler<ChatMessageTransaction>): this;
 function onMessage(
   messageTypes: MessageType | MessageType[],
-  handler: TransactionHandler<ChatMessageTransaction>
+  handler: TransactionHandler<ChatMessageTransaction>,
 ): this;
 ```
 

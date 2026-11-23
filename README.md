@@ -17,7 +17,7 @@
 - Transaction construction, hashing, signing, and ID calculation
 - WebSocket subscriptions for incoming transactions, new blocks, and account balance changes
 - Optional BTC, ETH, DASH, and DOGE wallet derivation and address validation
-- Pinned, reproducible schema metadata from [`adamant-schema`](https://github.com/Adamant-im/adamant-schema)
+- Pinned, reproducible OpenAPI schema types from [`Adamant-im/adamant`](https://github.com/Adamant-im/adamant/tree/dev/openapi)
 - Pinned, reproducible coin metadata from [`adamant-wallets`](https://github.com/Adamant-im/adamant-wallets)
 
 ## Requirements
@@ -113,7 +113,7 @@ pnpm metadata:check
 pnpm metadata:sync
 ```
 
-Generated ADAMANT API DTOs follow the same pinned workflow for `adamant-schema`:
+Generated ADAMANT API DTOs follow the same pinned workflow from the ADAMANT Node OpenAPI specification (`Adamant-im/adamant/openapi`):
 
 ```sh
 pnpm api-types:check
@@ -122,7 +122,7 @@ pnpm api-types:sync
 
 ## Reliability
 
-`AdamantApi` checks configured nodes through the node status endpoint and selects a live node at an actual blockchain height. Safe GET failures can be retried against another healthy node. POST requests are retried only when no HTTP response was received; an explicitly rejected POST is never replayed automatically, avoiding pointless retries for validation errors.
+`AdamantApi` checks configured nodes through the node status endpoint and selects a live node at an actual blockchain height. Safe GET failures (including HTTP `429 Too Many Requests` rate limits on ADAMANT Node v0.11.0+) fail over to another healthy node or wait a bounded `Retry-After` backoff when staying on the same node. POST requests are retried only when no HTTP response was received; an explicitly rejected POST is never replayed automatically, avoiding pointless retries for validation errors or duplicate transactions.
 
 Applications should provide several independently operated HTTPS nodes and handle returned errors. Malformed responses, timeouts, and partial network outages must not be treated as successful requests.
 
@@ -166,8 +166,8 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for repository conventions, testing exp
 - [ADAMANT documentation](https://docs.adamant.im/)
 - [ADAMANT Improvement Proposals](https://aips.adamant.im/all)
 - [ADAMANT Node](https://github.com/Adamant-im/adamant)
-- [ADAMANT API schema](https://schema.adamant.im/)
-- [ADAMANT schema source](https://github.com/Adamant-im/adamant-schema)
+- [ADAMANT API schema](https://docs.adamant.im/schema/)
+- [ADAMANT schema source](https://github.com/Adamant-im/adamant/tree/dev/openapi)
 - [ADAMANT wallet metadata](https://github.com/Adamant-im/adamant-wallets)
 - [ADAMANT blockchain explorer](https://explorer.adamant.im/)
 - [Package documentation and examples](https://js.docs.adamant.im)

@@ -34,6 +34,7 @@ export interface ActiveNode {
 
 const CHECK_NODES_INTERVAL = 60 * 5 * 1000; // Update active nodes every 5 minutes
 const HEIGHT_EPSILON = 5; // Used to group nodes by height and choose synced
+const MAX_NODE_RATE_LIMIT_COOLDOWN_MS = 60 * 1000; // Cap per-node 429 cooldown at 60s
 
 const hasMinVersion = (version: string | undefined, minVersion?: string) => {
   if (!minVersion) {
@@ -145,7 +146,11 @@ export class NodeManager {
   private onReadyCallback?: () => void;
 
   private initialized = false;
-  private isCheckingNodes = false;
+  private updateNodesPromise?: Promise<void>;
+  private pendingForcedUpdate = false;
+  private pendingFailedNode?: string;
+  /** Per-node HTTP 429 cooldown expiration timestamps (epoch ms). */
+  private readonly rateLimitedUntil = new Map<string, number>();
   /** Counts from the latest `checkNodes()` call, consumed by the next `chooseNode()`. */
   private notReadyCounts: NotReadyCounts = emptyNotReady();
 
@@ -219,34 +224,92 @@ export class NodeManager {
     });
   }
 
-  async updateNodes(isPlannedUpdate = false) {
-    if (this.isCheckingNodes) {
+  /**
+   * Records a temporary HTTP 429 cooldown for `node` so health checks and
+   * failovers prefer other synced nodes until the node's window resets.
+   */
+  protected markNodeRateLimited(node: string, cooldownMs: number) {
+    if (cooldownMs <= 0) {
       return;
     }
 
-    this.isCheckingNodes = true;
+    const boundedMs = Math.min(cooldownMs, MAX_NODE_RATE_LIMIT_COOLDOWN_MS);
+    const expiresAt = Date.now() + boundedMs;
+    const existing = this.rateLimitedUntil.get(node) ?? 0;
 
-    try {
-      if (!isPlannedUpdate) {
+    if (expiresAt > existing) {
+      this.rateLimitedUntil.set(node, expiresAt);
+    }
+  }
+
+  private isNodeRateLimited(node: string, now: number) {
+    const expiresAt = this.rateLimitedUntil.get(node);
+    if (expiresAt === undefined) {
+      return false;
+    }
+
+    if (expiresAt <= now) {
+      this.rateLimitedUntil.delete(node);
+      return false;
+    }
+
+    return true;
+  }
+
+  async updateNodes(isPlannedUpdate = false, failedNode?: string) {
+    if (!isPlannedUpdate) {
+      if (this.updateNodesPromise && !this.pendingForcedUpdate) {
         this.logger.warn(
           '[ADAMANT js-api] Health check: Forcing to update active nodes…',
         );
       }
-
-      const activeNodes = await this.checkNodes();
-      const selected = await this.chooseNode(activeNodes, !isPlannedUpdate);
-
-      if (!this.initialized && selected) {
-        this.ready();
+      this.pendingForcedUpdate = true;
+      if (failedNode) {
+        this.pendingFailedNode = failedNode;
       }
-    } finally {
-      this.isCheckingNodes = false;
+    }
+
+    if (this.updateNodesPromise) {
+      return this.updateNodesPromise;
+    }
+
+    this.updateNodesPromise = this.doUpdateNodes(
+      isPlannedUpdate,
+      failedNode,
+    ).finally(() => {
+      this.updateNodesPromise = undefined;
+      this.pendingForcedUpdate = false;
+      this.pendingFailedNode = undefined;
+    });
+
+    return this.updateNodesPromise;
+  }
+
+  private async doUpdateNodes(isPlannedUpdate: boolean, failedNode?: string) {
+    if (!isPlannedUpdate) {
+      this.logger.warn(
+        '[ADAMANT js-api] Health check: Forcing to update active nodes…',
+      );
+    }
+
+    const activeNodes = await this.checkNodes();
+    const forceChange = !isPlannedUpdate || this.pendingForcedUpdate;
+    const nodeToAvoid = this.pendingFailedNode ?? failedNode;
+    const selected = await this.chooseNode(
+      activeNodes,
+      forceChange,
+      nodeToAvoid,
+    );
+
+    if (!this.initialized && selected) {
+      this.ready();
     }
   }
 
   async chooseNode(
     activeNodes: ActiveNode[],
     forceChangeActiveNode?: boolean,
+    failedNode?: string,
   ): Promise<boolean> {
     const {logger, socket} = this;
     const notReady = this.takeNotReadyCounts();
@@ -333,21 +396,45 @@ export class NodeManager {
     this.hasCompatibleNode = true;
 
     let outOfSyncCount = 0;
+    const now = Date.now();
+    const nodeToAvoid = failedNode ?? this.node;
 
     if (activeNodesCount === 1) {
       this.node = compatibleNodes[0].node;
     } else if (activeNodesCount === 2) {
       const [h0, h1] = compatibleNodes;
 
-      this.node = h0.height > h1.height ? h0.node : h1.node;
-
       // Mark node outOfSync if needed
       if (h0.heightEpsilon > h1.heightEpsilon) {
         compatibleNodes[1].outOfSync = true;
         outOfSyncCount += 1;
+        this.node = h0.node;
       } else if (h0.heightEpsilon < h1.heightEpsilon) {
         compatibleNodes[0].outOfSync = true;
         outOfSyncCount += 1;
+        this.node = h1.node;
+      } else {
+        const nonRateLimited = compatibleNodes.filter(
+          candidate => !this.isNodeRateLimited(candidate.node, now),
+        );
+        const pool = nonRateLimited.length ? nonRateLimited : compatibleNodes;
+
+        if (pool.length === 1) {
+          this.node = pool[0].node;
+        } else if (
+          forceChangeActiveNode &&
+          failedNode &&
+          this.node !== failedNode &&
+          pool.some(candidate => candidate.node === this.node)
+        ) {
+          // Another request already failed over away from `failedNode`.
+        } else if (forceChangeActiveNode && nodeToAvoid === h0.node) {
+          this.node = h1.node;
+        } else if (forceChangeActiveNode && nodeToAvoid === h1.node) {
+          this.node = h0.node;
+        } else {
+          this.node = h0.height > h1.height ? h0.node : h1.node;
+        }
       }
     } else {
       // Removing lodash: const groups = _.groupBy(liveNodes, n => n.heightEpsilon);
@@ -389,17 +476,29 @@ export class NodeManager {
 
       biggestGroup.sort((a, b) => a.ping - b.ping);
 
+      const nonRateLimited = biggestGroup.filter(
+        candidate => !this.isNodeRateLimited(candidate.node, now),
+      );
+      const pool = nonRateLimited.length ? nonRateLimited : biggestGroup;
+
       if (
         forceChangeActiveNode &&
-        biggestGroup.length > 1 &&
-        this.node === biggestGroup[0].node
+        failedNode &&
+        this.node !== failedNode &&
+        pool.some(candidate => candidate.node === this.node)
       ) {
-        // Use random node from which are synced
-        const randomIndex = getRandomIntInclusive(1, biggestGroup.length - 1);
-        this.node = biggestGroup[randomIndex].node;
+        // Another request already failed over away from `failedNode`.
+      } else if (
+        forceChangeActiveNode &&
+        pool.length > 1 &&
+        nodeToAvoid === pool[0].node
+      ) {
+        // Use random node from synced candidates other than `nodeToAvoid`
+        const randomIndex = getRandomIntInclusive(1, pool.length - 1);
+        this.node = pool[randomIndex].node;
       } else {
-        // Use node with minimum ping among synced
-        this.node = biggestGroup[0].node;
+        // Use node with minimum ping among eligible synced nodes
+        this.node = pool[0].node;
       }
     }
 

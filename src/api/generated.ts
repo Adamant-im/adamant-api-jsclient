@@ -1,7 +1,7 @@
 /* eslint-disable */
-// Schema source: https://github.com/Adamant-im/adamant-schema/tree/f35b8ddb5597a8f1a80a3a670bedb003af65ef90
-// Bundler: @redocly/cli@2.34.0
-// Generator: swagger-typescript-api@13.12.2
+// Schema source: https://github.com/Adamant-im/adamant/tree/d9a07f173cd8cee8a3c212025a2f093d9cc4a607/openapi
+// Bundler: @redocly/cli@2.78.0
+// Generator: swagger-typescript-api@13.14.0
 /* tslint:disable */
 /*
  * ---------------------------------------------------------------
@@ -11,6 +11,14 @@
  * ## SOURCE: https://github.com/acacode/swagger-typescript-api ##
  * ---------------------------------------------------------------
  */
+
+/** Error body returned when a request exceeds an active node HTTP anti-abuse limit (HTTP 429). Unlike ordinary validation errors, this response omits `nodeTimestamp`. The `error` string is operator-configurable via `api.options.limits.message` or `peers.options.limits.message`. Treat HTTP 429 as bounded temporary backpressure and wait for `Retry-After` or `RateLimit-Reset` before retrying, rather than treating the request as permanently invalid. */
+export interface RateLimitErrorResponseDto {
+  /** @example false */
+  success: false;
+  /** @example "Too many requests, please try again later." */
+  error: string;
+}
 
 export type ClientWebSocketAddressSubscription = AddressSubscription;
 
@@ -442,6 +450,39 @@ export interface GetNodeStatusResponseDto {
   wsClient: WsClient;
 }
 
+/** Filter payload for `POST /api/states/get`. All filters combine with AND; `and:`-prefixed field names are accepted as aliases for plain field names, while `or:` filters, unknown fields, and conflicting plain/`and:` values are rejected. */
+export interface GetKVSRequestBody {
+  /** @example 0 */
+  type?: 0 | 1;
+  /** @example "U14236667426471084862" */
+  senderId?: string;
+  /** Array of ADAMANT sender addresses or a comma-separated string. */
+  senderIds?: string[] | string;
+  /** @example "eth:address" */
+  key?: string;
+  /** Array of KVS keys or a comma-separated string. */
+  keyIds?: string[] | string;
+  /** @min 1 */
+  fromHeight?: number;
+  /** @min 1 */
+  toHeight?: number;
+  /** @example "timestamp:desc" */
+  orderBy?: string;
+  /**
+   * @min 1
+   * @max 1000
+   * @default 100
+   */
+  limit?: number;
+  /**
+   * @min 0
+   * @default 0
+   */
+  offset?: number;
+  /** @default 0 */
+  returnUnconfirmed?: 0 | 1;
+}
+
 export interface GetKVSResponseDto {
   transactions: KVSTransaction[];
   /** @example 1 */
@@ -627,7 +668,7 @@ export interface BaseTransaction {
   height: number;
   blockId: string;
   /**
-   * Type of transaction. See [Transaction Types](https://github.com/Adamant-im/adamant/wiki/Transaction-Types).
+   * Type of transaction. See [Transaction Types](https://docs.adamant.im/api-types/transaction-types.html).
    * @min 0
    * @max 9
    * @example 0
@@ -647,7 +688,7 @@ export interface BaseTransaction {
    * @format int64
    */
   amount: number;
-  /** Fee for operation. Depends on [Transaction Type](https://github.com/Adamant-im/adamant/wiki/Transaction-Types) */
+  /** Fee for operation. Depends on [Transaction Type](https://docs.adamant.im/api-types/transaction-types.html) */
   fee: number;
   signature: string;
   signatures: string[];
@@ -680,7 +721,7 @@ export interface ChatMessageAsset {
     message: string;
     /** Nonce */
     own_message: string;
-    /** Type of chat message (1 - Basic Encrypted Message, 2 - Rich Content Message, 3 - Signal Message). See details https://github.com/Adamant-im/adamant/wiki/Message-Types */
+    /** Type of chat message (1 - Basic Encrypted Message, 2 - Rich Content Message, 3 - Signal Message). See details https://docs.adamant.im/api-types/message-types.html */
     type: 1 | 2 | 3;
   };
 }
@@ -781,7 +822,7 @@ export interface QueuedTransaction {
   /** @example 0 */
   amount: number;
   /**
-   * See [Transaction Types](https://github.com/Adamant-im/adamant/wiki/Transaction-Types)
+   * See [Transaction Types](https://docs.adamant.im/api-types/transaction-types.html)
    * @min 0
    * @max 9
    * @example 3

@@ -199,6 +199,324 @@ describe('AdamantApi HTTP requests', () => {
     });
     expect(request).not.toHaveBeenCalled();
   });
+
+  test('fails over to another node immediately on GET HTTP 429', async () => {
+    const logger = createLogger();
+    const api = new AdamantApi({
+      nodes: ['https://node1.example', 'https://node2.example'],
+      checkHealthAtStartup: false,
+      maxRetries: 1,
+      logger,
+    });
+    jest.spyOn(api, 'updateNodes').mockImplementation(async () => {
+      api.node = 'https://node2.example';
+    });
+    request
+      .mockRejectedValueOnce(
+        new AxiosError('too many requests', undefined, undefined, undefined, {
+          status: 429,
+          headers: {
+            'retry-after': '15',
+            'ratelimit-scope': 'read',
+          },
+          data: {
+            success: false,
+            error: 'Too many requests, please try again later.',
+          },
+        } as never),
+      )
+      .mockResolvedValueOnce({data: {success: true, count: 1}});
+
+    await expect(api.get('blocks')).resolves.toEqual({success: true, count: 1});
+    expect(api.updateNodes).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(request).toHaveBeenLastCalledWith({
+      method: 'GET',
+      url: 'https://node2.example/api/blocks',
+      params: undefined,
+    });
+    expect(logger.log).toHaveBeenCalledWith(
+      expect.stringContaining('HTTP 429 (scope: read, retry after: 15s)'),
+    );
+  });
+
+  test('waits bounded Retry-After on GET HTTP 429 when staying on the same node', async () => {
+    jest.useFakeTimers();
+    const random = jest.spyOn(Math, 'random').mockReturnValue(0);
+    try {
+      const api = createApi(1);
+      jest.spyOn(api, 'updateNodes').mockResolvedValue();
+      request
+        .mockRejectedValueOnce(
+          new AxiosError('too many requests', undefined, undefined, undefined, {
+            status: 429,
+            headers: {
+              'retry-after': '2',
+              'ratelimit-scope': 'read',
+            },
+            data: {
+              success: false,
+              error: 'Too many requests, please try again later.',
+            },
+          } as never),
+        )
+        .mockResolvedValueOnce({data: {success: true}});
+
+      const pending = api.get('blocks');
+      await jest.advanceTimersByTimeAsync(2000);
+
+      await expect(pending).resolves.toEqual({success: true});
+      expect(request).toHaveBeenCalledTimes(2);
+    } finally {
+      random.mockRestore();
+      jest.useRealTimers();
+    }
+  });
+
+  test('supports RateLimit-Reset and HTTP-date Retry-After headers on GET HTTP 429', async () => {
+    jest.useFakeTimers();
+    const random = jest.spyOn(Math, 'random').mockReturnValue(0);
+    try {
+      const api = createApi(1);
+      jest.spyOn(api, 'updateNodes').mockResolvedValue();
+      request
+        .mockRejectedValueOnce(
+          new AxiosError('too many requests', undefined, undefined, undefined, {
+            status: 429,
+            headers: {
+              'ratelimit-reset': '1',
+            },
+            data: {
+              success: false,
+              error: 'Too many requests, please try again later.',
+            },
+          } as never),
+        )
+        .mockResolvedValueOnce({data: {success: true}});
+
+      const pending = api.get('blocks');
+      await jest.advanceTimersByTimeAsync(1000);
+      await expect(pending).resolves.toEqual({success: true});
+
+      const futureDate = new Date(Date.now() + 1000).toUTCString();
+      request
+        .mockRejectedValueOnce(
+          new AxiosError('too many requests', undefined, undefined, undefined, {
+            status: 429,
+            headers: {
+              'retry-after': futureDate,
+            },
+            data: {
+              success: false,
+              error: 'Too many requests, please try again later.',
+            },
+          } as never),
+        )
+        .mockResolvedValueOnce({data: {success: true}});
+
+      const pendingDate = api.get('blocks');
+      await jest.advanceTimersByTimeAsync(1000);
+      await expect(pendingDate).resolves.toEqual({success: true});
+    } finally {
+      random.mockRestore();
+      jest.useRealTimers();
+    }
+  });
+
+  test('returns normalized 429 error with rate-limit metadata when single-node Retry-After exceeds bounded wait', async () => {
+    const api = createApi(1);
+    jest.spyOn(api, 'updateNodes').mockResolvedValue();
+    request.mockRejectedValueOnce(
+      new AxiosError('too many requests', undefined, undefined, undefined, {
+        status: 429,
+        headers: {
+          'retry-after': '60',
+          'ratelimit-scope': 'all',
+        },
+        data: {
+          success: false,
+          error: 'Too many requests, please try again later.',
+        },
+      } as never),
+    );
+
+    await expect(api.get('blocks')).resolves.toEqual({
+      success: false,
+      errorMessage: 'Too many requests, please try again later.',
+      status: 429,
+      retryAfterMs: 60_000,
+      rateLimitScope: 'all',
+    });
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  test('fails over both concurrent GET requests on HTTP 429 without flipping back', async () => {
+    const api = new AdamantApi({
+      nodes: ['https://node1.example', 'https://node2.example'],
+      checkHealthAtStartup: false,
+      maxRetries: 1,
+      logger: createLogger(),
+    });
+    jest.spyOn(api, 'checkNodes').mockResolvedValue([
+      {
+        node: 'https://node1.example',
+        ping: 1,
+        baseURL: 'node1.example',
+        ip: '192.0.2.1',
+        isHttps: true,
+        height: 100,
+        heightEpsilon: 20,
+        socketSupport: true,
+        wsPort: 36667,
+        version: '0.11.0',
+      },
+      {
+        node: 'https://node2.example',
+        ping: 5,
+        baseURL: 'node2.example',
+        ip: '192.0.2.2',
+        isHttps: true,
+        height: 100,
+        heightEpsilon: 20,
+        socketSupport: true,
+        wsPort: 36667,
+        version: '0.11.0',
+      },
+    ]);
+
+    const rateLimitError = new AxiosError(
+      'too many requests',
+      undefined,
+      undefined,
+      undefined,
+      {
+        status: 429,
+        headers: {
+          'retry-after': '30',
+          'ratelimit-scope': 'read',
+        },
+        data: {
+          success: false,
+          error: 'Too many requests, please try again later.',
+        },
+      } as never,
+    );
+
+    request.mockImplementation(((config: unknown) => {
+      const url = (config as {url?: string}).url ?? '';
+      if (url.startsWith('https://node1.example')) {
+        return Promise.reject(rateLimitError);
+      }
+
+      return Promise.resolve({data: {success: true, from: url}});
+    }) as never);
+
+    const [first, second] = await Promise.all([
+      api.get('blocks'),
+      api.get('blocks'),
+    ]);
+
+    expect(first).toEqual({
+      success: true,
+      from: 'https://node2.example/api/blocks',
+    });
+    expect(second).toEqual({
+      success: true,
+      from: 'https://node2.example/api/blocks',
+    });
+    expect(api.node).toBe('https://node2.example');
+    expect(api.checkNodes).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not flip back when a late HTTP 429 arrives after another request already failed over', async () => {
+    const api = new AdamantApi({
+      nodes: ['https://node1.example', 'https://node2.example'],
+      checkHealthAtStartup: false,
+      maxRetries: 2,
+      logger: createLogger(),
+    });
+    const updateSpy = jest
+      .spyOn(api, 'updateNodes')
+      .mockImplementation(async () => {
+        api.node =
+          api.node === 'https://node1.example'
+            ? 'https://node2.example'
+            : 'https://node1.example';
+      });
+
+    let rejectLate!: (err: unknown) => void;
+    const rateLimitError = new AxiosError(
+      'too many requests',
+      undefined,
+      undefined,
+      undefined,
+      {
+        status: 429,
+        headers: {'retry-after': '30', 'ratelimit-scope': 'read'},
+        data: {
+          success: false,
+          error: 'Too many requests, please try again later.',
+        },
+      } as never,
+    );
+
+    request
+      .mockRejectedValueOnce(rateLimitError)
+      .mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            rejectLate = reject;
+          }),
+      )
+      .mockResolvedValue({data: {success: true}});
+
+    const reqA = api.get('blocks');
+    const reqB = api.get('blocks');
+
+    await expect(reqA).resolves.toEqual({success: true});
+    expect(api.node).toBe('https://node2.example');
+
+    rejectLate(rateLimitError);
+    await expect(reqB).resolves.toEqual({success: true});
+    expect(api.node).toBe('https://node2.example');
+    expect(updateSpy).toHaveBeenCalledTimes(1);
+    expect(
+      request.mock.calls.map(([c]) => (c as unknown as {url: string}).url),
+    ).toEqual([
+      'https://node1.example/api/blocks',
+      'https://node1.example/api/blocks',
+      'https://node2.example/api/blocks',
+      'https://node2.example/api/blocks',
+    ]);
+  });
+
+  test('does not replay POST requests on HTTP 429 and exposes rate-limit metadata', async () => {
+    const api = createApi(2);
+    jest.spyOn(api, 'updateNodes').mockResolvedValue();
+    request.mockRejectedValueOnce(
+      new AxiosError('too many requests', undefined, undefined, undefined, {
+        status: 429,
+        headers: {
+          'retry-after': '1',
+          'ratelimit-scope': 'publish',
+        },
+        data: {
+          success: false,
+          error: 'Too many requests, please try again later.',
+        },
+      } as never),
+    );
+
+    await expect(api.post('transactions', {})).resolves.toEqual({
+      success: false,
+      errorMessage: 'Too many requests, please try again later.',
+      status: 429,
+      retryAfterMs: 1000,
+      rateLimitScope: 'publish',
+    });
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(api.updateNodes).not.toHaveBeenCalled();
+  });
 });
 
 describe('AdamantApi transaction methods', () => {
@@ -707,6 +1025,7 @@ describe('transaction query serialization across endpoints', () => {
         senderId: 'U111',
         type: 8,
         fromHeight: 100,
+        toHeight: 200,
         limit: 20,
         orderBy: 'timestamp:desc',
         and: {recipientId: 'U222'},
@@ -716,6 +1035,7 @@ describe('transaction query serialization across endpoints', () => {
         senderId: 'U111',
         type: 8,
         fromHeight: 100,
+        toHeight: 200,
         recipientId: 'U222',
         limit: 20,
         orderBy: 'timestamp:desc',
@@ -732,8 +1052,10 @@ describe('transaction query serialization across endpoints', () => {
         minAmount: 1000,
       });
 
-      // The SDK does not strip unsupported filters; it still serializes them,
-      // but the node ignores `minAmount` for this endpoint.
+      // Narrowing filters are intentionally forwarded rather than silently
+      // stripped: ADAMANT Node v0.11.0+ rejects unsupported filters instead of
+      // returning silently broadened results, while TypeScript catches them at
+      // compile time.
       expect(get).toHaveBeenLastCalledWith('chats/get', {
         type: 8,
         minAmount: 1000,
@@ -763,8 +1085,13 @@ describe('transaction query serialization across endpoints', () => {
       });
     });
 
-    test('getChatMessages sends plain filters and keeps `userId` as an option', async () => {
-      const api = createApi();
+    test('getChatMessages sends plain filters and strips deprecated `userId` with a warning', async () => {
+      const logger = createLogger();
+      const api = new AdamantApi({
+        nodes: ['https://node.example'],
+        checkHealthAtStartup: false,
+        logger,
+      });
       const get = spyGet(api);
 
       await api.getChatMessages('U123', 'U456', {
@@ -777,12 +1104,14 @@ describe('transaction query serialization across endpoints', () => {
       expect(get).toHaveBeenLastCalledWith('chatrooms/U123/U456', {
         type: 8,
         senderId: 'U123',
-        userId: 'U123',
         limit: 5,
       });
+      expect(logger.warn).toHaveBeenCalledWith(
+        '[ADAMANT js-api] `userId` is deprecated: ADAMANT Node v0.11.0+ rejects it on /api/chatrooms/*; the address is taken from the URL path and this parameter was ignored.',
+      );
     });
 
-    test('rejects amount filters at the type level (chatrooms supports `type` only)', async () => {
+    test('rejects unsupported filters at the type level on chatrooms', async () => {
       const api = createApi();
       const get = spyGet(api);
 
@@ -795,6 +1124,17 @@ describe('transaction query serialization across endpoints', () => {
       expect(get).toHaveBeenLastCalledWith('chatrooms/U123456', {
         type: 8,
         maxAmount: 5000,
+      });
+
+      await api.getChats('U123456', {
+        type: 8,
+        // @ts-expect-error `/api/chatrooms` does not support height filters in v0.11.0
+        fromHeight: 100,
+      });
+
+      expect(get).toHaveBeenLastCalledWith('chatrooms/U123456', {
+        type: 8,
+        fromHeight: 100,
       });
     });
   });
@@ -809,6 +1149,8 @@ describe('transaction query serialization across endpoints', () => {
         keyIds: ['eth:address', 'doge:address'],
         senderId: 'U111',
         senderIds: ['U111', 'U222'],
+        fromHeight: 100,
+        toHeight: 500,
         limit: 10,
         orderBy: 'timestamp:desc',
         and: {type: 9},
@@ -819,9 +1161,68 @@ describe('transaction query serialization across endpoints', () => {
         keyIds: ['eth:address', 'doge:address'],
         senderId: 'U111',
         senderIds: ['U111', 'U222'],
+        fromHeight: 100,
+        toHeight: 500,
         type: 9,
         limit: 10,
         orderBy: 'timestamp:desc',
+      });
+    });
+
+    test('supports POST /api/states/get for large KVS queries with idempotent failover', async () => {
+      const api = new AdamantApi({
+        nodes: ['https://node1.example', 'https://node2.example'],
+        checkHealthAtStartup: false,
+        maxRetries: 2,
+        logger: createLogger(),
+      });
+      jest.spyOn(api, 'updateNodes').mockImplementation(async () => {
+        api.node = 'https://node2.example';
+      });
+      request
+        .mockRejectedValueOnce(
+          new AxiosError('too many requests', undefined, undefined, undefined, {
+            status: 429,
+            headers: {'retry-after': '15', 'ratelimit-scope': 'read'},
+            data: {
+              success: false,
+              error: 'Too many requests, please try again later.',
+            },
+          } as never),
+        )
+        .mockRejectedValueOnce(
+          new AxiosError('unavailable', undefined, undefined, undefined, {
+            status: 503,
+          } as never),
+        )
+        .mockResolvedValueOnce({
+          data: {
+            success: true,
+            transactions: [],
+            count: 0,
+          },
+        });
+
+      const result = await api.getKVS(
+        {
+          keyIds: ['eth:address', 'btc:address'],
+          senderIds: ['U111', 'U222'],
+          toHeight: 500,
+          limit: 50,
+        },
+        {method: 'POST'},
+      );
+
+      expect(result).toEqual({success: true, transactions: [], count: 0});
+      expect(request).toHaveBeenLastCalledWith({
+        method: 'POST',
+        url: 'https://node2.example/api/states/get',
+        data: {
+          keyIds: ['eth:address', 'btc:address'],
+          senderIds: ['U111', 'U222'],
+          toHeight: 500,
+          limit: 50,
+        },
       });
     });
 

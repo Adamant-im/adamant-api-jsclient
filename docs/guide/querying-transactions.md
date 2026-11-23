@@ -38,20 +38,24 @@ To restore the previous behavior for a transaction query, wrap the fields in
 
 Pagination and control parameters are not filters. The SDK now scopes them by
 endpoint: transaction controls such as `returnAsset` are sent only to
-`/api/transactions`, while `includeDirectTransfers`,
-`withoutDirectTransfers`, and `userId` are sent only to the chat endpoints that
-support them. If plain JavaScript passes a known control to the wrong typed
-method, the SDK strips it instead of constructing a request the node rejects.
+`/api/transactions`, while `includeDirectTransfers` and the deprecated
+`withoutDirectTransfers` are sent only to the chat endpoints that support them.
+Starting in ADAMANT Node `v0.11.0`, passing `userId` as a query parameter on
+`/api/chatrooms/*` is rejected (the account address belongs in the URL path),
+so the SDK strips `userId` with a warning. If plain JavaScript passes a known
+control to the wrong typed method, the SDK strips it instead of constructing a
+request the node rejects.
 
 ### Chat and KVS endpoints use plain filter names
 
 `getKVS` (`/api/states/get`), `getChatTransactions` (`/api/chats/get`),
-`getChats`, and `getChatMessages` (`/api/chatrooms`) already combine plain
-filter names with **`and`**. Released ADAMANT Node versions ignore `and:` and
+`getChats`, and `getChatMessages` (`/api/chatrooms`) combine plain filter names
+with **`and`**. ADAMANT Node versions older than `v0.11.0` ignore `and:` and
 `or:` prefixes on these endpoints and still answer `success: true` with
-unfiltered data ([Adamant-im/adamant#277](https://github.com/Adamant-im/adamant/issues/277)).
-A prefixed `getKVS()` call therefore returns records from the whole network.
-The SDK sends the plain names:
+unfiltered data ([Adamant-im/adamant#277](https://github.com/Adamant-im/adamant/issues/277)),
+while `v0.11.0` and newer normalize `and:` and strictly reject `or:` and
+unknown query fields ([Adamant-im/adamant#294](https://github.com/Adamant-im/adamant/pull/294)).
+The SDK always sends the plain names:
 
 ```ts
 await api.getKVS({
@@ -62,15 +66,24 @@ await api.getKVS({
 // GET /api/states/get?senderId=U16655734187932477074&key=eth:address&orderBy=timestamp:desc
 ```
 
+For large `keyIds` or `senderIds` queries that would exceed URL length limits,
+pass `{method: 'POST'}` to use `POST /api/states/get`:
+
+```ts
+await api.getKVS(
+  {
+    senderIds: ['U16655734187932477074', 'U15423595369615486571'],
+    keyIds: ['eth:address', 'btc:address', 'doge:address'],
+    toHeight: 55_000_000,
+  },
+  {method: 'POST'},
+);
+```
+
 An explicit `and: { ... }` wrapper is accepted and flattened to those same
 plain names. An `or: { ... }` wrapper is rejected with `success: false`,
-because these endpoints have no `or` combiner. Sending the prefix anyway would
-make the node ignore the filter.
-
-Plain names stay the correct request after Adamant-im/adamant#277 is fixed.
-They are the documented form and work on every node version. The SDK does not
-switch these endpoints to `and:` prefixes if a future node starts accepting
-prefixes.
+because these endpoints have no `or` combiner. Plain names work identically
+across every ADAMANT Node version.
 
 ### Opting into `or`
 
@@ -135,15 +148,14 @@ methods reject `or` instead of sending it.
 
 ## Filter support is endpoint-specific
 
-Not every filter is valid on every endpoint. The node does not reject unknown
-query fields, but each endpoint only _applies_ a subset of them — passing a
-filter an endpoint ignores simply has no effect. The table below was verified
-against the node's per-endpoint query builders, not just the
-[query-language docs](https://docs.adamant.im/api/transactions-query-language.html).
-
-The most important difference: **amount filters (`minAmount` / `maxAmount`) are
-honored only by `/api/transactions`.** The SDK enforces this at the type level,
-so they are a compile error on the chat and KVS methods:
+Not every filter is valid on every endpoint. Pre-`v0.11.0` nodes silently
+ignored unknown fields on chat and KVS endpoints, whereas ADAMANT Node
+`v0.11.0` and newer **strictly reject** unsupported fields (including
+`fromHeight` / `toHeight` and query `userId` on `/api/chatrooms/*`, `blockId`,
+timestamp/amount/fee filters, `minConfirmations`, and misspelled `keysIds`).
+The SDK models each endpoint's accepted filters with its own TypeScript option
+type (`TransactionsOptions`, `ChatTransactionsOptions`, `ChatroomsOptions`, and
+`KVSOptions`) so unsupported fields fail at compile time:
 
 ```ts
 await api.getTransactions({minAmount: 1000}); // OK
@@ -155,16 +167,15 @@ await api.getChatTransactions({minAmount: 1000});
 | Method (endpoint)                                 | Filters the node actually applies                                                | Names sent on the wire                         |
 | ------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------- |
 | `getTransactions` (`/api/transactions`)           | the full set, including `minAmount` / `maxAmount`, `types`, height & time ranges | top-level filters as `and:`; `or` is supported |
-| `getChatTransactions` (`/api/chats/get`)          | `type`, `senderId`, `recipientId`, `inId` / `isIn`, `fromHeight`                 | plain names; `or` is rejected                  |
-| `getChats` / `getChatMessages` (`/api/chatrooms`) | `type`, `senderId`, `recipientId`, `userId`, plus the direct-transfer toggle     | plain names; `or` is rejected                  |
-| `getKVS` (`/api/states/get`)                      | `type`, `key`, `keyIds`, `senderId`, `senderIds`, `fromHeight`                   | plain names; `or` is rejected                  |
+| `getChatTransactions` (`/api/chats/get`)          | `type`, `senderId`, `recipientId`, `inId` / `isIn`, `fromHeight`, `toHeight`     | plain names; `or` is rejected                  |
+| `getChats` / `getChatMessages` (`/api/chatrooms`) | `type`, `senderId`, `recipientId`, plus the direct-transfer toggle               | plain names; `or` is rejected                  |
+| `getKVS` (`/api/states/get`, `GET` or `POST`)     | `type`, `key`, `keyIds`, `senderId`, `senderIds`, `fromHeight`, `toHeight`       | plain names; `or` is rejected                  |
 
 All endpoints also accept the pagination/control options (`limit`, `offset`,
-`orderBy`, `returnUnconfirmed`; `returnAsset` on `/api/transactions`). Beyond
-the amount filters, the SDK forwards endpoint-inappropriate filter fields and
-the node ignores anything it does not apply. Known control parameters from a
-different endpoint are instead dropped so they cannot become prefixed filters;
-the SDK warns at most once per endpoint and parameter when this happens.
+`orderBy`, `returnUnconfirmed`; `returnAsset` on `/api/transactions`). Known
+control parameters from a different endpoint (including legacy `userId`) are
+dropped so they cannot trigger node validation errors; the SDK warns at most
+once per endpoint and parameter when this happens.
 
 ## Filtering by multiple transaction types
 
