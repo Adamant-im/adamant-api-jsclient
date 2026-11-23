@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Schema source: https://github.com/Adamant-im/adamant/tree/d9a07f173cd8cee8a3c212025a2f093d9cc4a607/openapi
+// Schema source: https://github.com/Adamant-im/adamant/tree/50568f37dc2b7da86f44991f96c40c8edde74d67/openapi
 // Bundler: @redocly/cli@2.78.0
 // Generator: swagger-typescript-api@13.14.0
 /* tslint:disable */

@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 
 const require = createRequire(import.meta.url);
 const repository = 'Adamant-im/adamant';
-const revision = 'd9a07f173cd8cee8a3c212025a2f093d9cc4a607';
+const revision = '50568f37dc2b7da86f44991f96c40c8edde74d67';
 const schemaSubpath = 'openapi/specification/openapi.yaml';
 const bundlerVersion = require('@redocly/cli/package.json').version;
 const generatorVersion = require('swagger-typescript-api/package.json').version;
