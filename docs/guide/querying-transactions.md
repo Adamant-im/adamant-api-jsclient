@@ -81,9 +81,10 @@ await api.getKVS(
 ```
 
 An explicit `and: { ... }` wrapper is accepted and flattened to those same
-plain names. An `or: { ... }` wrapper is rejected with `success: false`,
-because these endpoints have no `or` combiner. Plain names work identically
-across every ADAMANT Node version.
+plain names. An `or: { ... }` wrapper or pre-prefixed `and:` / `or:` filter
+keys (such as `'and:senderId'`) are rejected with `success: false`, because
+these endpoints have no `or` combiner and older nodes ignore prefixed filter
+keys. Plain names work identically across every ADAMANT Node version.
 
 ### Opting into `or`
 
@@ -176,6 +177,14 @@ All endpoints also accept the pagination/control options (`limit`, `offset`,
 control parameters from a different endpoint (including legacy `userId`) are
 dropped so they cannot trigger node validation errors; the SDK warns at most
 once per endpoint and parameter when this happens.
+
+::: tip `toHeight` on `getKVS` and `getChatTransactions` requires Node `v0.11.0+`
+`toHeight` on `/api/states/get` and `/api/chats/get` is applied only by ADAMANT
+Node `v0.11.0` and newer. Pre-`v0.11.0` nodes silently ignore `toHeight` and
+return newer records with `success: true`. Set `minVersion: '0.11.0'` when
+creating `AdamantApi` if your application relies on an upper height bound on
+these endpoints.
+:::
 
 ## Filtering by multiple transaction types
 

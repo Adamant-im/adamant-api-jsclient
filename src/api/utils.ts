@@ -64,6 +64,8 @@ const DEPRECATED_CONTROL_WARNINGS = new Map<string, string>([
 /**
  * Returns the warning message logged when a known query control parameter is
  * ignored for `endpoint`.
+ *
+ * @internal
  */
 export const getUnsupportedTransactionQueryControlWarning = (
   control: string,
@@ -85,6 +87,8 @@ const KNOWN_CONTROL_PARAMETERS = new Set([
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const FILTER_OPERATOR_PREFIX = /^(and|or):/i;
+
 const andOnlyQueryPath = (endpoint: TransactionQueryEndpoint) => {
   switch (endpoint) {
     case 'chatrooms':
@@ -100,12 +104,15 @@ const andOnlyQueryPath = (endpoint: TransactionQueryEndpoint) => {
 
 /**
  * Chat and KVS endpoints combine plain filter names with `and`. Pre-v0.11.0
- * nodes ignore `and:` / `or:` prefixes, while ADAMANT Node v0.11.0+ strictly
- * rejects `or:` prefixes. An `or` wrapper is rejected client-side so those
- * prefixes are never sent. `/api/transactions` is unchanged and still accepts
- * `or`.
+ * nodes ignore `and:` / `or:` prefixes (returning unfiltered records with
+ * `success: true`), while ADAMANT Node v0.11.0+ strictly rejects `or:`
+ * prefixes. Reject both `or` wrappers and pre-prefixed `and:` / `or:` filter
+ * keys client-side so those prefixes are never sent. `/api/transactions` is
+ * unchanged and still accepts `or`.
  *
  * Returns `undefined` when the query can be serialized.
+ *
+ * @internal
  */
 export const unsupportedOrQueryResult = <T extends object>(
   obj: TransactionQuery<T> | undefined,
@@ -113,17 +120,39 @@ export const unsupportedOrQueryResult = <T extends object>(
 ): {success: false; errorMessage: string} | undefined => {
   const path = andOnlyQueryPath(endpoint);
 
-  if (!path || !obj || !hasOwnProperty(obj, 'or') || !isRecord(obj.or)) {
+  if (!path || !obj) {
     return undefined;
   }
 
-  const {errorMessage} = badParameter(
-    'or',
-    undefined,
-    `${path} does not support or filters. Pass plain filter names; ADAMANT Node combines them with and`,
-  );
+  if (hasOwnProperty(obj, 'or') && isRecord(obj.or)) {
+    const {errorMessage} = badParameter(
+      'or',
+      undefined,
+      `${path} does not support or filters. Pass plain filter names; ADAMANT Node combines them with and`,
+    );
 
-  return {success: false, errorMessage};
+    return {success: false, errorMessage};
+  }
+
+  for (const container of [obj, obj.and]) {
+    if (!isRecord(container)) {
+      continue;
+    }
+
+    for (const property of Object.keys(container)) {
+      if (FILTER_OPERATOR_PREFIX.test(property)) {
+        const {errorMessage} = badParameter(
+          property,
+          undefined,
+          `${path} does not support prefixed filter names. Pass plain filter names; ADAMANT Node combines them with and`,
+        );
+
+        return {success: false, errorMessage};
+      }
+    }
+  }
+
+  return undefined;
 };
 
 const hasFilterProperties = (value: unknown): boolean =>
@@ -198,8 +227,9 @@ export const hasMixedTransactionQueryGroups = <T extends object>(
  * while ADAMANT Node v0.11.0+ normalizes `and:` and strictly rejects `or:` and
  * unknown query fields (Adamant-im/adamant#294). An explicit `and` wrapper is
  * flattened to plain names, which work across every node version. An `or`
- * wrapper throws the same `badParameter` message the client methods return,
- * so an unsupported prefix is never sent.
+ * wrapper or pre-prefixed `and:` / `or:` filter key throws the same
+ * `badParameter` message the client methods return, so unsupported prefixes
+ * are never sent.
  *
  * Control and pagination parameters supported by the selected endpoint are
  * passed through unchanged. Known controls unsupported by that endpoint are

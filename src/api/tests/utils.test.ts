@@ -209,6 +209,40 @@ describe('transformTransactionQuery', () => {
     expect(unsupportedOrQueryResult(query, 'transactions')).toBeUndefined();
     expect(unsupportedOrQueryResult(undefined, 'chats')).toBeUndefined();
   });
+
+  it('rejects pre-prefixed and:/or: filter keys on states, chats, and chatrooms', () => {
+    const prefixedTopLevel: Record<string, unknown> = {
+      'and:senderId': 'U111',
+      key: 'eth:address',
+    };
+    const prefixedInsideAnd: Record<string, unknown> = {
+      and: {'or:senderId': 'U111'},
+    };
+    const mixedCasePrefixed: Record<string, unknown> = {'AND:senderId': 'U111'};
+
+    for (const endpoint of ['states', 'chats', 'chatrooms'] as const) {
+      for (const query of [
+        prefixedTopLevel,
+        prefixedInsideAnd,
+        mixedCasePrefixed,
+      ]) {
+        const rejection = unsupportedOrQueryResult(query, endpoint);
+        expect(rejection).toEqual({
+          success: false,
+          errorMessage: expect.stringContaining(
+            'does not support prefixed filter names',
+          ),
+        });
+        expect(() => transformTransactionQuery(query, endpoint)).toThrow(
+          rejection?.errorMessage,
+        );
+      }
+    }
+
+    expect(
+      unsupportedOrQueryResult(prefixedTopLevel, 'transactions'),
+    ).toBeUndefined();
+  });
 });
 
 describe('getUnsupportedTransactionQueryControls', () => {

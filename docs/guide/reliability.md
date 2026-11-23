@@ -23,15 +23,24 @@ All expected failures use the normalized
 - Nodes below `minVersion` (inclusive) are reported and excluded from both API
   and WebSocket selection.
 - A node that reports `loader.loaded: false` or `loader.syncing: true` is not
-  an active node. Status responses without a `loader` object stay eligible, so
-  older nodes that do not send it can still be selected.
+  selected as a primary active node. Status responses without a `loader` object
+  stay eligible, so older nodes that do not send it can still be selected. If
+  an already-initialized client loses all fully synced nodes, it falls back
+  with a warning to a `minVersion`-compatible loaded-but-syncing node rather
+  than staying stuck on an offline node; `loaded: false` nodes are never
+  selected.
+- Malformed `{success: true}` status payloads missing required fields
+  (`network.height`, `version.version`, or `wsClient`) are ignored with a
+  warning so a misbehaving node cannot abort the health sweep.
 - Node selection is height-aware: nodes that lag behind the network's actual
   height are not used.
-- `onReady` runs only after a usable node is selected. It does not run when
-  every node is unavailable, below `minVersion`, or still loading or syncing.
-  The next periodic health check runs the callback once such a node appears.
-  With `checkHealthAtStartup: false`, selection is skipped and `onReady` runs
-  immediately.
+- `onReady` runs (and `api.isReady` becomes `true`) only after a usable node is
+  selected. It does not run when every node is unavailable, below `minVersion`,
+  or still loading or syncing. While startup readiness is pending, the SDK
+  retries with capped backoff (`5s`, `10s`, `30s`, `60s`) instead of waiting
+  for the 5-minute periodic sweep, firing `onReady` as soon as a usable node
+  appears. With `checkHealthAtStartup: false`, selection is skipped and
+  `onReady` runs immediately.
 
 ## Retries and rate limits
 
@@ -45,12 +54,14 @@ All expected failures use the normalized
   `v0.11.0`): the SDK records a per-node cooldown (capped at 60 seconds) so
   subsequent forced and planned health checks prefer non-rate-limited synced
   nodes even though `/api/node/status` uses a separate `status` bucket. For
-  idempotent reads, the SDK fails over immediately when another synced node is
-  available; if the active node remains the same (for example, in a single-node
-  configuration), it honors `Retry-After` / `RateLimit-Reset` with jitter up to
-  a bounded 10-second wait and otherwise returns the normalized error promptly
-  with `status: 429`, `retryAfterMs`, and `rateLimitScope` so callers can
-  schedule retries cleanly.
+  idempotent reads in multi-node setups, the SDK first switches immediately to
+  another already-verified synced, non-rate-limited node from the latest health
+  sweep without probing `/api/node/status`, falling back to a health refresh
+  only when no cached candidate is available. Single-node configurations skip
+  health sweeps on `429` to avoid extra load on the throttled node and instead
+  honor `Retry-After` / `RateLimit-Reset` with jitter up to a bounded 10-second
+  wait, or return the normalized error promptly with `status: 429`,
+  `retryAfterMs`, and `rateLimitScope` so callers can schedule retries cleanly.
 - **Write `POST` requests** are retried only when no HTTP response was
   received. A write `POST` that received an explicit (4xx, including `429`, or
   semantic 5xx) rejection is not replayed automatically — this avoids endlessly

@@ -1,9 +1,19 @@
-import axios from 'axios';
+import axios, {AxiosError} from 'axios';
 import {NodeManager, type ActiveNode} from '../healthCheck';
 import {Logger} from '../logger';
 import {WebSocketClient} from '../wsClient';
 
-jest.mock('axios');
+jest.mock('axios', () => {
+  const actual = jest.requireActual<typeof import('axios')>('axios');
+  return {
+    ...actual,
+    __esModule: true,
+    default: {
+      ...actual,
+      get: jest.fn(),
+    },
+  };
+});
 
 const activeNode = (name: string, height: number, ping = 10): ActiveNode => ({
   node: `https://${name}`,
@@ -25,6 +35,10 @@ class TestNodeManager extends NodeManager {
 
   markRateLimited(node: string, cooldownMs: number) {
     this.markNodeRateLimited(node, cooldownMs);
+  }
+
+  switchFromCache(failedNode: string) {
+    return this.switchNodeFromCache(failedNode);
   }
 }
 
@@ -654,6 +668,260 @@ describe('NodeManager', () => {
     expect(output.log).toHaveBeenCalledWith(
       "[ADAMANT js-api] Health check: Node https://broken.example hasn't returned its status",
     );
+  });
+
+  test('skips malformed success status payloads without aborting remaining nodes', async () => {
+    const manager = new NodeManager(logger, {
+      nodes: [
+        'https://missing-fields.example',
+        'https://bad-version.example',
+        'https://bad-ws.example',
+        'https://missing-port.example',
+        'https://ws-disabled.example',
+      ],
+      checkHealthAtStartup: false,
+    });
+    jest
+      .spyOn(manager, 'checkNode')
+      .mockResolvedValueOnce({success: true} as never)
+      .mockResolvedValueOnce({
+        success: true,
+        network: {height: 100},
+        wsClient: {enabled: true, port: 36667},
+      } as never)
+      .mockResolvedValueOnce({
+        success: true,
+        network: {height: 100},
+        version: {version: '0.11.0'},
+        wsClient: null,
+      } as never)
+      .mockResolvedValueOnce({
+        success: true,
+        network: {height: 100},
+        version: {version: '0.11.0'},
+        wsClient: {enabled: true},
+      } as never)
+      .mockResolvedValueOnce({
+        success: true,
+        network: {height: 100},
+        version: {version: '0.11.0'},
+        wsClient: {enabled: false},
+      } as never);
+
+    const nodes = await manager.checkNodes();
+
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0]).toMatchObject({
+      node: 'https://ws-disabled.example',
+      socketSupport: false,
+      wsPort: 0,
+    });
+    expect(output.warn).toHaveBeenCalledWith(
+      '[ADAMANT js-api] Health check: Node https://missing-fields.example returned a malformed status payload',
+    );
+    expect(output.warn).toHaveBeenCalledTimes(4);
+  });
+
+  test('retries startup checks with capped backoff and fires onReady before the 5-minute interval', async () => {
+    await deferStartup(
+      async manager => {
+        const ready = jest.fn();
+        manager.onReady(ready);
+        expect(manager.isReady).toBe(false);
+
+        jest
+          .spyOn(manager, 'checkNode')
+          .mockResolvedValueOnce(nodeStatus({height: 10, loaded: false}))
+          .mockResolvedValueOnce(nodeStatus({height: 20, syncing: true}))
+          .mockResolvedValueOnce(nodeStatus({height: 100}));
+
+        // Initial startup attempt fails -> schedules 5s retry
+        await manager.updateNodes(true);
+        expect(ready).not.toHaveBeenCalled();
+        expect(manager.isReady).toBe(false);
+
+        // After 5s, second attempt still sees syncing -> schedules 10s retry
+        await jest.advanceTimersByTimeAsync(5_000);
+        expect(ready).not.toHaveBeenCalled();
+        expect(manager.isReady).toBe(false);
+
+        // After 10s (15s total, well below 5 minutes), third attempt succeeds
+        await jest.advanceTimersByTimeAsync(10_000);
+        expect(ready).toHaveBeenCalledTimes(1);
+        expect(manager.isReady).toBe(true);
+        expect(manager.node).toBe('http://127.0.0.1:36666');
+      },
+      ['http://127.0.0.1:36666'],
+    );
+  });
+
+  test('cancels a pending startup retry timer when readiness completes manually', async () => {
+    await deferStartup(
+      async manager => {
+        const checkSpy = jest
+          .spyOn(manager, 'checkNode')
+          .mockResolvedValueOnce({success: false} as never)
+          .mockResolvedValueOnce(nodeStatus({height: 100}));
+
+        await manager.updateNodes(true);
+        expect(manager.isReady).toBe(false);
+
+        await manager.updateNodes(false);
+        expect(manager.isReady).toBe(true);
+
+        // Advancing past the 5s retry delay should not trigger an extra startup retry
+        await jest.advanceTimersByTimeAsync(5_000);
+        expect(checkSpy).toHaveBeenCalledTimes(2);
+      },
+      ['http://127.0.0.1:36667'],
+    );
+  });
+
+  test('falls back to a loaded syncing node when already initialized and all ready nodes fail', async () => {
+    const manager = new TestNodeManager(logger, {
+      nodes: [
+        'https://offline.example',
+        'https://loading.example',
+        'https://syncing-low.example',
+        'https://syncing-high.example',
+      ],
+      minVersion: '0.11.0',
+      checkHealthAtStartup: false,
+    });
+    expect(manager.isReady).toBe(true);
+    manager.node = 'https://offline.example';
+
+    jest
+      .spyOn(manager, 'checkNode')
+      .mockResolvedValueOnce({success: false} as never)
+      .mockResolvedValueOnce(
+        nodeStatus({height: 999, version: '0.11.0', loaded: false}),
+      )
+      .mockResolvedValueOnce(
+        nodeStatus({height: 120, version: '0.11.0', syncing: true}),
+      )
+      .mockResolvedValueOnce(
+        nodeStatus({height: 200, version: '0.11.0', syncing: true}),
+      );
+
+    await manager.updateNodes(false, 'https://offline.example');
+
+    expect(manager.node).toBe('https://syncing-high.example');
+    expect(manager.compatibleNodeAvailable).toBe(true);
+    expect(output.warn).toHaveBeenCalledWith(
+      '[ADAMANT js-api] Health check: No fully synced nodes available; falling back to loaded syncing node https://syncing-high.example (v0.11.0).',
+    );
+  });
+
+  test('falls back to a compatible syncing node when ready nodes are below minVersion while initialized', async () => {
+    const manager = new TestNodeManager(logger, {
+      nodes: ['https://old.example', 'https://syncing-new.example'],
+      minVersion: '0.11.0',
+      checkHealthAtStartup: false,
+    });
+    manager.node = 'https://old.example';
+
+    jest
+      .spyOn(manager, 'checkNode')
+      .mockResolvedValueOnce(nodeStatus({height: 200, version: '0.9.0'}))
+      .mockResolvedValueOnce(
+        nodeStatus({height: 180, version: '0.11.0', syncing: true}),
+      );
+
+    await manager.updateNodes(false, 'https://old.example');
+
+    expect(manager.node).toBe('https://syncing-new.example');
+    expect(manager.compatibleNodeAvailable).toBe(true);
+  });
+
+  test('never falls back to a loaded:false node even when initialized', async () => {
+    const manager = new NodeManager(logger, {
+      nodes: ['https://offline.example', 'https://loading.example'],
+      checkHealthAtStartup: false,
+    });
+    manager.node = 'https://offline.example';
+
+    jest
+      .spyOn(manager, 'checkNode')
+      .mockResolvedValueOnce({success: false} as never)
+      .mockResolvedValueOnce(nodeStatus({height: 200, loaded: false}));
+
+    await manager.updateNodes(false, 'https://offline.example');
+
+    expect(manager.node).toBe('https://offline.example');
+    expect(output.error).toHaveBeenCalledWith(
+      '[ADAMANT js-api] Health check: No usable nodes available. 1 node did not respond. 1 node is not loaded.',
+    );
+  });
+
+  test('handles HTTP 429 on /api/node/status distinctly from offline nodes', async () => {
+    const manager = new NodeManager(logger, {
+      nodes: ['https://throttled.example', 'https://ready.example'],
+      checkHealthAtStartup: false,
+    });
+
+    const rateLimitError = new AxiosError(
+      'too many requests',
+      undefined,
+      undefined,
+      undefined,
+      {
+        status: 429,
+        headers: {'retry-after': '10'},
+      } as never,
+    );
+    jest.mocked(axios.get).mockRejectedValueOnce(rateLimitError);
+    await expect(
+      manager.checkNode('https://throttled.example'),
+    ).resolves.toEqual({
+      success: false,
+      rateLimited: true,
+    });
+
+    jest
+      .spyOn(manager, 'checkNode')
+      .mockResolvedValueOnce({success: false, rateLimited: true} as never)
+      .mockResolvedValueOnce({success: false, rateLimited: true} as never);
+
+    await manager.updateNodes(true);
+    expect(output.log).toHaveBeenCalledWith(
+      '[ADAMANT js-api] Health check: Node https://throttled.example rate-limited the status request (HTTP 429)',
+    );
+    expect(output.error).toHaveBeenCalledWith(
+      '[ADAMANT js-api] Health check: No usable nodes available. 2 nodes are rate-limited.',
+    );
+  });
+
+  test('switches to the fastest non-rate-limited synced node from cache without probing status', async () => {
+    const manager = new TestNodeManager(logger, {
+      nodes: [
+        'https://fast.example',
+        'https://mid.example',
+        'https://slow.example',
+        'https://stale.example',
+      ],
+      checkHealthAtStartup: false,
+    });
+
+    await manager.chooseNode([
+      activeNode('fast.example', 100, 1),
+      activeNode('mid.example', 100, 5),
+      activeNode('slow.example', 100, 15),
+      activeNode('stale.example', 200, 2),
+    ]);
+    expect(manager.node).toBe('https://fast.example');
+
+    manager.markRateLimited('https://fast.example', 10_000);
+    expect(manager.switchFromCache('https://fast.example')).toBe(true);
+    expect(manager.node).toBe('https://mid.example');
+
+    manager.markRateLimited('https://mid.example', 10_000);
+    expect(manager.switchFromCache('https://mid.example')).toBe(true);
+    expect(manager.node).toBe('https://slow.example');
+
+    // Only out-of-sync stale node remains -> cache cannot switch
+    manager.markRateLimited('https://slow.example', 10_000);
+    expect(manager.switchFromCache('https://slow.example')).toBe(false);
   });
 });
 

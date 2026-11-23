@@ -1,5 +1,7 @@
 import axios, {AxiosError} from 'axios';
-import {AdamantApi, unsupportedOrQueryResult} from '..';
+import * as apiModule from '..';
+import {AdamantApi} from '..';
+import {unsupportedOrQueryResult} from '../utils';
 import statesGetPlainFilters from './fixtures/states-get-plain-filters.json';
 import {bytesToHex} from '../../helpers/encryptor';
 import {createKeypairFromPassphrase} from '../../helpers/keys';
@@ -32,6 +34,33 @@ const createApi = (maxRetries = 0) =>
     maxRetries,
     logger: createLogger(),
   });
+
+describe('AdamantApi public utility exports', () => {
+  test('re-exports public query and vote utilities without leaking internal helpers', () => {
+    expect(apiModule.isVoteDirection('+')).toBe(true);
+    expect(apiModule.parseVote('+delegate')).toEqual(['delegate', '+']);
+    expect(
+      apiModule.getUnsupportedTransactionQueryControls(
+        {returnAsset: 1},
+        'chats',
+      ),
+    ).toEqual(['returnAsset']);
+    expect(
+      apiModule.hasMixedTransactionQueryGroups({
+        type: 8,
+        or: {senderId: 'U111'},
+      }),
+    ).toBe(true);
+    expect(
+      apiModule.transformTransactionQuery({senderId: 'U111'}, 'states'),
+    ).toEqual({senderId: 'U111'});
+
+    expect('unsupportedOrQueryResult' in apiModule).toBe(false);
+    expect('getUnsupportedTransactionQueryControlWarning' in apiModule).toBe(
+      false,
+    );
+  });
+});
 
 describe('AdamantApi HTTP requests', () => {
   beforeEach(() => request.mockReset());
@@ -240,12 +269,77 @@ describe('AdamantApi HTTP requests', () => {
     );
   });
 
-  test('waits bounded Retry-After on GET HTTP 429 when staying on the same node', async () => {
+  test('switches immediately to a cached synced node on multi-node GET HTTP 429 without running a health sweep', async () => {
+    const logger = createLogger();
+    const api = new AdamantApi({
+      nodes: ['https://node1.example', 'https://node2.example'],
+      checkHealthAtStartup: false,
+      maxRetries: 1,
+      logger,
+    });
+    await api.chooseNode([
+      {
+        node: 'https://node1.example',
+        ping: 1,
+        baseURL: 'node1.example',
+        ip: '192.0.2.1',
+        isHttps: true,
+        height: 100,
+        heightEpsilon: 20,
+        socketSupport: true,
+        wsPort: 36667,
+        version: '0.11.0',
+      },
+      {
+        node: 'https://node2.example',
+        ping: 5,
+        baseURL: 'node2.example',
+        ip: '192.0.2.2',
+        isHttps: true,
+        height: 100,
+        heightEpsilon: 20,
+        socketSupport: true,
+        wsPort: 36667,
+        version: '0.11.0',
+      },
+    ]);
+    api.node = 'https://node1.example';
+
+    const updateSpy = jest.spyOn(api, 'updateNodes');
+    const checkNodesSpy = jest.spyOn(api, 'checkNodes');
+    request
+      .mockRejectedValueOnce(
+        new AxiosError('too many requests', undefined, undefined, undefined, {
+          status: 429,
+          headers: {
+            'retry-after': '15',
+            'ratelimit-scope': 'read',
+          },
+          data: {
+            success: false,
+            error: 'Too many requests, please try again later.',
+          },
+        } as never),
+      )
+      .mockResolvedValueOnce({data: {success: true, count: 2}});
+
+    await expect(api.get('blocks')).resolves.toEqual({success: true, count: 2});
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(checkNodesSpy).not.toHaveBeenCalled();
+    expect(api.node).toBe('https://node2.example');
+    expect(request).toHaveBeenLastCalledWith({
+      method: 'GET',
+      url: 'https://node2.example/api/blocks',
+      params: undefined,
+    });
+  });
+
+  test('waits bounded Retry-After on single-node GET HTTP 429 without triggering a health sweep', async () => {
     jest.useFakeTimers();
     const random = jest.spyOn(Math, 'random').mockReturnValue(0);
     try {
       const api = createApi(1);
-      jest.spyOn(api, 'updateNodes').mockResolvedValue();
+      const updateSpy = jest.spyOn(api, 'updateNodes').mockResolvedValue();
       request
         .mockRejectedValueOnce(
           new AxiosError('too many requests', undefined, undefined, undefined, {
@@ -266,6 +360,7 @@ describe('AdamantApi HTTP requests', () => {
       await jest.advanceTimersByTimeAsync(2000);
 
       await expect(pending).resolves.toEqual({success: true});
+      expect(updateSpy).not.toHaveBeenCalled();
       expect(request).toHaveBeenCalledTimes(2);
     } finally {
       random.mockRestore();
@@ -325,7 +420,7 @@ describe('AdamantApi HTTP requests', () => {
 
   test('returns normalized 429 error with rate-limit metadata when single-node Retry-After exceeds bounded wait', async () => {
     const api = createApi(1);
-    jest.spyOn(api, 'updateNodes').mockResolvedValue();
+    const updateSpy = jest.spyOn(api, 'updateNodes').mockResolvedValue();
     request.mockRejectedValueOnce(
       new AxiosError('too many requests', undefined, undefined, undefined, {
         status: 429,
@@ -347,7 +442,29 @@ describe('AdamantApi HTTP requests', () => {
       retryAfterMs: 60_000,
       rateLimitScope: 'all',
     });
+    expect(updateSpy).not.toHaveBeenCalled();
     expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  test('resolves to a structured error instead of rejecting when failover encounters a malformed status payload', async () => {
+    const api = new AdamantApi({
+      nodes: ['https://bad-status.example', 'https://offline.example'],
+      checkHealthAtStartup: false,
+      maxRetries: 1,
+      logger: createLogger(),
+    });
+    jest
+      .spyOn(api, 'checkNode')
+      .mockResolvedValueOnce({success: true} as never)
+      .mockResolvedValueOnce({success: false} as never);
+    request
+      .mockRejectedValueOnce(new AxiosError('network timeout'))
+      .mockRejectedValueOnce(new AxiosError('network timeout'));
+
+    await expect(api.get('blocks')).resolves.toEqual({
+      success: false,
+      errorMessage: 'AxiosError: network timeout.',
+    });
   });
 
   test('fails over both concurrent GET requests on HTTP 429 without flipping back', async () => {
@@ -1311,6 +1428,29 @@ describe('or filters on and-only endpoints', () => {
       endpoint: 'states',
       query: {or: {}},
       call: api => api.getKVS({or: {}}),
+    },
+    {
+      name: 'top-level prefixed filter on getKVS',
+      endpoint: 'states',
+      query: {'and:senderId': 'U111', key: 'eth:address'} as never,
+      call: api =>
+        api.getKVS({
+          'and:senderId': 'U111',
+          key: 'eth:address',
+        } as never),
+    },
+    {
+      name: 'prefixed filter inside and wrapper on getChatTransactions',
+      endpoint: 'chats',
+      query: {and: {'or:senderId': 'U111'}} as never,
+      call: api =>
+        api.getChatTransactions({and: {'or:senderId': 'U111'}} as never),
+    },
+    {
+      name: 'prefixed filter on getChats',
+      endpoint: 'chatrooms',
+      query: {'or:type': 8} as never,
+      call: api => api.getChats('U123456', {'or:type': 8} as never),
     },
   ];
 

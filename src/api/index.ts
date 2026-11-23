@@ -9,6 +9,7 @@
 import axios, {AxiosError} from 'axios';
 import {NodeManager, NodeManagerOptions} from '../helpers/healthCheck';
 import {Logger, type CustomLogger, type LogLevelInput} from '../helpers/logger';
+import {getResponseHeader, parseRetryAfterMs} from '../helpers/rateLimit';
 import {
   AdamantApiResult,
   admToSats,
@@ -138,11 +139,12 @@ export type DelegateLookupOptions =
  *
  * `/api/states/get`, `/api/chats/get`, and `/api/chatrooms` combine plain
  * filter names with `and`. Those methods send plain names. An explicit `and`
- * wrapper is flattened to the same plain names. An `or` wrapper is rejected:
- * pre-v0.11.0 nodes ignore `and:` and `or:` prefixes on these endpoints and
- * return unfiltered data (Adamant-im/adamant#277), while ADAMANT Node v0.11.0+
- * strictly rejects `or:` prefixes (Adamant-im/adamant#294). Plain names are
- * the documented form across every node version.
+ * wrapper is flattened to the same plain names. An `or` wrapper or pre-prefixed
+ * `and:` / `or:` filter key is rejected: pre-v0.11.0 nodes ignore `and:` and
+ * `or:` prefixes on these endpoints and return unfiltered data
+ * (Adamant-im/adamant#277), while ADAMANT Node v0.11.0+ strictly rejects `or:`
+ * prefixes (Adamant-im/adamant#294). Plain names are the documented form across
+ * every node version.
  *
  * Control and pagination parameters are not filters. Each endpoint forwards
  * only the controls it supports; known controls from another endpoint are
@@ -327,10 +329,18 @@ export interface ChatroomsOptions {
  * Options for the legacy `/api/chats/get` endpoint (`getChatTransactions`).
  *
  * Supports all {@link ChatroomsOptions} filters plus `fromHeight`, `toHeight`
- * (enforced starting in ADAMANT Node v0.11.0), `inId`, and `isIn`.
+ * (applied only by ADAMANT Node v0.11.0+; set `minVersion: '0.11.0'` when
+ * relying on it), `inId`, and `isIn`.
  */
 export interface ChatTransactionsOptions extends ChatroomsOptions {
   fromHeight?: number;
+  /**
+   * Upper block height bound (inclusive).
+   *
+   * Applied only by ADAMANT Node v0.11.0+. Older nodes silently ignore this
+   * parameter and may return newer transactions with `success: true`. Set
+   * `minVersion: '0.11.0'` when your application relies on `toHeight`.
+   */
   toHeight?: number;
   inId?: string;
   isIn?: string;
@@ -363,11 +373,14 @@ export interface TransactionsOptions extends TransactionQueryParameters {
 /**
  * Options for `/api/states/get` (`getKVS`).
  *
- * The SDK sends these fields under their plain names. `or` is rejected because
- * this endpoint has no `or` combiner. Starting in ADAMANT Node v0.11.0,
- * `toHeight` is enforced (`b_height <= toHeight`), `keyIds` validates 20-char
- * KVS keys, and unsupported fields such as `blockId`, `recipientId`, or
- * misspelled `keysIds` are strictly rejected (Adamant-im/adamant#294).
+ * The SDK sends these fields under their plain names. `or` and pre-prefixed
+ * `and:` / `or:` filter keys are rejected because this endpoint has no `or`
+ * combiner. Starting in ADAMANT Node v0.11.0, `toHeight` is enforced
+ * (`b_height <= toHeight`), `keyIds` validates 20-char KVS keys, and
+ * unsupported fields such as `blockId`, `recipientId`, or misspelled `keysIds`
+ * are strictly rejected (Adamant-im/adamant#294). Pre-v0.11.0 nodes silently
+ * ignore `toHeight`, so set `minVersion: '0.11.0'` if your application relies
+ * on an upper height bound.
  */
 export interface KVSOptions {
   limit?: number;
@@ -375,6 +388,13 @@ export interface KVSOptions {
   orderBy?: string;
   returnUnconfirmed?: 1 | 0;
   fromHeight?: number;
+  /**
+   * Upper block height bound (inclusive).
+   *
+   * Applied only by ADAMANT Node v0.11.0+. Older nodes silently ignore this
+   * parameter and may return newer records with `success: true`. Set
+   * `minVersion: '0.11.0'` when your application relies on `toHeight`.
+   */
   toHeight?: number;
   senderId?: string;
   senderIds?: string[];
@@ -473,83 +493,6 @@ const responseErrorMessage = (data: unknown) => {
 const MAX_RATE_LIMIT_RETRY_DELAY_MS = 10_000;
 const DEFAULT_RATE_LIMIT_RETRY_DELAY_MS = 1_000;
 const RATE_LIMIT_JITTER_MS = 250;
-
-const getResponseHeader = (
-  headers: unknown,
-  name: string,
-): string | undefined => {
-  if (!headers || typeof headers !== 'object') {
-    return undefined;
-  }
-
-  const target = name.toLowerCase();
-  const getter = (headers as {get?: (key: string) => unknown}).get;
-  if (typeof getter === 'function') {
-    const value = getter.call(headers, target);
-    if (typeof value === 'string' && value.trim()) {
-      return value.trim();
-    }
-    if (typeof value === 'number') {
-      return String(value);
-    }
-  }
-
-  for (const [key, value] of Object.entries(
-    headers as Record<string, unknown>,
-  )) {
-    if (key.toLowerCase() !== target) {
-      continue;
-    }
-
-    if (typeof value === 'string' && value.trim()) {
-      return value.trim();
-    }
-    if (typeof value === 'number') {
-      return String(value);
-    }
-    if (
-      Array.isArray(value) &&
-      typeof value[0] === 'string' &&
-      value[0].trim()
-    ) {
-      return value[0].trim();
-    }
-  }
-
-  return undefined;
-};
-
-const parseDeltaSecondsMs = (value: string | undefined): number | undefined => {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  if (/^\d+(?:\.\d+)?$/.test(value)) {
-    const seconds = Number(value);
-    if (Number.isFinite(seconds) && seconds >= 0) {
-      return Math.ceil(seconds * 1000);
-    }
-  }
-
-  return undefined;
-};
-
-const parseRetryAfterMs = (headers: unknown): number | undefined => {
-  const retryAfter = getResponseHeader(headers, 'retry-after');
-  const retryAfterSecondsMs = parseDeltaSecondsMs(retryAfter);
-  if (retryAfterSecondsMs !== undefined) {
-    return retryAfterSecondsMs;
-  }
-
-  if (retryAfter) {
-    const timestamp = Date.parse(retryAfter);
-    if (!Number.isNaN(timestamp)) {
-      return Math.max(0, timestamp - Date.now());
-    }
-  }
-
-  return parseDeltaSecondsMs(getResponseHeader(headers, 'ratelimit-reset'));
-};
 
 const wait = (ms: number) =>
   new Promise<void>(resolve => {
@@ -701,16 +644,20 @@ export class AdamantApi extends NodeManager {
               });
             }
 
-            await this.updateNodes(false, targetNode);
+            if (this.options.nodes.length > 1) {
+              if (!this.switchNodeFromCache(targetNode)) {
+                await this.updateNodes(false, targetNode);
+              }
 
-            if (this.node !== targetNode) {
-              logger.log(
-                `${logMessage} Try ${retryNo}/${maxRetries}. Retrying on ${this.node}…`,
-              );
-              return this.request<T>(method, endpoint, data, {
-                retryNo: retryNo + 1,
-                idempotent,
-              });
+              if (this.node !== targetNode) {
+                logger.log(
+                  `${logMessage} Try ${retryNo}/${maxRetries}. Retrying on ${this.node}…`,
+                );
+                return this.request<T>(method, endpoint, data, {
+                  retryNo: retryNo + 1,
+                  idempotent,
+                });
+              }
             }
 
             const baseDelayMs =
@@ -1599,4 +1546,12 @@ export class AdamantApi extends NodeManager {
 }
 
 export * from './generated';
-export * from './utils';
+export {
+  type VoteDirection,
+  type TransactionQueryEndpoint,
+  isVoteDirection,
+  parseVote,
+  getUnsupportedTransactionQueryControls,
+  hasMixedTransactionQueryGroups,
+  transformTransactionQuery,
+};
