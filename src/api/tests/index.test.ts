@@ -4,8 +4,7 @@ import {AdamantApi} from '..';
 import {unsupportedOrQueryResult} from '../utils';
 import {
   clearPublicKeysCache,
-  delegateAddressPublicKeysCache,
-  delegatePublicKeysCache,
+  type DelegateCaches,
   publicKeysCache,
 } from '../publicKeyCache';
 import statesGetPlainFilters from './fixtures/states-get-plain-filters.json';
@@ -1019,6 +1018,9 @@ describe('AdamantApi transaction methods', () => {
 
   test('resolves address votes through the delegate list and validates cache writers and hits', async () => {
     const api = createApi();
+    const {byAddress, byUsername} = (
+      api as unknown as {delegateCaches: DelegateCaches}
+    ).delegateCaches;
     const getDelegates = jest.spyOn(api, 'getDelegates');
     const getDelegate = jest.spyOn(api, 'getDelegate');
     const post = jest
@@ -1037,9 +1039,7 @@ describe('AdamantApi transaction methods', () => {
       success: false,
       errorMessage: expect.stringContaining('the address is not a delegate'),
     });
-    expect(delegateAddressPublicKeysCache.has(otherRecipientAddress)).toBe(
-      false,
-    );
+    expect(byAddress.has(otherRecipientAddress)).toBe(false);
     expect(post).not.toHaveBeenCalled();
 
     // Mismatched key from delegate list must be rejected and must not poison either address cache.
@@ -1058,14 +1058,11 @@ describe('AdamantApi transaction methods', () => {
       ),
     });
     expect(publicKeysCache.has(recipientAddress)).toBe(false);
-    expect(delegateAddressPublicKeysCache.has(recipientAddress)).toBe(false);
+    expect(byAddress.has(recipientAddress)).toBe(false);
     expect(post).not.toHaveBeenCalled();
 
-    // Poisoned cache hit in delegateAddressPublicKeysCache must be evicted and re-fetched.
-    delegateAddressPublicKeysCache.set(
-      recipientAddress,
-      otherRecipientPublicKey,
-    );
+    // Poisoned cache hit in the client's delegate-address cache must be evicted and re-fetched.
+    byAddress.set(recipientAddress, otherRecipientPublicKey);
     getDelegates.mockResolvedValueOnce({
       success: true,
       delegates: [{address: recipientAddress, publicKey: recipientPublicKey}],
@@ -1073,16 +1070,14 @@ describe('AdamantApi transaction methods', () => {
     await expect(
       api.voteForDelegate(passphrase, [`+${recipientAddress}`]),
     ).resolves.toMatchObject({success: true});
-    expect(delegateAddressPublicKeysCache.get(recipientAddress)).toBe(
-      recipientPublicKey,
-    );
+    expect(byAddress.get(recipientAddress)).toBe(recipientPublicKey);
     expect(publicKeysCache.get(recipientAddress)).toBe(recipientPublicKey);
     expect(post).toHaveBeenCalledWith(
       'accounts/delegates',
       expect.objectContaining({type: 3}),
     );
 
-    // Subsequent vote for the same delegate address hits delegateAddressPublicKeysCache.
+    // Subsequent vote for the same delegate address hits the client's delegate-address cache.
     await expect(
       api.voteForDelegate(passphrase, [`-${recipientAddress}`]),
     ).resolves.toMatchObject({success: true});
@@ -1113,7 +1108,7 @@ describe('AdamantApi transaction methods', () => {
         'public key does not derive the target ADM address',
       ),
     });
-    expect(delegatePublicKeysCache.has('bad_delegate')).toBe(false);
+    expect(byUsername.has('bad_delegate')).toBe(false);
 
     // Missing required DelegateDto.address must be rejected as malformed rather than downgrading to an unbound check.
     getDelegate.mockResolvedValueOnce({
@@ -1131,7 +1126,7 @@ describe('AdamantApi transaction methods', () => {
         'public key is malformed or not a valid 32-byte Ed25519 public key',
       ),
     });
-    expect(delegatePublicKeysCache.has('no_addr_delegate')).toBe(false);
+    expect(byUsername.has('no_addr_delegate')).toBe(false);
 
     getDelegate.mockResolvedValueOnce({
       success: true,
@@ -1144,9 +1139,7 @@ describe('AdamantApi transaction methods', () => {
     await expect(
       api.voteForDelegate(passphrase, ['+good_delegate']),
     ).resolves.toMatchObject({success: true});
-    expect(delegatePublicKeysCache.get('good_delegate')).toBe(
-      otherRecipientPublicKey,
-    );
+    expect(byUsername.get('good_delegate')).toBe(otherRecipientPublicKey);
     expect(publicKeysCache.has('good_delegate')).toBe(false);
 
     // Subsequent delegate-name vote uses the verified cached key without another lookup.
@@ -1156,7 +1149,7 @@ describe('AdamantApi transaction methods', () => {
     expect(getDelegate).toHaveBeenCalledTimes(3);
 
     // Poisoned delegate-name cache entry is evicted and re-fetched.
-    delegatePublicKeysCache.set('good_delegate', offCurvePublicKey);
+    byUsername.set('good_delegate', offCurvePublicKey);
     getDelegate.mockResolvedValueOnce({
       success: true,
       delegate: {
@@ -1169,8 +1162,72 @@ describe('AdamantApi transaction methods', () => {
       api.voteForDelegate(passphrase, ['+good_delegate']),
     ).resolves.toMatchObject({success: true});
     expect(getDelegate).toHaveBeenCalledTimes(4);
-    expect(delegatePublicKeysCache.get('good_delegate')).toBe(
-      otherRecipientPublicKey,
+    expect(byUsername.get('good_delegate')).toBe(otherRecipientPublicKey);
+  });
+
+  test('isolates delegate address and username caches per AdamantApi instance', async () => {
+    const mainnetApi = createApi();
+    const testnetApi = createApi();
+
+    jest.spyOn(mainnetApi, 'getDelegates').mockResolvedValueOnce({
+      success: true,
+      delegates: [{address: recipientAddress, publicKey: recipientPublicKey}],
+    } as never);
+    jest.spyOn(mainnetApi, 'getDelegate').mockResolvedValueOnce({
+      success: true,
+      delegate: {
+        username: 'shared_name',
+        address: recipientAddress,
+        publicKey: recipientPublicKey,
+      },
+    } as never);
+    jest.spyOn(mainnetApi, 'post').mockResolvedValue({success: true} as never);
+
+    await expect(
+      mainnetApi.voteForDelegate(passphrase, [
+        `+${recipientAddress}`,
+        '+shared_name',
+      ]),
+    ).resolves.toMatchObject({success: true});
+
+    // A second client (e.g. testnet) must not inherit mainnet delegate membership or username mappings.
+    const testnetGetDelegates = jest
+      .spyOn(testnetApi, 'getDelegates')
+      .mockResolvedValueOnce({
+        success: true,
+        delegates: [],
+      } as never);
+    const testnetGetDelegate = jest
+      .spyOn(testnetApi, 'getDelegate')
+      .mockResolvedValueOnce({
+        success: true,
+        delegate: {
+          username: 'shared_name',
+          address: otherRecipientAddress,
+          publicKey: otherRecipientPublicKey,
+        },
+      } as never);
+    const testnetPost = jest
+      .spyOn(testnetApi, 'post')
+      .mockResolvedValue({success: true} as never);
+
+    await expect(
+      testnetApi.voteForDelegate(passphrase, [`+${recipientAddress}`]),
+    ).resolves.toMatchObject({
+      success: false,
+      errorMessage: expect.stringContaining('the address is not a delegate'),
+    });
+    expect(testnetGetDelegates).toHaveBeenCalledTimes(1);
+
+    await expect(
+      testnetApi.voteForDelegate(passphrase, ['+shared_name']),
+    ).resolves.toMatchObject({success: true});
+    expect(testnetGetDelegate).toHaveBeenCalledTimes(1);
+    expect(testnetPost).toHaveBeenCalledWith(
+      'accounts/delegates',
+      expect.objectContaining({
+        asset: {votes: [`+${otherRecipientPublicKey}`]},
+      }),
     );
   });
 });

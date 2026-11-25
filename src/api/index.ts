@@ -97,6 +97,7 @@ import {
   cacheVerifiedDelegateAddressPublicKey,
   cacheVerifiedDelegatePublicKey,
   cacheVerifiedPublicKey,
+  createDelegateCaches,
   getVerifiedCachedDelegateAddressPublicKey,
   getVerifiedCachedDelegatePublicKey,
   getVerifiedCachedPublicKey,
@@ -547,6 +548,7 @@ export class AdamantApi extends NodeManager {
   maxRetries: number;
   private hasWarnedAboutMixedQuery = false;
   private readonly warnedUnsupportedControls = new Set<string>();
+  private readonly delegateCaches = createDelegateCaches();
 
   constructor(options: AdamantApiOptions) {
     const customLogger = new Logger(options.logLevel, options.logger);
@@ -1062,6 +1064,7 @@ export class AdamantApi extends NodeManager {
 
       if (isAdmVoteForAddress(vote)) {
         const cachedPublicKey = getVerifiedCachedDelegateAddressPublicKey(
+          this.delegateCaches.byAddress,
           name,
           reason => {
             this.logger.warn(
@@ -1100,6 +1103,7 @@ export class AdamantApi extends NodeManager {
         }
 
         const verification = cacheVerifiedDelegateAddressPublicKey(
+          this.delegateCaches.byAddress,
           name,
           delegate.publicKey,
         );
@@ -1121,11 +1125,15 @@ export class AdamantApi extends NodeManager {
       }
 
       if (isAdmVoteForDelegateName(vote)) {
-        const cachedPublicKey = getVerifiedCachedDelegatePublicKey(name, () => {
-          this.logger.warn(
-            `[ADAMANT js-api] Discarded cached delegate public key for ${name}: ${formatPublicKeyVerificationReason('malformed')}.`,
-          );
-        });
+        const cachedPublicKey = getVerifiedCachedDelegatePublicKey(
+          this.delegateCaches.byUsername,
+          name,
+          () => {
+            this.logger.warn(
+              `[ADAMANT js-api] Discarded cached delegate public key for ${name}: ${formatPublicKeyVerificationReason('malformed')}.`,
+            );
+          },
+        );
 
         if (cachedPublicKey) {
           uniqueVotes[cachedPublicKey] = direction;
@@ -1147,6 +1155,7 @@ export class AdamantApi extends NodeManager {
         }
 
         const verification = cacheVerifiedDelegatePublicKey(
+          this.delegateCaches.byUsername,
           name,
           response.delegate?.publicKey,
           response.delegate?.address,
