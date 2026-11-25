@@ -75,6 +75,9 @@ You do NOT need to encrypt a message when using
 an ADM address, both `getPublicKey()` and `sendMessage()` verify locally that
 the node-supplied (or cached) key is a well-formed 32-byte Ed25519 public key
 that derives the target ADM address before caching it or encrypting the message.
+(By contrast, username-based lookups in `voteForDelegate()` can only verify
+that the node's `{address, publicKey}` pair is self-consistent, not that the
+username belongs to that delegate.)
 :::
 
 ```ts

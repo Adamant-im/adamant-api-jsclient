@@ -94,8 +94,10 @@ import {
   type PublicKeyVerificationFailureReason,
 } from '../helpers/publicKey';
 import {
+  cacheVerifiedDelegateAddressPublicKey,
   cacheVerifiedDelegatePublicKey,
   cacheVerifiedPublicKey,
+  getVerifiedCachedDelegateAddressPublicKey,
   getVerifiedCachedDelegatePublicKey,
   getVerifiedCachedPublicKey,
 } from './publicKeyCache';
@@ -545,10 +547,6 @@ export class AdamantApi extends NodeManager {
   maxRetries: number;
   private hasWarnedAboutMixedQuery = false;
   private readonly warnedUnsupportedControls = new Set<string>();
-  private readonly lastPublicKeyVerificationFailure = new Map<
-    AdamantAddress,
-    PublicKeyVerificationFailureReason
-  >();
 
   constructor(options: AdamantApiOptions) {
     const customLogger = new Logger(options.logLevel, options.logger);
@@ -768,18 +766,19 @@ export class AdamantApi extends NodeManager {
     return this.request<T>('POST', endpoint, options);
   }
 
-  private async resolveVerifiedPublicKey(
-    address: AdamantAddress,
-  ): Promise<
-    | {status: 'ok'; publicKey: string}
-    | {status: 'invalid'; reason: PublicKeyVerificationFailureReason}
-    | {status: 'missing'; errorMessage: string}
-  > {
+  /**
+   * Gets an account's Ed25519 public key and verifies locally that it is
+   * well-formed and derives `address` before caching or returning it.
+   *
+   * Returns an empty string when the key cannot be retrieved or fails
+   * verification.
+   */
+  async getPublicKey(address: AdamantAddress) {
     if (!isAdmAddress(address)) {
       this.logger.warn(
         `[ADAMANT js-api] Rejected public key lookup for invalid ADM address ${address}.`,
       );
-      return {status: 'invalid', reason: 'invalid_address'};
+      return '';
     }
 
     const cached = getVerifiedCachedPublicKey(address, reason => {
@@ -788,7 +787,7 @@ export class AdamantApi extends NodeManager {
       );
     });
     if (cached) {
-      return {status: 'ok', publicKey: cached};
+      return cached;
     }
 
     const response = await this.get<GetAccountPublicKeyResponseDto>(
@@ -801,42 +800,18 @@ export class AdamantApi extends NodeManager {
     if (response.success) {
       const verification = cacheVerifiedPublicKey(address, response.publicKey);
       if (verification.valid) {
-        return {status: 'ok', publicKey: verification.publicKey};
+        return verification.publicKey;
       }
 
       this.logger.warn(
         `[ADAMANT js-api] Rejected public key for ${address}: ${formatPublicKeyVerificationReason(verification.reason)}.`,
       );
-      return {status: 'invalid', reason: verification.reason};
+      return '';
     }
 
     this.logger.warn(
       `[ADAMANT js-api] Failed to get public key for ${address}. ${response.errorMessage}.`,
     );
-    return {status: 'missing', errorMessage: response.errorMessage};
-  }
-
-  /**
-   * Gets an account's Ed25519 public key and verifies locally that it is
-   * well-formed and derives `address` before caching or returning it.
-   *
-   * Returns an empty string when the key cannot be retrieved or fails
-   * verification.
-   */
-  async getPublicKey(address: AdamantAddress) {
-    const result = await this.resolveVerifiedPublicKey(address);
-
-    if (result.status === 'ok') {
-      this.lastPublicKeyVerificationFailure.delete(address);
-      return result.publicKey;
-    }
-
-    if (result.status === 'invalid') {
-      this.lastPublicKeyVerificationFailure.set(address, result.reason);
-      return '';
-    }
-
-    this.lastPublicKeyVerificationFailure.delete(address);
     return '';
   }
 
@@ -939,42 +914,14 @@ export class AdamantApi extends NodeManager {
       }
     }
 
-    let publicKeyVerificationFailure:
-      PublicKeyVerificationFailureReason | undefined;
-
     if (!publicKey) {
-      if (this.getPublicKey === AdamantApi.prototype.getPublicKey) {
-        const lookup = await this.resolveVerifiedPublicKey(address);
-        if (lookup.status === 'ok') {
-          publicKey = lookup.publicKey;
-        } else if (lookup.status === 'invalid') {
-          publicKeyVerificationFailure = lookup.reason;
-        }
-      } else {
-        this.lastPublicKeyVerificationFailure.delete(address);
-        publicKey = await this.getPublicKey(address);
-        if (!publicKey) {
-          publicKeyVerificationFailure =
-            this.lastPublicKeyVerificationFailure.get(address);
-          this.lastPublicKeyVerificationFailure.delete(address);
-        }
-      }
-    }
-
-    if (publicKeyVerificationFailure) {
-      return {
-        success: false,
-        errorMessage: formatSendMessageVerificationError(
-          addressOrPublicKey,
-          publicKeyVerificationFailure,
-        ),
-      };
+      publicKey = await this.getPublicKey(address);
     }
 
     if (!publicKey) {
       return {
         success: false,
-        errorMessage: `Unable to get public key for ${addressOrPublicKey}. It is necessary for sending an encrypted message. Account may be uninitialized (https://medium.com/adamant-im/chats-and-uninitialized-accounts-in-adamant-5035438e2fcd), or network error`,
+        errorMessage: `Unable to get a verified public key for ${addressOrPublicKey}. It is necessary for sending an encrypted message. Account may be uninitialized (https://medium.com/adamant-im/chats-and-uninitialized-accounts-in-adamant-5035438e2fcd), a network error occurred, or the node-supplied key failed local verification`,
       };
     }
 
@@ -1069,10 +1016,16 @@ export class AdamantApi extends NodeManager {
   }
 
   /**
-   * Vote for specific delegates
+   * Vote for specific delegates.
+   *
+   * Address-based votes verify locally that the delegate's public key derives
+   * the voted ADM address before caching or signing. Username-based votes
+   * verify that the node's `{address, publicKey}` response is self-consistent
+   * (`publicKey` derives `address`), which does not prove that the username
+   * belongs to that delegate.
    *
    * @param passphrase Account's passphrase
-   * @param votes Array with public keys. For upvote, add leading `+` to delegate's public key. For downvote, add leading `-` to delegate's public key.
+   * @param votes Array with public keys, ADM addresses, or delegate names. For upvote, add leading `+`. For downvote, add leading `-`.
    *
    * @example
    * ```
@@ -1108,11 +1061,14 @@ export class AdamantApi extends NodeManager {
       }
 
       if (isAdmVoteForAddress(vote)) {
-        const cachedPublicKey = getVerifiedCachedPublicKey(name, reason => {
-          this.logger.warn(
-            `[ADAMANT js-api] Discarded cached public key for ${name}: ${formatPublicKeyVerificationReason(reason)}.`,
-          );
-        });
+        const cachedPublicKey = getVerifiedCachedDelegateAddressPublicKey(
+          name,
+          reason => {
+            this.logger.warn(
+              `[ADAMANT js-api] Discarded cached delegate public key for ${name}: ${formatPublicKeyVerificationReason(reason)}.`,
+            );
+          },
+        );
 
         if (cachedPublicKey) {
           uniqueVotes[cachedPublicKey] = direction;
@@ -1143,7 +1099,10 @@ export class AdamantApi extends NodeManager {
           return badParameter('votes', vote, 'the address is not a delegate');
         }
 
-        const verification = cacheVerifiedPublicKey(name, delegate.publicKey);
+        const verification = cacheVerifiedDelegateAddressPublicKey(
+          name,
+          delegate.publicKey,
+        );
         if (!verification.valid) {
           this.logger.warn(
             `[ADAMANT js-api] Rejected delegate public key for ${name}: ${formatPublicKeyVerificationReason(verification.reason)}.`,

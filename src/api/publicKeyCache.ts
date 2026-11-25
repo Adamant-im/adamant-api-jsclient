@@ -4,22 +4,53 @@ import {
   type PublicKeyVerificationFailureReason,
   type PublicKeyVerificationResult,
 } from '../helpers/publicKey';
+import {isAdmAddress} from '../helpers/validator';
 
 /**
  * Shared process-wide cache of verified ADM address -> Ed25519 public key
- * mappings. Every write and cache hit verifies the address binding.
+ * mappings used by `getPublicKey()` and `sendMessage()`. Every write and cache
+ * hit verifies the address binding.
  *
  * @internal
  */
 export const publicKeysCache = new Map<string, string>();
 
 /**
- * Shared cache of delegate username -> verified Ed25519 public key mappings,
- * kept separate from address-keyed entries.
+ * Cache of verified delegate ADM address -> Ed25519 public key mappings. Kept
+ * separate from `publicKeysCache` so messaging a non-delegate account cannot
+ * cause `voteForDelegate()` to skip delegate-membership validation.
+ *
+ * @internal
+ */
+export const delegateAddressPublicKeysCache = new Map<string, string>();
+
+/**
+ * Cache of delegate username -> Ed25519 public key mappings, kept separate
+ * from address-keyed caches.
  *
  * @internal
  */
 export const delegatePublicKeysCache = new Map<string, string>();
+
+const readVerifiedAddressCache = (
+  cache: Map<string, string>,
+  address: string,
+  onInvalid?: (reason: PublicKeyVerificationFailureReason) => void,
+): string | undefined => {
+  const cached = cache.get(address);
+  if (cached === undefined) {
+    return undefined;
+  }
+
+  const verification = verifyPublicKeyForAddress(address, cached);
+  if (!verification.valid) {
+    cache.delete(address);
+    onInvalid?.(verification.reason);
+    return undefined;
+  }
+
+  return verification.publicKey;
+};
 
 /**
  * Reads a cached public key for `address` only if it still passes full Ed25519
@@ -30,21 +61,8 @@ export const delegatePublicKeysCache = new Map<string, string>();
 export const getVerifiedCachedPublicKey = (
   address: string,
   onInvalid?: (reason: PublicKeyVerificationFailureReason) => void,
-): string | undefined => {
-  const cached = publicKeysCache.get(address);
-  if (cached === undefined) {
-    return undefined;
-  }
-
-  const verification = verifyPublicKeyForAddress(address, cached);
-  if (!verification.valid) {
-    publicKeysCache.delete(address);
-    onInvalid?.(verification.reason);
-    return undefined;
-  }
-
-  return verification.publicKey;
-};
+): string | undefined =>
+  readVerifiedAddressCache(publicKeysCache, address, onInvalid);
 
 /**
  * Verifies that `publicKey` is a well-formed 32-byte Ed25519 key bound to
@@ -58,6 +76,38 @@ export const cacheVerifiedPublicKey = (
 ): PublicKeyVerificationResult => {
   const verification = verifyPublicKeyForAddress(address, publicKey);
   if (verification.valid) {
+    publicKeysCache.set(address, verification.publicKey);
+  }
+
+  return verification;
+};
+
+/**
+ * Reads a cached delegate public key for `address` only if it still passes
+ * full Ed25519 and address-binding verification. Invalid entries are evicted
+ * immediately.
+ *
+ * @internal
+ */
+export const getVerifiedCachedDelegateAddressPublicKey = (
+  address: string,
+  onInvalid?: (reason: PublicKeyVerificationFailureReason) => void,
+): string | undefined =>
+  readVerifiedAddressCache(delegateAddressPublicKeysCache, address, onInvalid);
+
+/**
+ * Verifies that a confirmed delegate's `publicKey` is bound to `address` and
+ * stores it in both the delegate-address cache and the shared address cache.
+ *
+ * @internal
+ */
+export const cacheVerifiedDelegateAddressPublicKey = (
+  address: string,
+  publicKey: unknown,
+): PublicKeyVerificationResult => {
+  const verification = verifyPublicKeyForAddress(address, publicKey);
+  if (verification.valid) {
+    delegateAddressPublicKeysCache.set(address, verification.publicKey);
     publicKeysCache.set(address, verification.publicKey);
   }
 
@@ -89,32 +139,33 @@ export const getVerifiedCachedDelegatePublicKey = (
 };
 
 /**
- * Validates a delegate public key (and its binding to `address` when provided)
- * before storing it in the delegate username cache.
+ * Validates a delegate-by-username response before caching `publicKey` under
+ * `username`.
+ *
+ * `DelegateDto.address` is required by the ADAMANT OpenAPI schema, so a
+ * missing or invalid `address` is rejected as `malformed`. Note that for
+ * username lookups this binding only proves the node's response is
+ * self-consistent (`publicKey` derives `address`); it does not prove that
+ * `username` belongs to that delegate.
  *
  * @internal
  */
 export const cacheVerifiedDelegatePublicKey = (
   username: string,
   publicKey: unknown,
-  address?: unknown,
+  address: unknown,
 ): PublicKeyVerificationResult => {
-  if (address !== undefined) {
-    const verification = verifyPublicKeyForAddress(address, publicKey);
-    if (!verification.valid) {
-      return verification;
-    }
-
-    delegatePublicKeysCache.set(username, verification.publicKey);
-    return verification;
-  }
-
-  if (!isValidEd25519PublicKey(publicKey)) {
+  if (!isAdmAddress(address)) {
     return {valid: false, reason: 'malformed'};
   }
 
-  delegatePublicKeysCache.set(username, publicKey);
-  return {valid: true, publicKey};
+  const verification = verifyPublicKeyForAddress(address, publicKey);
+  if (!verification.valid) {
+    return verification;
+  }
+
+  delegatePublicKeysCache.set(username, verification.publicKey);
+  return verification;
 };
 
 /**
@@ -124,5 +175,6 @@ export const cacheVerifiedDelegatePublicKey = (
  */
 export const clearPublicKeysCache = () => {
   publicKeysCache.clear();
+  delegateAddressPublicKeysCache.clear();
   delegatePublicKeysCache.clear();
 };
