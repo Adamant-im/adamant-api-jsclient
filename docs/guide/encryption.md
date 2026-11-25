@@ -71,7 +71,10 @@ Encodes a message or KVS record.
 
 ::: tip
 You do NOT need to encrypt a message when using
-[`sendMessage()`](/api/) — it encrypts the message by default.
+[`sendMessage()`](/api/) — it encrypts the message by default. When sending to
+an ADM address, both `getPublicKey()` and `sendMessage()` verify locally that
+the node-supplied (or cached) key is a well-formed 32-byte Ed25519 public key
+that derives the target ADM address before caching it or encrypting the message.
 :::
 
 ```ts
