@@ -22,7 +22,7 @@ features:
     link: /guide/reliability
     linkText: Reliability
   - title: Typed API
-    details: Typed blockchain API requests and response DTOs generated from adamant-schema.
+    details: Typed blockchain API requests and response DTOs generated from the ADAMANT Node OpenAPI specification.
     link: /api/
     linkText: API Reference
   - title: Accounts & keys

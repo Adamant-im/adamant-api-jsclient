@@ -65,7 +65,7 @@ Keep optional coin dependencies behind `adamant-api/coins/*` entry points. The p
 
 ## Generated API types
 
-Do not hand-edit `src/api/generated.ts` for routine schema updates. It is generated from the pinned [`adamant-schema`](https://github.com/Adamant-im/adamant-schema) revision in `scripts/sync-api-types.mjs`.
+Do not hand-edit `src/api/generated.ts` for routine schema updates. It is generated from the pinned [`Adamant-im/adamant` OpenAPI specification](https://github.com/Adamant-im/adamant/tree/dev/openapi) revision in `scripts/sync-api-types.mjs`.
 
 ```sh
 pnpm api-types:check
@@ -73,6 +73,12 @@ pnpm api-types:sync
 ```
 
 To update the DTOs, review and change the pinned commit in the script, run `pnpm api-types:sync`, inspect the generated diff, and run the full validation suite. The generated file records both the schema revision and generator version.
+
+## Dependency security policy
+
+`pnpm-workspace.yaml` enforces a 7-day release-age quarantine (`minimumReleaseAge: 10080` minutes) and restricts dependency lifecycle scripts via `allowBuilds`. Adopt only stable package releases published at least 7 days before the update unless an urgent security exception is explicitly reviewed and documented in the pull request.
+
+Reviewed dev-only override exception: `'vitepress>vite': 6.4.6` is scoped strictly to `vitepress@1.6.4` (which declares `vite ^5.4.14`) to resolve moderate/high dev-server advisories in Vite 5.x and `esbuild@0.21.x` (automatically resolving `esbuild@0.25.x`). Both `pnpm docs:build` and `vitepress dev` are verified against it. Other cross-major transitive overrides (such as `glob@14` or `minimatch@11`) are intentionally avoided.
 
 ## Wallet metadata
 

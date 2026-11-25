@@ -1,7 +1,9 @@
 import {
   getUnsupportedTransactionQueryControls,
+  getUnsupportedTransactionQueryControlWarning,
   hasMixedTransactionQueryGroups,
   transformTransactionQuery,
+  unsupportedOrQueryResult,
 } from '../utils';
 
 describe('transformTransactionQuery', () => {
@@ -111,22 +113,22 @@ describe('transformTransactionQuery', () => {
     });
   });
 
-  it('passes only the controls supported by chat endpoints', () => {
+  it('passes only the controls supported by chat endpoints and strips legacy userId', () => {
     const transformed = transformTransactionQuery(
       {
         type: 8,
         returnAsset: 1,
         includeDirectTransfers: true,
         userId: 'U123456',
-        and: {withoutDirectTransfers: false},
+        and: {withoutDirectTransfers: false, senderId: 'U111'},
       },
       'chatrooms',
     );
 
     expect(transformed).toStrictEqual({
-      'and:type': 8,
+      type: 8,
       includeDirectTransfers: true,
-      userId: 'U123456',
+      senderId: 'U111',
       withoutDirectTransfers: false,
     });
   });
@@ -178,6 +180,69 @@ describe('transformTransactionQuery', () => {
     expect(Object.keys(andThenOr)).toEqual(['and:senderId', 'or:recipientId']);
     expect(Object.keys(orThenAnd)).toEqual(['or:recipientId', 'and:senderId']);
   });
+
+  it('sends plain filter names for states, chats, and chatrooms', () => {
+    const query = {
+      senderId: 'U111',
+      type: 8,
+      limit: 5,
+      and: {key: 'eth:address'},
+    };
+    const plain = {
+      senderId: 'U111',
+      type: 8,
+      key: 'eth:address',
+      limit: 5,
+    };
+
+    expect(transformTransactionQuery(query, 'states')).toStrictEqual(plain);
+    expect(transformTransactionQuery(query, 'chats')).toStrictEqual(plain);
+    expect(transformTransactionQuery(query, 'chatrooms')).toStrictEqual(plain);
+  });
+
+  it('throws the badParameter message when or is used outside /api/transactions', () => {
+    const query = {or: {senderId: 'U111'}};
+
+    expect(() => transformTransactionQuery(query, 'states')).toThrow(
+      unsupportedOrQueryResult(query, 'states')?.errorMessage,
+    );
+    expect(unsupportedOrQueryResult(query, 'transactions')).toBeUndefined();
+    expect(unsupportedOrQueryResult(undefined, 'chats')).toBeUndefined();
+  });
+
+  it('rejects pre-prefixed and:/or: filter keys on states, chats, and chatrooms', () => {
+    const prefixedTopLevel: Record<string, unknown> = {
+      'and:senderId': 'U111',
+      key: 'eth:address',
+    };
+    const prefixedInsideAnd: Record<string, unknown> = {
+      and: {'or:senderId': 'U111'},
+    };
+    const mixedCasePrefixed: Record<string, unknown> = {'AND:senderId': 'U111'};
+
+    for (const endpoint of ['states', 'chats', 'chatrooms'] as const) {
+      for (const query of [
+        prefixedTopLevel,
+        prefixedInsideAnd,
+        mixedCasePrefixed,
+      ]) {
+        const rejection = unsupportedOrQueryResult(query, endpoint);
+        expect(rejection).toEqual({
+          success: false,
+          errorMessage: expect.stringContaining(
+            'does not support prefixed filter names',
+          ),
+        });
+        expect(() => transformTransactionQuery(query, endpoint)).toThrow(
+          rejection?.errorMessage,
+        );
+      }
+    }
+
+    expect(
+      unsupportedOrQueryResult(prefixedTopLevel, 'transactions'),
+    ).toBeUndefined();
+  });
 });
 
 describe('getUnsupportedTransactionQueryControls', () => {
@@ -192,6 +257,22 @@ describe('getUnsupportedTransactionQueryControls', () => {
         'chats',
       ),
     ).toEqual(['returnAsset', 'userId']);
+  });
+
+  it('reports legacy userId as unsupported on chatrooms', () => {
+    expect(
+      getUnsupportedTransactionQueryControls({userId: 'U123456'}, 'chatrooms'),
+    ).toEqual(['userId']);
+    expect(
+      getUnsupportedTransactionQueryControlWarning('userId', 'chatrooms'),
+    ).toBe(
+      '[ADAMANT js-api] `userId` is deprecated: ADAMANT Node v0.11.0+ rejects it on /api/chatrooms/*; the address is taken from the URL path and this parameter was ignored.',
+    );
+    expect(
+      getUnsupportedTransactionQueryControlWarning('returnAsset', 'chats'),
+    ).toBe(
+      '[ADAMANT js-api] Query control `returnAsset` is not supported by the chats endpoint and was ignored.',
+    );
   });
 
   it('does not report controls supported by the selected endpoint', () => {

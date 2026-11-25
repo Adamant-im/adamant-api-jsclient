@@ -39,7 +39,7 @@ Use these sources when implementing or reviewing changes:
 
 - This repository: `README.md`, `package.json`, `CONTRIBUTING.md`, current code, and passing tests
 - ADAMANT docs: <https://docs.adamant.im>
-- ADAMANT schema source for generated API types: <https://github.com/Adamant-im/adamant-schema>
+- ADAMANT OpenAPI schema site and source for generated API types: <https://docs.adamant.im/schema/> and <https://github.com/Adamant-im/adamant/tree/dev/openapi> (consolidated from the archived `adamant-schema` repo in ADAMANT Node v0.11.0)
 - Related wallet metadata and OpenAPI spec: <https://github.com/Adamant-im/adamant-wallets> and <https://github.com/Adamant-im/adamant-wallets/blob/dev/specification/openapi.json>
 - Org-wide issue and label governance: <https://github.com/Adamant-im/.github>
 
@@ -87,7 +87,7 @@ Key areas of this repository:
 
 - `src/index.ts`: public exports
 - `src/api/index.ts`: `AdamantApi` HTTP client, retries, request helpers, endpoint surface
-- `src/api/generated.ts`: generated API DTO types copied from `adamant-schema`
+- `src/api/generated.ts`: generated API DTO types built from the pinned `Adamant-im/adamant` OpenAPI specification (`openapi/`)
 - `src/helpers/healthCheck.ts`: node health checks, sync grouping, active-node selection, socket coordination
 - `src/helpers/keys.ts`: passphrase hashing, ADM keypair derivation, ADM address creation
 - `src/helpers/encryptor.ts`: message encryption and decryption
@@ -123,7 +123,7 @@ For code changes, baseline validation is:
 Additional repository-specific expectations:
 
 - Add or update tests near the changed behavior in collocated `tests` directories
-- If you change generated API types, regenerate from `adamant-schema`, then run compile and tests
+- If you change generated API types, regenerate from `Adamant-im/adamant` (`openapi/`) via `pnpm api-types:sync`, then run compile and tests
 - For docs-only changes, say explicitly that runtime tests were not run
 
 ## Working Style

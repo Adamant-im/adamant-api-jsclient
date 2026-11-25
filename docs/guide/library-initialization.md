@@ -72,6 +72,15 @@ api.onReady(() => {
 export {api};
 ```
 
+`onReady` means a usable node has been selected, and `api.isReady` reports that
+same readiness state. With the default `checkHealthAtStartup: true`, that node
+has answered `/api/node/status`, meets `minVersion`, and is not still loading
+or syncing. If the initial startup check finds no such node, the callback does
+not run yet and the SDK retries with capped backoff (`5s`, `10s`, `30s`, `60s`)
+in addition to the 5-minute periodic sweep, running `onReady` as soon as a
+usable node becomes available. `checkHealthAtStartup: false` skips selection,
+so `api.isReady` is `true` and `onReady` runs immediately.
+
 ## Log levels
 
 The SDK supports `none`, `error`, `warn`, `info`, `log`, and `debug`. Only
