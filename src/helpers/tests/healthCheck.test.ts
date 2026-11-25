@@ -652,14 +652,29 @@ describe('NodeManager', () => {
     );
   });
 
-  test('skips malformed null status responses without aborting remaining nodes', async () => {
+  test('skips malformed null and non-object status responses without aborting remaining nodes', async () => {
     const manager = new NodeManager(logger, {
-      nodes: ['https://broken.example', 'https://ready.example'],
+      nodes: [
+        'https://broken.example',
+        'https://html-page.example',
+        'https://ready.example',
+      ],
       checkHealthAtStartup: false,
     });
+
+    jest.mocked(axios.get).mockResolvedValueOnce({
+      data: '<html>maintenance</html>',
+    });
+    await expect(
+      manager.checkNode('https://html-page.example'),
+    ).resolves.toEqual({
+      success: false,
+    });
+
     jest
       .spyOn(manager, 'checkNode')
       .mockResolvedValueOnce(null as never)
+      .mockResolvedValueOnce('<html>maintenance</html>' as never)
       .mockResolvedValueOnce(nodeStatus({height: 100}));
 
     const nodes = await manager.checkNodes();
@@ -667,6 +682,9 @@ describe('NodeManager', () => {
     expect(nodes.map(node => node.node)).toEqual(['https://ready.example']);
     expect(output.log).toHaveBeenCalledWith(
       "[ADAMANT js-api] Health check: Node https://broken.example hasn't returned its status",
+    );
+    expect(output.log).toHaveBeenCalledWith(
+      "[ADAMANT js-api] Health check: Node https://html-page.example hasn't returned its status",
     );
   });
 
@@ -777,6 +795,40 @@ describe('NodeManager', () => {
     );
   });
 
+  test('continues startup backoff retries when an initial sweep throws unexpectedly', async () => {
+    jest.useFakeTimers();
+    const checkNodesSpy = jest
+      .spyOn(NodeManager.prototype, 'checkNodes')
+      .mockRejectedValueOnce(new Error('unexpected sweep error'))
+      .mockResolvedValueOnce([activeNode('127.0.0.1', 100)]);
+
+    try {
+      const ready = jest.fn();
+      const manager = new NodeManager(logger, {
+        nodes: ['http://127.0.0.1:36666'],
+      });
+      manager.onReady(ready);
+
+      // Flush the rejected initial sweep promise chain
+      await jest.advanceTimersByTimeAsync(0);
+
+      expect(ready).not.toHaveBeenCalled();
+      expect(manager.isReady).toBe(false);
+      expect(output.error).toHaveBeenCalledWith(
+        '[ADAMANT js-api] Health check: Unexpected error while updating nodes: unexpected sweep error',
+      );
+
+      // Backoff retry runs at 5s (well before the 5-minute interval) and completes readiness
+      await jest.advanceTimersByTimeAsync(5_000);
+      expect(ready).toHaveBeenCalledTimes(1);
+      expect(manager.isReady).toBe(true);
+      expect(checkNodesSpy).toHaveBeenCalledTimes(2);
+    } finally {
+      checkNodesSpy.mockRestore();
+      jest.useRealTimers();
+    }
+  });
+
   test('falls back to a loaded syncing node when already initialized and all ready nodes fail', async () => {
     const manager = new TestNodeManager(logger, {
       nodes: [
@@ -851,6 +903,48 @@ describe('NodeManager', () => {
     expect(manager.node).toBe('https://offline.example');
     expect(output.error).toHaveBeenCalledWith(
       '[ADAMANT js-api] Health check: No usable nodes available. 1 node did not respond. 1 node is not loaded.',
+    );
+  });
+
+  test('limits syncing fallback to nodes within the allowed height lag of the last synced height', async () => {
+    const manager = new TestNodeManager(logger, {
+      nodes: ['https://primary.example', 'https://syncing.example'],
+      minVersion: '0.11.0',
+      checkHealthAtStartup: false,
+    });
+
+    // Establish last known synced height at 1000
+    await manager.chooseNode([
+      {...activeNode('primary.example', 1000), version: '0.11.0'},
+    ]);
+    expect(manager.node).toBe('https://primary.example');
+
+    // Syncing node 500 blocks behind (lag > 25) must be rejected
+    jest
+      .spyOn(manager, 'checkNode')
+      .mockResolvedValueOnce({success: false} as never)
+      .mockResolvedValueOnce(
+        nodeStatus({height: 500, version: '0.11.0', syncing: true}),
+      );
+
+    await manager.updateNodes(false, 'https://primary.example');
+    expect(manager.node).toBe('https://primary.example');
+    expect(output.error).toHaveBeenCalledWith(
+      '[ADAMANT js-api] Health check: No usable nodes available. 1 node did not respond. 1 node is still syncing.',
+    );
+
+    // Syncing node 15 blocks behind (lag <= 25) is accepted as fallback
+    jest
+      .spyOn(manager, 'checkNode')
+      .mockResolvedValueOnce({success: false} as never)
+      .mockResolvedValueOnce(
+        nodeStatus({height: 985, version: '0.11.0', syncing: true}),
+      );
+
+    await manager.updateNodes(false, 'https://primary.example');
+    expect(manager.node).toBe('https://syncing.example');
+    expect(output.warn).toHaveBeenCalledWith(
+      '[ADAMANT js-api] Health check: No fully synced nodes available; falling back to loaded syncing node https://syncing.example (v0.11.0).',
     );
   });
 

@@ -36,6 +36,7 @@ export interface ActiveNode {
 const CHECK_NODES_INTERVAL = 60 * 5 * 1000; // Update active nodes every 5 minutes
 const STARTUP_RETRY_DELAYS_MS = [5_000, 10_000, 30_000, 60_000] as const;
 const HEIGHT_EPSILON = 5; // Used to group nodes by height and choose synced
+const MAX_SYNCING_FALLBACK_HEIGHT_LAG = HEIGHT_EPSILON * 5; // Max lag (25 blocks) for syncing fallback
 const MAX_NODE_RATE_LIMIT_COOLDOWN_MS = 60 * 1000; // Cap per-node 429 cooldown at 60s
 const DEFAULT_STATUS_RATE_LIMIT_COOLDOWN_MS = 5 * 1000;
 
@@ -217,6 +218,8 @@ export class NodeManager {
   private readonly rateLimitedUntil = new Map<string, number>();
   /** Compatible nodes from the last successful `chooseNode()` call (with `outOfSync` set). */
   private lastActiveNodes: ActiveNode[] = [];
+  /** Highest synced block height seen in the latest successful `chooseNode()` call. */
+  private lastKnownSyncedHeight?: number;
   /** Loaded-but-syncing nodes from the latest `checkNodes()` call, used only as an initialized fallback. */
   private syncingFallbackNodes: ActiveNode[] = [];
   /** Count of nodes that returned HTTP 429 on `/api/node/status` during the latest `checkNodes()` call. */
@@ -331,6 +334,9 @@ export class NodeManager {
       this.logger.error(
         `[ADAMANT js-api] Health check: Unexpected error while updating nodes: ${message}`,
       );
+      if (!this.initialized) {
+        this.scheduleStartupRetry();
+      }
     });
   }
 
@@ -464,11 +470,23 @@ export class NodeManager {
       return false;
     }
 
+    const minHeight =
+      this.lastKnownSyncedHeight !== undefined
+        ? this.lastKnownSyncedHeight - MAX_SYNCING_FALLBACK_HEIGHT_LAG
+        : undefined;
+    const freshEnough =
+      minHeight !== undefined
+        ? compatible.filter(node => node.height >= minHeight)
+        : compatible;
+    if (!freshEnough.length) {
+      return false;
+    }
+
     const now = Date.now();
-    const nonRateLimited = compatible.filter(
+    const nonRateLimited = freshEnough.filter(
       candidate => !this.isNodeRateLimited(candidate.node, now),
     );
-    let pool = nonRateLimited.length ? nonRateLimited : compatible;
+    let pool = nonRateLimited.length ? nonRateLimited : freshEnough;
 
     const nodeToAvoid = failedNode ?? this.node;
     if (forceChangeActiveNode && nodeToAvoid) {
@@ -726,6 +744,12 @@ export class NodeManager {
     }
 
     this.lastActiveNodes = [...compatibleNodes];
+    const syncedHeights = compatibleNodes
+      .filter(node => !node.outOfSync)
+      .map(node => node.height);
+    if (syncedHeights.length) {
+      this.lastKnownSyncedHeight = Math.max(...syncedHeights);
+    }
     socket?.reviseConnection(compatibleNodes);
 
     const {nodes} = this.options;
@@ -813,7 +837,12 @@ export class NodeManager {
         timeout,
       });
 
-      return response.data;
+      const data = response.data;
+      if (!data || typeof data !== 'object') {
+        return {success: false} as {success: false; rateLimited?: boolean};
+      }
+
+      return data;
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 429) {
         const retryAfterMs = parseRetryAfterMs(error.response.headers);
@@ -846,8 +875,13 @@ export class NodeManager {
 
       const ping = unixTimestamp() - start;
 
-      if (!response?.success) {
-        if (response && 'rateLimited' in response && response.rateLimited) {
+      if (!response || typeof response !== 'object' || !response.success) {
+        if (
+          typeof response === 'object' &&
+          response !== null &&
+          'rateLimited' in response &&
+          response.rateLimited
+        ) {
           this.rateLimitedCount += 1;
           this.logger.log(
             `[ADAMANT js-api] Health check: Node ${node} rate-limited the status request (HTTP 429)`,

@@ -26,12 +26,14 @@ All expected failures use the normalized
   selected as a primary active node. Status responses without a `loader` object
   stay eligible, so older nodes that do not send it can still be selected. If
   an already-initialized client loses all fully synced nodes, it falls back
-  with a warning to a `minVersion`-compatible loaded-but-syncing node rather
-  than staying stuck on an offline node; `loaded: false` nodes are never
-  selected.
-- Malformed `{success: true}` status payloads missing required fields
-  (`network.height`, `version.version`, or `wsClient`) are ignored with a
-  warning so a misbehaving node cannot abort the health sweep.
+  with a warning to a `minVersion`-compatible loaded-but-syncing node that is
+  within 25 blocks of the last known synced height rather than staying stuck on
+  an offline node; nodes lagging farther behind and `loaded: false` nodes are
+  never selected.
+- Non-object responses (such as HTML maintenance pages) and malformed
+  `{success: true}` status payloads missing required fields (`network.height`,
+  `version.version`, or `wsClient`) are ignored so a misbehaving node cannot
+  abort the health sweep.
 - Node selection is height-aware: nodes that lag behind the network's actual
   height are not used.
 - `onReady` runs (and `api.isReady` becomes `true`) only after a usable node is
