@@ -26,10 +26,11 @@ All expected failures use the normalized
   selected as a primary active node. Status responses without a `loader` object
   stay eligible, so older nodes that do not send it can still be selected. If
   an already-initialized client loses all fully synced nodes, it falls back
-  with a warning to a `minVersion`-compatible loaded-but-syncing node that is
-  within 25 blocks of the last known synced height rather than staying stuck on
-  an offline node; nodes lagging farther behind and `loaded: false` nodes are
-  never selected.
+  with a warning to a `minVersion`-compatible loaded-but-syncing node only when
+  a recent synced height reference is available (within the last 10 minutes)
+  and the candidate is within 25 blocks of that height; without a fresh
+  reference (for example with `checkHealthAtStartup: false` before any synced
+  sweep) or for lagging / `loaded: false` nodes, the fallback is refused.
 - Non-object responses (such as HTML maintenance pages) and malformed
   `{success: true}` status payloads missing required fields (`network.height`,
   `version.version`, or `wsClient`) are ignored so a misbehaving node cannot

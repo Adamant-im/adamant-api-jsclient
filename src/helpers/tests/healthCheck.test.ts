@@ -841,7 +841,9 @@ describe('NodeManager', () => {
       checkHealthAtStartup: false,
     });
     expect(manager.isReady).toBe(true);
-    manager.node = 'https://offline.example';
+    await manager.chooseNode([
+      {...activeNode('offline.example', 205), version: '0.11.0'},
+    ]);
 
     jest
       .spyOn(manager, 'checkNode')
@@ -850,7 +852,7 @@ describe('NodeManager', () => {
         nodeStatus({height: 999, version: '0.11.0', loaded: false}),
       )
       .mockResolvedValueOnce(
-        nodeStatus({height: 120, version: '0.11.0', syncing: true}),
+        nodeStatus({height: 190, version: '0.11.0', syncing: true}),
       )
       .mockResolvedValueOnce(
         nodeStatus({height: 200, version: '0.11.0', syncing: true}),
@@ -871,6 +873,9 @@ describe('NodeManager', () => {
       minVersion: '0.11.0',
       checkHealthAtStartup: false,
     });
+    await manager.chooseNode([
+      {...activeNode('syncing-new.example', 200), version: '0.11.0'},
+    ]);
     manager.node = 'https://old.example';
 
     jest
@@ -884,6 +889,61 @@ describe('NodeManager', () => {
 
     expect(manager.node).toBe('https://syncing-new.example');
     expect(manager.compatibleNodeAvailable).toBe(true);
+  });
+
+  test('does not fall back to a syncing node when no reference synced height exists (checkHealthAtStartup: false)', async () => {
+    const manager = new TestNodeManager(logger, {
+      nodes: ['https://offline.example', 'https://syncing.example'],
+      checkHealthAtStartup: false,
+    });
+    expect(manager.isReady).toBe(true);
+    manager.node = 'https://offline.example';
+
+    jest
+      .spyOn(manager, 'checkNode')
+      .mockResolvedValueOnce({success: false} as never)
+      .mockResolvedValueOnce(nodeStatus({height: 100, syncing: true}));
+
+    await manager.updateNodes(false, 'https://offline.example');
+
+    expect(manager.node).toBe('https://offline.example');
+    expect(output.error).toHaveBeenCalledWith(
+      '[ADAMANT js-api] Health check: No usable nodes available. 1 node did not respond. 1 node is still syncing.',
+    );
+  });
+
+  test('refuses syncing fallback once the reference synced height snapshot expires', async () => {
+    jest.useFakeTimers();
+    try {
+      const manager = new TestNodeManager(logger, {
+        nodes: ['https://primary.example', 'https://syncing.example'],
+        minVersion: '0.11.0',
+        checkHealthAtStartup: false,
+      });
+
+      await manager.chooseNode([
+        {...activeNode('primary.example', 1000), version: '0.11.0'},
+      ]);
+
+      // Advance past the 10-minute (2 * CHECK_NODES_INTERVAL) reference age limit
+      jest.advanceTimersByTime(10 * 60 * 1000 + 1);
+
+      jest
+        .spyOn(manager, 'checkNode')
+        .mockResolvedValueOnce({success: false} as never)
+        .mockResolvedValueOnce(
+          nodeStatus({height: 995, version: '0.11.0', syncing: true}),
+        );
+
+      await manager.updateNodes(false, 'https://primary.example');
+
+      expect(manager.node).toBe('https://primary.example');
+      expect(output.error).toHaveBeenCalledWith(
+        '[ADAMANT js-api] Health check: No usable nodes available. 1 node did not respond. 1 node is still syncing.',
+      );
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   test('never falls back to a loaded:false node even when initialized', async () => {

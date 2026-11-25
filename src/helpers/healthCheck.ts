@@ -37,6 +37,7 @@ const CHECK_NODES_INTERVAL = 60 * 5 * 1000; // Update active nodes every 5 minut
 const STARTUP_RETRY_DELAYS_MS = [5_000, 10_000, 30_000, 60_000] as const;
 const HEIGHT_EPSILON = 5; // Used to group nodes by height and choose synced
 const MAX_SYNCING_FALLBACK_HEIGHT_LAG = HEIGHT_EPSILON * 5; // Max lag (25 blocks) for syncing fallback
+const MAX_SYNCING_FALLBACK_REFERENCE_AGE_MS = CHECK_NODES_INTERVAL * 2; // Max age (10 min) of reference height
 const MAX_NODE_RATE_LIMIT_COOLDOWN_MS = 60 * 1000; // Cap per-node 429 cooldown at 60s
 const DEFAULT_STATUS_RATE_LIMIT_COOLDOWN_MS = 5 * 1000;
 
@@ -220,6 +221,8 @@ export class NodeManager {
   private lastActiveNodes: ActiveNode[] = [];
   /** Highest synced block height seen in the latest successful `chooseNode()` call. */
   private lastKnownSyncedHeight?: number;
+  /** Timestamp (epoch ms) when `lastKnownSyncedHeight` was recorded. */
+  private lastKnownSyncedHeightAt?: number;
   /** Loaded-but-syncing nodes from the latest `checkNodes()` call, used only as an initialized fallback. */
   private syncingFallbackNodes: ActiveNode[] = [];
   /** Count of nodes that returned HTTP 429 on `/api/node/status` during the latest `checkNodes()` call. */
@@ -462,31 +465,30 @@ export class NodeManager {
       return false;
     }
 
+    const now = Date.now();
+    if (
+      this.lastKnownSyncedHeight === undefined ||
+      this.lastKnownSyncedHeightAt === undefined ||
+      now - this.lastKnownSyncedHeightAt > MAX_SYNCING_FALLBACK_REFERENCE_AGE_MS
+    ) {
+      return false;
+    }
+
     const {minVersion} = this.options;
-    const compatible = syncingFallbackNodes.filter(node =>
-      hasMinVersion(node.version, minVersion),
+    const minHeight =
+      this.lastKnownSyncedHeight - MAX_SYNCING_FALLBACK_HEIGHT_LAG;
+    const compatible = syncingFallbackNodes.filter(
+      node =>
+        hasMinVersion(node.version, minVersion) && node.height >= minHeight,
     );
     if (!compatible.length) {
       return false;
     }
 
-    const minHeight =
-      this.lastKnownSyncedHeight !== undefined
-        ? this.lastKnownSyncedHeight - MAX_SYNCING_FALLBACK_HEIGHT_LAG
-        : undefined;
-    const freshEnough =
-      minHeight !== undefined
-        ? compatible.filter(node => node.height >= minHeight)
-        : compatible;
-    if (!freshEnough.length) {
-      return false;
-    }
-
-    const now = Date.now();
-    const nonRateLimited = freshEnough.filter(
+    const nonRateLimited = compatible.filter(
       candidate => !this.isNodeRateLimited(candidate.node, now),
     );
-    let pool = nonRateLimited.length ? nonRateLimited : freshEnough;
+    let pool = nonRateLimited.length ? nonRateLimited : compatible;
 
     const nodeToAvoid = failedNode ?? this.node;
     if (forceChangeActiveNode && nodeToAvoid) {
@@ -749,6 +751,7 @@ export class NodeManager {
       .map(node => node.height);
     if (syncedHeights.length) {
       this.lastKnownSyncedHeight = Math.max(...syncedHeights);
+      this.lastKnownSyncedHeightAt = Date.now();
     }
     socket?.reviseConnection(compatibleNodes);
 
