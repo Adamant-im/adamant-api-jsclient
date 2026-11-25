@@ -64,11 +64,32 @@ describe('message encryption', () => {
 
   test('validates encryption and decryption inputs', () => {
     const keys = createKeypairFromPassphrase(alice);
-    const invalidKey = new Uint8Array(31).fill(1);
+    const invalidKeys: Array<Uint8Array | string> = [
+      new Uint8Array(31).fill(1),
+      new Uint8Array(31),
+      new Uint8Array(33),
+      '00'.repeat(31),
+      '00'.repeat(33),
+      'g'.repeat(64),
+      `02${'00'.repeat(31)}`,
+      'ff'.repeat(32),
+      '0000000000000000000000000000000000000000000000000000000000000000',
+      '0000000000000000000000000000000000000000000000000000000000000080',
+      'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
+      'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa',
+      '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05',
+      '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85',
+    ];
 
-    expect(() => encodeMessage('x', keys, invalidKey)).toThrow(
-      'encodeMessage: invalid key',
-    );
+    for (const invalidKey of invalidKeys) {
+      expect(() => encodeMessage('x', keys, invalidKey)).toThrow(
+        'encodeMessage: invalid key',
+      );
+      expect(() => decodeMessage('00', invalidKey, keys, '00')).toThrow(
+        'decodeMessage: invalid key',
+      );
+    }
+
     expect(() =>
       decodeMessage(1 as unknown as string, keys.publicKey, keys, '00'),
     ).toThrow('message should be a string');
@@ -77,9 +98,6 @@ describe('message encryption', () => {
     ).toThrow('nonce should be a string');
     expect(() => decodeMessage('00', {} as Uint8Array, keys, '00')).toThrow(
       'senderPublicKey should be a string or an instance of Uint8Array',
-    );
-    expect(() => decodeMessage('00', invalidKey, keys, '00')).toThrow(
-      'decodeMessage: invalid key',
     );
   });
 });

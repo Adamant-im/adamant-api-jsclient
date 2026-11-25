@@ -2,6 +2,7 @@ import sodium from 'sodium-browserify-tweetnacl';
 import nacl from 'tweetnacl';
 import ed2curve from 'ed2curve';
 import {KeyPair, createKeypairFromPassphrase} from './keys';
+import {convertVerifiedEd25519PublicKey} from './publicKey';
 
 export const bytesToHex = (bytes: Uint8Array) => {
   let hex = '';
@@ -77,14 +78,7 @@ export const encodeMessage = (
 
   const plainText = Buffer.from(msg.toString());
   const DHSecretKey = ed2curve.convertSecretKey(keypair.privateKey);
-
-  let publicKey = recipientPublicKey;
-
-  if (typeof publicKey === 'string') {
-    publicKey = hexToBytes(publicKey);
-  }
-
-  const DHPublicKey = ed2curve.convertPublicKey(publicKey);
+  const DHPublicKey = convertVerifiedEd25519PublicKey(recipientPublicKey);
 
   if (!DHPublicKey) {
     throw new Error('encodeMessage: invalid key');
@@ -110,11 +104,6 @@ export const decodeMessage = (
       ? createKeypairFromPassphrase(keyPairOrPassphrase)
       : keyPairOrPassphrase;
 
-  const publicKey =
-    typeof senderPublicKey === 'string'
-      ? hexToBytes(senderPublicKey)
-      : senderPublicKey;
-
   if (typeof message !== 'string') {
     throw new Error('decodeMessage message should be a string');
   }
@@ -123,13 +112,16 @@ export const decodeMessage = (
     throw new Error('decodeMessage: nonce should be a string');
   }
 
-  if (!(publicKey instanceof Uint8Array)) {
+  if (
+    typeof senderPublicKey !== 'string' &&
+    !(senderPublicKey instanceof Uint8Array)
+  ) {
     throw new Error(
       'decodeMessage: senderPublicKey should be a string or an instance of Uint8Array',
     );
   }
 
-  const DHPublicKey = ed2curve.convertPublicKey(publicKey);
+  const DHPublicKey = convertVerifiedEd25519PublicKey(senderPublicKey);
 
   if (!DHPublicKey) {
     throw new Error('decodeMessage: invalid key');
